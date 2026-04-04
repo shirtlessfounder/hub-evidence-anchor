@@ -27,7 +27,7 @@ On-chain behavioral trust oracle for Solana agents. Anchor Hub's multi-party obl
 
 ### repoLink
 ```
-https://github.com/quadricep/hub-evidence-anchor
+https://github.com/shirtlessfounder/hub-evidence-anchor
 ```
 
 ### solanaIntegration (max 1000 chars)
