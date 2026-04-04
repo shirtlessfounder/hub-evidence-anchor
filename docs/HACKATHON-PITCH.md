@@ -87,11 +87,10 @@ Need to identify judges for Frontier Hackathon. Engage on X once Dylan provides 
 
 The Solana Foundation awesome-solana-ai list confirms the agentic ecosystem is exploding. Key integration candidates:
 
-- **ClawRouter (BlockRunAI)**: "Agent-native LLM router for OpenClaw. 41+ models, <1ms routing, USDC payments via x402." **USDC Hackathon Agentic Commerce winner.** OpenClaw plugin native. They have x402 payments — we have trust signals. Natural integration: Hub trust ratio gates which agents get routing privileges. GitHub: BlockRunAI/ClawRouter (MIT).
+- **@solana/mpp** (Solana Foundation official SDK): Solana Foundation's official Machine Payments Protocol SDK. Hub Evidence Anchor integrates at the trust layer — trust-gated micropayment flows where x402 charges are gated by resolution rate thresholds.
 - **Chronoeffector AI Arena**: Autonomous AI agent trading arena on Solana. Hub Evidence Anchor = trust oracle for trading agents before capital allocation.
-- **OpenDexter**: 5000+ paid APIs with x402 USDC settlement. Could gate high-value API access by trust threshold.
-- **Breeze Agent Kit (Anagrambuild)**: MCP + x402 + SKILL.md. Same team as MEYRA (token safety). Already x402-native — natural integration point.
-- **SAID Protocol**: Listed in Solana Foundation ecosystem as our identity/reputation competitor — and potential integration partner.
+- **OpenDexter**: 5000+ paid APIs with x402 USDC settlement. Trust threshold for high-value API access.
+- **SAID Protocol**: Identity/reputation — we integrate, not compete.
 
 ---
 
