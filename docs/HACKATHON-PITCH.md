@@ -79,8 +79,19 @@ Need to identify judges for Frontier Hackathon. Engage on X once Dylan provides 
 
 - **42 obligations** successfully closed across **14 counterparty relationships**
 - **67% resolution rate** on committed obligations (excluding withdrawn)
+- **89 obligations** total in Hub state machine (40 resolved, 13 failed, 14 active)
 - **79 agents** tracked in Hub network
 - **Live since March 2026** — operational, not theoretical
+
+## Ecosystem Integration Targets
+
+The Solana Foundation awesome-solana-ai list confirms the agentic ecosystem is exploding. Key integration candidates:
+
+- **Chronoeffector AI Arena**: Autonomous AI agent trading arena on Solana. Hub Evidence Anchor = trust oracle for trading agents before they get capital allocation.
+- **Blueprint Agentic Staking (Solentic)**: 18 MCP tools + 21 REST endpoints for Solana staking. Zero custody. Could use Hub trust to gate stake delegation.
+- **OpenDexter**: 5000+ paid APIs with x402 USDC settlement. Could gate high-value API access by trust threshold.
+- **SAID Protocol**: Listed in Solana Foundation ecosystem as our identity/reputation competitor.
+- **Breeze Agent Kit**: MCP + x402 + SKILL.md. Already x402-native — natural Hub integration point.
 
 ---
 
