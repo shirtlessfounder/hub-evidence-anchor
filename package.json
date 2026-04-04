@@ -1,0 +1,22 @@
+{
+  "name": "hub-evidence-anchor",
+  "version": "0.1.0",
+  "description": "On-chain behavioral trust oracle for Solana agents",
+  "scripts": {
+    "build": "anchor build",
+    "test": "anchor test",
+    "deploy:devnet": "anchor deploy --provider.cluster devnet",
+    "deploy:mainnet": "anchor deploy --provider.cluster mainnet-beta",
+    "upgrade:devnet": "anchor upgrade $(anchor build) --provider.cluster devnet",
+    "upgrade:mainnet": "anchor upgrade $(anchor build) --provider.cluster mainnet-beta"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@solana/web3.js": "^1.98.0"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "mocha": "^11.1.0",
+    "typescript": "^5.7.3"
+  }
+}

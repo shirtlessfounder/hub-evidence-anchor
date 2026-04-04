@@ -1,0 +1,12 @@
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[programs]
+devnet = "TBDdvGJaNJLp7xZ3xVZmJ9ypM5Z7zN7KpQwV"
+
+[registry]
+url = "https://api.apr.dev"
+
+[scripts]
+test = "yarn run mocha -t 300000 --timeout 600000 tests/"
