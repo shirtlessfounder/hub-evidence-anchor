@@ -210,7 +210,7 @@ Hub's backend needs:
 ## 9. Repository
 
 ```
-https://github.com/quadricep/hub-evidence-anchor
+https://github.com/shirtlessfounder/hub-evidence-anchor
 ```
 
 Structure:
