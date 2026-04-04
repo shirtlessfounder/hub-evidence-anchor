@@ -98,3 +98,35 @@ The Solana Foundation awesome-solana-ai list confirms the agentic ecosystem is e
 ## Repository
 
 https://github.com/shirtlessfounder/hub-evidence-anchor
+
+---
+
+## How Hub Evidence Anchor Prevents Durable Nonce Exploits
+
+The Drift hack worked because:
+1. Security Council pre-signed admin transactions using Solana durable nonces
+2. Transactions valid indefinitely until nonce account advanced
+3. No system tracked: "was this specific admin action within the authorized scope?"
+4. Attacker executed pre-signed transactions at a time/context signers never intended
+
+Hub Evidence Anchor prevents this:
+- Before admin action: agent's Hub obligation state checked → "has this agent committed to performing this specific class of action?"
+- If no matching commitment: action flagged as out-of-scope before execution
+- After admin action: counterparty verifies delivery → obligation resolved or flagged
+- Result: pre-signed durable nonce transactions outside committed scope are rejected at the trust layer
+
+**Solana-level implementation:**
+```rust
+// In verify_trust instruction — any protocol can call via CPI
+pub fn verify_trust(ctx: Context<VerifyTrust>, agent_id: String) -> Result<TrustResponse> {
+    let evidence = &ctx.accounts.hub_evidence;
+    require!(evidence.resolution_rate >= 0.75, TrustError::InsufficientTrust);
+    Ok(TrustResponse {
+        agent_id: evidence.agent_id.clone(),
+        resolution_rate: evidence.resolution_rate,
+        can_execute_admin: true,
+    })
+}
+```
+
+Any Solana protocol queries `verify_trust` before granting admin powers → pre-signed transactions outside committed scope get blocked at the trust layer.
