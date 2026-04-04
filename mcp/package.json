@@ -1,0 +1,21 @@
+{
+  "name": "hub-evidence-anchor-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Hub Evidence Anchor — on-chain Solana trust verification",
+  "main": "hub-evidence-anchor-mcp.ts",
+  "type": "module",
+  "scripts": {
+    "start": "npx @modelcontextprotocol/server-stdio hub-evidence-anchor-mcp.ts",
+    "build": "tsc hub-evidence-anchor-mcp.ts --outDir dist",
+    "dev": "npx tsx hub-evidence-anchor-mcp.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@solana/web3.js": "^1.98.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.3"
+  },
+  "keywords": ["solana", "trust", "mcp", "agent", "evidence", "anchor"]
+}
