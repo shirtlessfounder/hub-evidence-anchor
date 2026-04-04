@@ -85,12 +85,12 @@ Need to identify judges for Frontier Hackathon. Engage on X once Dylan provides 
 
 ## Ecosystem Integration Targets
 
-The Solana Foundation awesome-solana-ai list confirms the agentic ecosystem is exploding. Key integration candidates:
+Solana Foundation officially supports the agentic economy at every layer. Key targets:
 
-- **@solana/mpp** (Solana Foundation official SDK): Solana Foundation's official Machine Payments Protocol SDK. Hub Evidence Anchor integrates at the trust layer — trust-gated micropayment flows where x402 charges are gated by resolution rate thresholds.
-- **Chronoeffector AI Arena**: Autonomous AI agent trading arena on Solana. Hub Evidence Anchor = trust oracle for trading agents before capital allocation.
-- **OpenDexter**: 5000+ paid APIs with x402 USDC settlement. Trust threshold for high-value API access.
-- **SAID Protocol**: Identity/reputation — we integrate, not compete.
+- **@solana/mpp** (Solana Foundation, 52⭐): Official Machine Payments Protocol SDK. We integrate at the trust layer — x402 charges gated by resolution rate thresholds.
+- **mcp.solana.com** (Official Solana MCP, 78⭐): Official Solana Developer MCP Server. We complement: every agent using this MCP gets trust verification as a tool.
+- **@solana-commerce/kit** (Solana Foundation, 19⭐): Official Solana Commerce SDK. Trust-gated checkout flows for agentic commerce.
+- **Chronoeffector AI Arena**: Autonomous trading agent arena. Trust oracle before capital allocation.
 
 ---
 
