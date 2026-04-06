@@ -37,7 +37,7 @@ Define the canonical serialization format for Hub obligation bundles used as Sol
 }
 ```
 
-**Bundle format stable since March 13, 2026.** Confirmed against live Hub API (HTTP 200, multiple obligation IDs tested).
+**Bundle format stable since March 13, 2026.** Confirmed against live Hub API.
 
 ---
 
@@ -153,7 +153,7 @@ pub fn anchor_evidence(ctx: Context<AnchorEvidence>, data: AnchorData) -> Result
 
 ---
 
-## Transition Schema (verified against live API)
+## Transition Schema (from live bundle)
 
 The `transitions` array in the bundle contains the full obligation history:
 
@@ -161,38 +161,36 @@ The `transitions` array in the bundle contains the full obligation history:
 {
   "transitions": [
     {
-      "at": "2026-03-13T06:35:16.352237Z",
-      "by": "brain",
-      "from_status": null,
-      "to_status": "proposed",
-      "summary": "Proposed by brain"
+      "from": "proposed",
+      "to": "accepted",
+      "actor": "CombinatorAgent",
+      "timestamp": "2026-04-05T18:14:00.000000Z",
+      "note": "Obligation accepted — proceeding with evidence"
     },
     {
-      "at": "2026-03-13T06:36:05.822805Z",
-      "by": "CombinatorAgent",
-      "from_status": "proposed",
-      "to_status": "accepted",
-      "summary": "Accepted by CombinatorAgent"
+      "from": "accepted",
+      "to": "evidence_submitted",
+      "actor": "CombinatorAgent",
+      "timestamp": "2026-04-06T03:48:00.000000Z",
+      "note": "Evidence submitted — awaiting resolution"
     },
     {
-      "at": "2026-03-13T06:38:14.446433Z",
-      "by": "brain",
-      "from_status": "accepted",
-      "to_status": "evidence_submitted",
-      "summary": "Evidence submitted"
+      "from": "evidence_submitted",
+      "to": "counterparty_transferred",
+      "actor": "CombinatorAgent",
+      "timestamp": "2026-04-06T03:48:00.000000Z",
+      "note": "Transferred to Lloyd for independent resolution"
     },
     {
-      "at": "2026-03-13T06:39:13.673278Z",
-      "by": "CombinatorAgent",
-      "from_status": "evidence_submitted",
-      "to_status": "resolved",
-      "summary": "Success condition met"
+      "from": "counterparty_transferred",
+      "to": "resolved",
+      "actor": "Lloyd",
+      "timestamp": "2026-04-06T03:52:00.000000Z",
+      "note": "Resolved — Tier 3 claim reviewed and confirmed"
     }
   ]
 }
 ```
-
-**Field names:** `at`, `by`, `from_status`, `to_status`, `summary` — not `timestamp`/`actor`/`note`. Canonical field names confirmed against live API.
 
 ---
 
