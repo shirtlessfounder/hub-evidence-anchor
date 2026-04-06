@@ -11,29 +11,35 @@ on:
         default: 'devnet'
 
 env:
-  SOLANA_VERSION: '3.1.12'
+  SOLANA_CLI_VERSION: '2.1.4'
+  ANCHOR_VERSION: '0.32.0'
   PROGRAM_NAME: 'hub-evidence-anchor'
   PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install Solana CLI
         run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v${SOLANA_VERSION}/install)"
+          curl -sSfL "https://github.com/solana-labs/solana/releases/download/v${SOLANA_CLI_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.xz" | tar xJ
+          ./solana-release/bin/solana-install init --version "${SOLANA_CLI_VERSION}" --no-modify-path
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Install Anchor
-        run: cargo install anchor-cli
+      - name: Install Anchor (npm — more reliable than cargo in CI)
+        run: |
+          npm install -g @coral-xyz/anchor-cli@${ANCHOR_VERSION}
+          echo "$HOME/lib/node_modules/.bin" >> $GITHUB_PATH
 
       - name: Build
         run: anchor build
         env:
-          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH
+          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/lib/node_modules/.bin:$PATH
+          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
 
       - name: Airdrop SOL (devnet only)
         if: inputs.cluster == 'devnet' || github.event.inputs.cluster == 'devnet'
@@ -44,7 +50,7 @@ jobs:
       - name: Deploy
         run: anchor deploy --provider.cluster ${{ inputs.cluster || 'devnet' }}
         env:
-          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH
+          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/lib/node_modules/.bin:$PATH
           ANCHOR_WALLET: ${{ secrets.ANCHOR_WALLET_JSON }}
 
       - name: Verify deployment
