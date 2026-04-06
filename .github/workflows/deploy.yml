@@ -7,7 +7,6 @@ on:
 
 env:
   SOLANA_VERSION: '3.1.12'
-  ANCHOR_VERSION: '1.0.0'
   PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
 
 jobs:
@@ -25,11 +24,11 @@ jobs:
       - name: Verify Solana CLI
         run: solana --version
 
-      - name: Install Rust + Anchor CLI
+      - name: Install Rust + Anchor
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          cargo install anchor-cli@${ANCHOR_VERSION}
+          cargo install anchor-cli@${SOLANA_VERSION}
 
       - name: Build Anchor program
         run: anchor build
