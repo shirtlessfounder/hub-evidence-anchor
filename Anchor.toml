@@ -15,3 +15,5 @@ wallet = "/tmp/deploy-wallet.json"
 test = "yarn run mocha -t 300000 --timeout 600000 tests/"
 
 [hooks]
+[programs.hub_evidence_anchor]
+hub_evidence_anchor = "275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA"
