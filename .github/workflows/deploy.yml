@@ -11,67 +11,50 @@ on:
         default: 'devnet'
 
 env:
-  SOLANA_CLI_VERSION: '1.18.26'
-  ANCHOR_VERSION: '0.32.1'
+  SOLANA_VERSION: '3.1.12'
   PROGRAM_NAME: 'hub-evidence-anchor'
-  PROGRAM_ID: '6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek'
+  PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Write deploy wallet
+      - name: Install Solana CLI + Agave SDK
         run: |
-          echo "${{ secrets.ANCHOR_WALLET_JSON }}" > /tmp/deploy-wallet.json
+          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
+          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
 
-      - name: Install Solana CLI
+      - name: Verify Solana CLI
+        run: solana --version && solana-keygen --version
+
+      - name: Build Anchor program
         run: |
-          curl -sSfL --retry 5 --retry-delay 5 --max-time 600 "https://github.com/solana-labs/solana/releases/download/v${SOLANA_CLI_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" -o solana.tar.bz2
-          tar xf solana.tar.bz2
-          rm solana.tar.bz2
-          echo "$PWD/solana-release/bin" >> $GITHUB_PATH
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-
-      - name: Install BPF toolchain
-        run: |
-          solana-install add bpf-tools || echo "bpf-tools may already be installed"
-          echo "SBF_OUT_DIR=$PWD/solana-release/sdk" >> $GITHUB_ENV
-
-      - name: Install Anchor CLI (via cargo — pre-built binary requires newer GLIBC than CI has)
-        run: cargo install anchor-cli --version ${{ env.ANCHOR_VERSION }}
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
-          CARGO_BUILD_JOBS: '4'
-          LIBSODIUM_DEV_MAX_VERSION: '99.99.99'
-
-      - name: Build
-        run: |
-          export SBF_OUT_DIR="$PWD/solana-release/sdk"
+          cargo install anchor-cli@${SOLANA_VERSION}
           anchor build
         env:
-          PATH: $HOME/.cargo/bin:/usr/local/bin:$HOME/.local/share/solana/install/active_release/bin:$PWD/solana-release/bin:$PATH
-          ANCHOR_WALLET: /tmp/deploy-wallet.json
-          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
+          PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
 
-      - name: Airdrop SOL (devnet only)
+      - name: Airdrop SOL (devnet)
         if: inputs.cluster == 'devnet' || github.event.inputs.cluster == 'devnet'
         run: solana airdrop 2 --url devnet
         env:
-          PATH: $HOME/.cargo/bin:/usr/local/bin:$HOME/.local/share/solana/install/active_release/bin:$PWD/solana-release/bin:$PATH
-          ANCHOR_WALLET: /tmp/deploy-wallet.json
+          PATH: /tmp/solana-release/bin:$PATH
 
-      - name: Deploy
+      - name: Deploy to Solana
         run: anchor deploy --provider.cluster ${{ inputs.cluster || 'devnet' }}
         env:
-          PATH: $HOME/.cargo/bin:/usr/local/bin:$HOME/.local/share/solana/install/active_release/bin:$PWD/solana-release/bin:$PATH
-          ANCHOR_WALLET: /tmp/deploy-wallet.json
+          PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
+          ANCHOR_WALLET: ${{ secrets.ANCHOR_WALLET_JSON }}
 
       - name: Verify deployment
         run: |
           solana program show $PROGRAM_ID --url ${{ inputs.cluster || 'devnet' }}
+          echo "---"
+          echo "Program ID: $PROGRAM_ID"
+          echo "Cluster: ${{ inputs.cluster || 'devnet' }}"
+          echo "Explorer: https://explorer.solana.com/address/$PROGRAM_ID?cluster=${{ inputs.cluster || 'devnet' }}"
         env:
-          PATH: $HOME/.cargo/bin:/usr/local/bin:$HOME/.local/share/solana/install/active_release/bin:$PWD/solana-release/bin:$PATH
+          PATH: /tmp/solana-release/bin:$PATH
