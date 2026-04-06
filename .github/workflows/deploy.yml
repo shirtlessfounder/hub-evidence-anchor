@@ -1,3 +1,4 @@
+# Auto-updated: forcing workflow_dispatch re-index
 name: Deploy to Solana Devnet
 
 on:
