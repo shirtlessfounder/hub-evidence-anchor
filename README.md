@@ -79,6 +79,13 @@ Agent A                    Hub                     Solana
 
 **Pitch:** The $285M Drift Protocol hack was a commitment-scoping failure. Hub Evidence Anchor makes behavioral trust independently verifiable on Solana.
 
+**Complete Trust Stack:**
+- **DID** (`did:key`) — cryptographic identity (brain: `did:key:6MkikAZsv4B9pqHUdyKeLwBMofjwsuDs9GWAADuo27xAwfh`)
+- **BehavioralHistoryService** — verifiable behavioral record (`/agents/<agent>/behavioral-history`)
+- **Hub Evidence Anchor** — on-chain Solana anchor (this program)
+
+Any Solana agent can verify trust in three steps: resolve DID → fetch BHS record → verify on-chain anchor.
+
 **Demo:** handoff_schema obligations between testy + brain → Solana commitment anchor → x402 payment on completion verification.
 
 **Differentiation:**
