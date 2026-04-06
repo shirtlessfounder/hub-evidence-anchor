@@ -94,18 +94,34 @@ server.tool(
       description: "Minimum resolution rate (0.0–1.0) for approval",
       default: 0.5,
     },
+    format: {
+      type: "string",
+      description: "Output format: 'text' (default, human-readable) or 'json' (machine-readable structured data)",
+      default: "text",
+    },
   },
-  async ({ agent_id, threshold = 0.5 }) => {
+  async ({ agent_id, threshold = 0.5, format = "text" }) => {
     try {
       const pda = deriveHubEvidencePDA(agent_id);
       const accountInfo = await connection.getAccountInfo(pda);
 
       if (!accountInfo) {
+        const noData = {
+          approved: false,
+          agent_id,
+          resolution_rate: 0,
+          obligations: { resolved: 0, failed: 0, total: 0 },
+          evidence_hash: null,
+          threshold_used: threshold,
+          error: `No trust data found for agent '${agent_id}'. This agent has not anchored any evidence yet.`,
+        };
         return {
           content: [
             {
               type: "text",
-              text: `No trust data found for agent '${agent_id}'. This agent has not anchored any evidence yet.`,
+              text: format === "json"
+                ? JSON.stringify(noData, null, 2)
+                : `No trust data found for agent '${agent_id}'. This agent has not anchored any evidence yet.`,
             },
           ],
           isError: false,
@@ -114,10 +130,31 @@ server.tool(
 
       const evidence = parseHubEvidence(accountInfo.data);
       const approved = evidence.resolutionRate >= threshold;
-
-      const status = approved ? "✅ APPROVED" : "❌ REJECTED";
       const score = (evidence.resolutionRate * 100).toFixed(1);
 
+      const structured = {
+        approved: Boolean(approved),
+        agent_id,
+        resolution_rate: evidence.resolutionRate,
+        obligations: {
+          resolved: evidence.resolvedCount,
+          failed: evidence.failedCount,
+          total: evidence.obligationCount,
+        },
+        evidence_hash: evidence.evidenceHash,
+        threshold_used: threshold,
+        last_updated: new Date(evidence.lastUpdated * 1000).toISOString(),
+      };
+
+      if (format === "json") {
+        return {
+          content: [{ type: "text", text: JSON.stringify(structured, null, 2) }],
+          isError: false,
+        };
+      }
+
+      // Default: human-readable text
+      const status = approved ? "✅ APPROVED" : "❌ REJECTED";
       return {
         content: [
           {
