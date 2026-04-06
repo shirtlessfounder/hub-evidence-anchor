@@ -8,9 +8,7 @@ on:
 env:
   SOLANA_VERSION: '3.1.12'
   ANCHOR_VERSION: '1.0.0'
-  PROGRAM_ID: '6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek'
-  # Bump CACHE_VERSION to force fresh Anchor build if needed
-  CACHE_VERSION: 'v1'
+  PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
 
 jobs:
   deploy:
@@ -18,47 +16,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install Solana CLI + Agave SDK
+      - name: Install Solana CLI
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
-
-      - name: Verify Solana CLI
-        run: solana --version
-
-      - name: Cache Anchor CLI
-        id: cache-anchor
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin/anchor
-          key: anchor-${{ env.ANCHOR_VERSION }}-${{ env.CACHE_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            anchor-${{ env.ANCHOR_VERSION }}-${{ env.CACHE_VERSION }}-
-            anchor-${{ env.ANCHOR_VERSION }}-
-
-      - name: Install system deps (if cache miss)
-        if: steps.cache-anchor.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libssl-dev libudev-dev
-
-      - name: Install Rust toolchain (if cache miss)
-        if: steps.cache-anchor.outputs.cache-hit != 'true'
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Install Anchor CLI (if cache miss)
-        if: steps.cache-anchor.outputs.cache-hit != 'true'
-        run: cargo install anchor-cli@${ANCHOR_VERSION}
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
-        timeout-minutes: 20
-
-      - name: Verify Anchor CLI
-        run: anchor --version
-
       - name: Save deploy keypair
         run: |
           echo "${{ secrets.ANCHOR_WALLET_JSON }}" > /tmp/encoded_b58.txt
@@ -67,35 +28,24 @@ import base64
 encoded = open('/tmp/encoded_b58.txt').read().strip()
 keypair_bytes = base64.b58decode(encoded)
 open('target/deploy/hub_evidence_anchor-keypair.json', 'wb').write(keypair_bytes)
-print('Keypair saved, length:', len(keypair_bytes))
 "
-
-      - name: Build Anchor program
+      - name: Install build tools + Rust + Anchor
+        run: |
+          sudo apt-get update && sudo apt-get install -y build-essential pkg-config libssl-dev
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          cargo install anchor-cli@${ANCHOR_VERSION}
+      - name: Build
         run: anchor build
         env:
           PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
         timeout-minutes: 20
-
-      - name: Airdrop SOL + Deploy
+      - name: Deploy
         run: |
-          for endpoint in "https://api.devnet.solana.com" "https://devnet.helius-rpc.com/?api-key="; do
-            echo "Trying airdrop from \$endpoint..."
-            solana airdrop 2 --url "\$endpoint" --keypair target/deploy/hub_evidence_anchor-keypair.json && break || true
-          done
-          echo "--- Deploying program ---"
-          solana program deploy target/deploy/hub_evidence_anchor.so \
-            --keypair target/deploy/hub_evidence_anchor-keypair.json \
-            --url https://api.devnet.solana.com
-        env:
-          PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
-        timeout-minutes: 15
-
-      - name: Verify deployment
-        run: |
-          solana program show $PROGRAM_ID --url https://api.devnet.solana.com
-          echo ""
-          echo "✅ Program deployed!"
-          echo "Program ID: $PROGRAM_ID"
-          echo "Explorer: https://explorer.solana.com/address/\$PROGRAM_ID?cluster=devnet"
+          solana airdrop 2 --url devnet || true
+          solana program deploy target/deploy/hub_evidence_anchor.so --keypair target/deploy/hub_evidence_anchor-keypair.json --url devnet
         env:
           PATH: /tmp/solana-release/bin:$PATH
+        timeout-minutes: 15
+      - name: Verify
+        run: solana program show $PROGRAM_ID --url devnet
