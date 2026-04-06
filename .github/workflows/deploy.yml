@@ -19,7 +19,7 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
           tar xf solana.tar.bz2
           rm solana.tar.bz2
           echo "$PWD/solana-release/bin" >> $GITHUB_PATH
-          solana-install add bpf-tools
+          $PWD/solana-release/bin/solana-install add bpf-tools
 
       - name: Install Anchor CLI
         run: |
