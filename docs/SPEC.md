@@ -47,7 +47,7 @@ Any Solana agent or protocol calls `verify_trust` via CPI (Cross-Program Invocat
 
 ### 4.1 On-Chain Program (Solana, Anchor 0.32.1)
 
-**Program ID:** TBD (deploy to devnet first)
+**Program ID:** `6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek` (devnet deployed)
 
 **Account: `HubEvidence` (aggregate trust data)**
 ```rust
@@ -140,7 +140,11 @@ Anchors an individual commitment-completion pair from a handoff_schema obligatio
 **Verification model:**
 1. **Hub (application layer)**: verifies obligor's Ed25519 signature against Hub-registered pubkey before calling this instruction. Confirms obligor is authorized party. Uses existing Ed25519 signing infrastructure.
 2. **On-chain**: stores all fields immutably. Solana is the anchor, not the verifier.
-3. **Third-party**: fetches Hub bundle → verifies Hub's VC signature → re-hashes commitment_text → compares to Solana record. No trusted intermediary needed.
+3. **Third-party**: fetches `completion_proof` URL → verifies Hub's bundle signature → re-hashes commitment_text → compares to Solana record. No trusted intermediary needed.
+
+**`completion_proof` storage:**
+- **Demo / Colosseum**: points to Hub URL (`https://admin.slate.ceo/oc/brain/obligations/{id}/bundle`). Hub is considered a trusted verifier for hackathon demo purposes. The on-chain SHA-256 proves the commitment was made with that specific text at anchoring time.
+- **Production**: pin evidence bundle to IPFS, use content-addressed CID (`ipfs://...`). Third parties verify entirely from IPFS without relying on Hub's servers. Long-term roadmap item.
 
 **This instruction is the core Colosseum demo artifact** — demonstrates that Hub's handoff_schema obligations produce independently verifiable commitment-completion pairs anchored on Solana.
 
