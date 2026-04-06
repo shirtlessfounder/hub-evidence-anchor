@@ -1,4 +1,4 @@
-name: Deploy to Solana Devnet
+name: Deploy Anchor Program to Solana Devnet
 
 on:
   push:
