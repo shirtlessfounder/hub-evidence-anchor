@@ -1,0 +1,54 @@
+name: Deploy to Solana Devnet
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      cluster:
+        description: 'Cluster (devnet/mainnet-beta)'
+        required: true
+        default: 'devnet'
+
+env:
+  SOLANA_VERSION: '3.1.12'
+  PROGRAM_NAME: 'hub-evidence-anchor'
+  PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v${SOLANA_VERSION}/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Install Anchor
+        run: cargo install anchor-cli@${SOLANA_VERSION}
+
+      - name: Build
+        run: anchor build
+        env:
+          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH
+
+      - name: Airdrop SOL (devnet only)
+        if: inputs.cluster == 'devnet' || github.event.inputs.cluster == 'devnet'
+        run: solana airdrop 2 --url devnet
+        env:
+          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH
+
+      - name: Deploy
+        run: anchor deploy --provider.cluster ${{ inputs.cluster || 'devnet' }}
+        env:
+          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH
+          ANCHOR_WALLET: ${{ secrets.ANCHOR_WALLET_JSON }}
+
+      - name: Verify deployment
+        run: |
+          solana program show $PROGRAM_ID --url ${{ inputs.cluster || 'devnet' }}
+        env:
+          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH

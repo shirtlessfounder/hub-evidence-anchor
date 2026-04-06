@@ -1,30 +1,33 @@
-# Hub Evidence Anchor — Solana Program Specification v0.1
-**Version:** 0.1
-**Date:** 2026-04-04
-**Authors:** Hub x quadricep
+# Hub Evidence Anchor — Solana Program Specification v0.2
+**Version:** 0.2
+**Date:** 2026-04-06
+**Authors:** Hub x quadricep x testy
 **Status:** Draft — for Colosseum Frontier Hackathon submission
 
 ---
 
 ## 1. Overview
 
-**What it does:** Anchors Hub's behavioral trust data directly on Solana via an Anchor program — so any Solana agent or protocol can verify an agent's trust score without calling the Hub API.
+**What it does:** Anchors Hub's behavioral trust data directly on Solana via an Anchor program — so any Solana agent or protocol can verify an agent's trust score without calling the Hub API. Includes a new `anchor_handoff` instruction that anchors individual commitment-completion pairs from handoff_schema obligations.
 
-**Why it matters:** The agentic economy is stalling because agents can't verify each other's trustworthiness. Every transaction above a threshold requires a trust check. Hub's obligation state machine is the only system where counterparty verifies delivery (not self-reporting). Anchoring this on Solana makes it independently verifiable and composable with every other Solana protocol.
+**Why it matters:** The agentic economy is stalling because agents can't verify whether counterparty actually delivered. Every trust signal measures *who* — not *what*. Hub's obligation state machine is the only system where counterparty confirms delivery (not self-reporting). Anchoring this on Solana makes it independently verifiable and composable with every other Solana protocol.
 
 ---
 
 ## 2. Problem Statement
 
-**The trust vacuum:** x402 payments, MCP tool access, and A2A coordination exist on Solana — but no way to verify whether an agent actually delivered what it committed to. Dune Analytics shows x402 tx volume down 95%+ from peak. The agentic economy is stalling because trust infrastructure is missing.
+**The trust vacuum:** x402 payments, MCP tool access, and A2A coordination exist on Solana — but no way to verify whether an agent actually delivered what it committed to. x402 tx volume down 95%+ from peak. The agentic economy is stalling because trust infrastructure is missing.
+
+**The commitment-scoping failure:** The $285M Drift Protocol hack wasn't a code exploit — agents wrote commitments to a safe scope, then executed outside it. No mechanism existed to anchor what was *actually* committed to, so there was no independent record of the scope violation.
 
 **Existing trust signals fall short:**
 - Wallet tenure (how long has this wallet existed?) ≠ accountability
 - Code audits (is this code safe?) ≠ behavioral delivery
 - Identity assertions (who is this agent?) ≠ commitment fulfillment
 - Escrow (what happens after failure?) = punishment, not prevention
+- Relationship graphs (TOWEL) = requires bilateral relationship; doesn't scale
 
-**The gap:** No system verifies whether an agent DID what it COMMITTED to doing. This requires a counterparty to confirm delivery — not the agent self-reporting.
+**The gap:** No system anchors *what the agent actually committed to* and *whether counterparty confirmed delivery*. This is a multi-party verification problem — not a reputation or identity problem.
 
 ---
 
@@ -34,7 +37,7 @@ Hub Evidence Anchor: a Solana Anchor program that exposes Hub's behavioral trust
 
 Any Solana agent or protocol calls `verify_trust` via CPI (Cross-Program Invocation) and gets the trust ratio without any Hub API call. The data is:
 - Sourced from Hub's live obligation state machine
-- Written to a Solana PDA (Program Derived Address) via `anchor_evidence`
+- Written to Solana PDAs (Program Derived Addresses) via `anchor_evidence` and `anchor_handoff`
 - Updated after each obligation state transition
 - Verifiable by any party without requesting Hub's permission
 
@@ -46,7 +49,7 @@ Any Solana agent or protocol calls `verify_trust` via CPI (Cross-Program Invocat
 
 **Program ID:** TBD (deploy to devnet first)
 
-**Account: `HubEvidence` (PDA)**
+**Account: `HubEvidence` (aggregate trust data)**
 ```rust
 #[account]
 pub struct HubEvidence {
@@ -64,10 +67,25 @@ pub struct HubEvidence {
 
 **PDA Derivation:** `["hub-evidence", agent_id.as_bytes()]`
 
+**Account: `HandoffEvidence` (individual commitment-completion pair)**
+```rust
+#[account]
+pub struct HandoffEvidence {
+    pub obligor: Pubkey,           // agent who made the commitment
+    pub obligation_id: String,     // Hub obligation ID (e.g. "obl-8eb6e7b11522")
+    pub commitment_hash: String,  // SHA-256 of decision_context text
+    pub completion_proof: String, // off-chain evidence_refs URL
+    pub resolution: String,        // "resolved" | "rejected" | "expired"
+    pub timestamp: i64,            // Unix timestamp of resolution
+}
+```
+
+**PDA Derivation:** `["handoff", obligor.as_bytes(), obligation_id.as_bytes()]`
+
 ### 4.2 Instructions
 
 #### `anchor_evidence`
-Writes or updates trust data for an agent. Called by Hub's backend after each obligation state transition.
+Writes or updates aggregate trust data for an agent. Called by Hub's backend after each obligation state transition.
 
 **Accounts:**
 - `hub_evidence` (PDA, writable): the evidence account
@@ -86,8 +104,33 @@ Writes or updates trust data for an agent. Called by Hub's backend after each ob
 }
 ```
 
+#### `anchor_handoff`
+Anchors an individual commitment-completion pair from a handoff_schema obligation. Called by Hub's backend when a handoff-schema obligation resolves.
+
+**Accounts:**
+- `handoff_evidence` (PDA, writable): the handoff evidence account
+- `authority` (signer): Hub's authority key
+- `system_program`: Solana system program
+
+**Data:**
+```json
+{
+  "obligation_id": "obl-8eb6e7b11522",
+  "commitment_hash": "sha256:e3b0c44298fc1c149afb...",
+  "completion_proof": "https://admin.slate.ceo/oc/brain/evidence/obl-8eb6e7b11522",
+  "resolution": "resolved"
+}
+```
+
+**Semantics:**
+- `commitment_hash` = SHA-256 of the `decision_context` field from the handoff_schema obligation. Independently verifiable — anyone can hash the original text and compare.
+- `completion_proof` = off-chain URL pointing to the full evidence bundle on Hub. Chain does not store the full context; it stores the anchor.
+- `resolution` = "resolved" | "rejected" | "expired" — final state of the obligation.
+
+**This instruction is the core Colosseum demo artifact** — demonstrates that Hub's handoff_schema obligations produce independently verifiable commitment-completion pairs anchored on Solana.
+
 #### `verify_trust`
-Returns trust data to any caller. Callable by any Solana account via CPI.
+Returns aggregate trust data to any caller. Callable by any Solana account via CPI.
 
 **Accounts:**
 - `hub_evidence` (PDA, readonly): the evidence account
@@ -103,6 +146,24 @@ Returns trust data to any caller. Callable by any Solana account via CPI.
 }
 ```
 
+#### `verify_handoff`
+Returns a specific handoff evidence record. Callable by any Solana account via CPI.
+
+**Accounts:**
+- `handoff_evidence` (PDA, readonly): the handoff evidence account
+
+**Returns:**
+```json
+{
+  "obligor": "DKucjkYxpePQzLrg2PBL1YC3hHn8Yyr1CBY4qb7GobBw",
+  "obligation_id": "obl-8eb6e7b11522",
+  "commitment_hash": "sha256:e3b0c44298fc1c149afb...",
+  "completion_proof": "https://admin.slate.ceo/oc/brain/evidence/obl-8eb6e7b11522",
+  "resolution": "resolved",
+  "timestamp": 1743987120
+}
+```
+
 #### `update_resolution`
 Updates resolution data after obligation state changes. Authority only.
 
@@ -112,22 +173,33 @@ Archives an outdated evidence account. Authority only.
 ### 4.3 Data Flow
 
 ```
-Hub Backend
-    |
-    | anchor_evidence(agent_id, obligation_count, resolved_count,
-    |                 failed_count, evidence_hash, resolution_rate)
-    v
-Solana Program (HubEvidenceAnchor)
-    |
-    | writes to PDA: ["hub-evidence", agent_id]
-    v
-Solana Blockchain (on-chain, immutable, independently verifiable)
-    ^
-    |
-Any Solana Agent / Protocol
-    |
-    | verify_trust(agent_id) via CPI
-    |
+Agent A                    Hub                     Solana
+   |                       |                         |
+   | commitObligation()     |                         |
+   | (handoff_schema)       |                         |
+   |───────────────────────>|                         |
+   |                       |  anchor_evidence()      |
+   |                       |  anchor_handoff()       |
+   |                       |────────────────────────>|
+   |                       |  [PDA: aggregate +      |
+   |                       |   commitment pair]      |
+   |                       |                         |
+   | deliverCommitment()    |                         |
+   | (counterparty confirms)|                         |
+   |───────────────────────>|                         |
+   |                       |  update_resolution()    |
+   |                       |  verify_handoff()       |
+   |                       |────────────────────────>|
+   |                       |                         |
+   |  verify_trust(B)      |                         |
+   |────────────────────────────────────────────────>|
+   |          { resolution_rate: 0.75,                |
+   |            obligations: 42,                      |
+   |            handoffs: [                           |
+   |              { obligation_id: "obl-8eb6e7b11522", |
+   |                commitment_hash: "sha256:...",    |
+   |                resolution: "resolved" }          |
+   |            ] }                                   |
 ```
 
 ### 4.4 Hub Integration
@@ -139,22 +211,23 @@ Hub's backend calls `anchor_evidence` after each obligation state transition:
 - Recalculate `resolution_rate = resolved_count / obligation_count`
 - Generate `evidence_hash` from latest obligation bundle
 
-Hub's backend needs:
-1. A Solana keypair with authority to call `anchor_evidence`
-2. An RPC endpoint (Helius for devnet + mainnet)
-3. The deployed program ID
+Hub's backend calls `anchor_handoff` when a handoff_schema obligation resolves:
+- Extract `decision_context` → hash with SHA-256 → `commitment_hash`
+- Set `completion_proof` to Hub evidence URL for the obligation
+- Set `resolution` to final obligation state
 
 ---
 
 ## 5. Hackathon Demo Scope (April 6 – May 11)
 
 ### MVP (April 20 checkpoint)
+- [x] `anchor_evidence` instruction: write Hub trust data to PDA
+- [x] `verify_trust` instruction: return trust data to CPI callers
 - [ ] Anchor program deployed to Solana devnet
-- [ ] `anchor_evidence` instruction: write Hub trust data to PDA
-- [ ] `verify_trust` instruction: return trust data to CPI callers
-- [ ] Hub backend integration: call `anchor_evidence` on obligation state changes
-- [ ] Demo page showing trust ratio for quadricep on Solana
-- [ ] Two-agent demo: Agent A queries Agent B's trust ratio before delegating
+- [ ] `anchor_handoff` instruction: anchor commitment-completion pairs from handoff_schema
+- [ ] `verify_handoff` instruction: return specific handoff evidence via CPI
+- [ ] Hub backend integration: call `anchor_handoff` on handoff_schema obligations
+- [ ] Demo: two-agent handoff — Agent A commits to Agent B, counterparty confirms, Solana verifies
 
 ### Full Scope (May 11)
 - [ ] Mainnet deployment
@@ -171,7 +244,7 @@ Hub's backend needs:
 ## 6. Technical Stack
 
 | Component | Technology |
-|-----------|-----------|
+|-----------|------------|
 | On-chain program | Anchor 0.32.1, Rust |
 | Deployment | Solana devnet → mainnet |
 | RPC provider | Helius (free devnet tier) |
@@ -179,6 +252,7 @@ Hub's backend needs:
 | Program framework | @coral-xyz/anchor |
 | SDK | TypeScript for Hub backend integration |
 | Verification | Any Solana wallet or protocol via CPI |
+| Commitment hashing | SHA-256 (built-in Rust `sha2` crate) |
 
 ---
 
@@ -193,11 +267,16 @@ Hub's backend needs:
 | SATI/ERC-8004 | Wallet tenure reputation | Tenure ≠ accountability |
 | **Hub Evidence Anchor** | **Multi-party obligation verification** | **Counterparty confirms delivery** |
 
+**Key insight:** Hub Evidence Anchor is the only system where:
+1. Counterparty independently confirms delivery (not agent self-reporting)
+2. Commitment scope is anchored separately from delivery evidence
+3. Any Solana protocol can verify without an API call
+
 ---
 
 ## 8. Future Vision
 
-**V1 (hackathon):** Live anchor program + two-agent demo proving behavioral trust is independently verifiable on Solana.
+**V1 (hackathon):** Live anchor program + handoff_schema integration proving behavioral trust is independently verifiable on Solana.
 
 **V2:** Threshold-gated routing (micro-payments ≥0.5, escrow ≥0.75, high-value ≥0.9) as MEYRA-style API surface. Any Solana protocol can gate features by trust threshold.
 
@@ -211,28 +290,4 @@ Hub's backend needs:
 
 ```
 https://github.com/shirtlessfounder/hub-evidence-anchor
-```
-
-Structure:
-```
-hub-evidence-anchor/
-├── programs/
-│   └── hub-evidence-anchor/
-│       └── src/
-│           ├── lib.rs
-│           └── instructions/
-│               ├── anchor_evidence.rs
-│               ├── verify_trust.rs
-│               ├── update_resolution.rs
-│               └── close_stale.rs
-├── tests/
-│   └── hub-evidence-anchor.ts
-├── scripts/
-│   └── deploy-devnet.sh
-├── docs/
-│   └── SPEC.md
-├── README.md
-├── Cargo.toml
-├── Anchor.toml
-└── package.json
 ```

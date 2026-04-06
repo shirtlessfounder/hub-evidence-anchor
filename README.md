@@ -6,15 +6,31 @@ Anchors Hub's multi-party obligation verification directly on Solana — so any 
 
 > "The $285M Drift Protocol hack was a commitment-scoping failure. Not a code exploit." — Solana Foundation President
 
+## Live Status
+
+- ✅ BPF binary built: `target/deploy/hub_evidence_anchor.so` (248K)
+- ✅ Program ID: `275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA`
+- 🔄 Devnet deployment: in progress (devnet airdrop rate-limited)
+
+## Quick Start
+
+```bash
+# Install Solana SDK (if not present)
+curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v3.1.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xjf -
+
+# Build
+anchor build
+
+# Deploy (requires SOL for deployment fees)
+anchor deploy --provider.cluster devnet
+
+# Verify
+solana program show 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA --url devnet
+```
+
 ## The Problem
 
-Agent-to-agent commerce on Solana is broken by a trust vacuum.
-
-- x402 payments exist. MCP tool access exists. A2A coordination exists.
-- No way to verify whether an agent *actually delivered* what it committed to.
-- Result: agents can't hire agents. x402 tx volume down 95%+ from peak.
-
-Every trust signal measures **who** — not **what**:
+Agent-to-agent commerce on Solana is broken by a trust vacuum:
 
 | Signal | Measures | Gap |
 |--------|----------|-----|
@@ -24,81 +40,52 @@ Every trust signal measures **who** — not **what**:
 | Escrow | What happens after failure? | = punishment, not prevention |
 | **Hub Evidence Anchor** | **What did the agent commit to + deliver?** | **Counterparty verifies** |
 
-## How It Works
+## The Architecture
 
 ```
 Agent A                    Hub                     Solana
    |                       |                         |
    | commitObligation()     |                         |
+   | (handoff_schema)       |                         |
    |───────────────────────>|                         |
-   |                       |  anchor_evidence()      |
+   |                       |  anchor_handoff()       |
+   |                       |  SHA-256(commitment)    |
    |                       |────────────────────────>|
-   |                       |  [PDA: trust data]      |
+   |                       |  [PDA: handoff-evidence]|
    |                       |                         |
    | deliverCommitment()    |                         |
+   | (counterparty confirms)|                         |
    |───────────────────────>|                         |
-   |                       |  anchor_evidence()      |
-   |                       |  (update: +1 resolved)  |
+   |                       |  update_resolution()     |
    |                       |────────────────────────>|
    |                       |                         |
    |  verify_trust(B)      |                         |
    |────────────────────────────────────────────────>|
    |          { resolution_rate: 0.75,                |
-   |            obligations: 42,                      |
-   |            evidence_hash: "sha256:..." }         |
+   |            commitment_hash: "sha256:...",         |
+   |            resolution: "resolved" }              |
 ```
 
-## Live Data
+## Instructions
 
-- **42 obligations** successfully closed across **14 counterparty relationships**
-- **67% resolution rate** on committed obligations
-- [Hub trust profile](https://admin.slate.ceo/oc/brain/trust/quadricep)
+| Instruction | Description |
+|-------------|-------------|
+| `anchor_evidence` | Write aggregate trust data to Solana PDA |
+| `anchor_handoff` | Anchor commitment-completion pair (SHA-256 on-chain) |
+| `update_resolution` | Update after obligation state transition |
+| `close_stale` | Archive outdated evidence account |
 
-## The Hackathon Submission
+## Colosseum Demo (April 6 – May 11, 2026)
 
-Built for [Colosseum Frontier Hackathon](https://colosseum.com/agent-hackathon) (April 6 – May 11, 2026).
+**Pitch:** The $285M Drift Protocol hack was a commitment-scoping failure. Hub Evidence Anchor makes behavioral trust independently verifiable on Solana.
 
-**Pitch:** The $285M Drift Protocol hack was a commitment-scoping failure. Our Solana Anchor program makes behavioral trust independently verifiable — so the Drift scenario becomes structurally impossible.
+**Demo:** handoff_schema obligations between testy + brain → Solana commitment anchor → x402 payment on completion verification.
 
-## Quick Start
-
-```bash
-# Install
-npm install
-
-# Build
-anchor build
-
-# Test
-anchor test
-
-# Deploy to devnet
-anchor deploy --provider.cluster devnet
-```
-
-## Architecture
-
-| Component | Technology |
-|-----------|-----------|
-| On-chain program | Anchor 0.32.1, Rust |
-| Deployment | Solana devnet → mainnet |
-| RPC | Helius (free devnet tier) |
-| Data source | Hub obligation state machine |
-
-**4 instructions:**
-- `anchor_evidence` — write trust data to Solana PDA (Hub authority only)
-- `verify_trust` — return trust data to any CPI caller
-- `update_resolution` — update after obligation state changes
-- `close_stale` — archive outdated accounts
-
-## Differentiation
-
-BlockHelix ($15K, Feb): financial escrow — **punishment after failure**.  
-ClawVer: output schema verification — **execution quality, not commitment**.  
-TOWEL: relationship graphs — **requires bilateral relationship**.  
-MEYRA: token/contract safety — **code safety, not behavioral delivery**.
-
-Hub Evidence Anchor: **multi-party obligation verification** — counterparty confirms delivery.
+**Differentiation:**
+- BlockHelix: financial escrow → **punishment after failure**
+- ClawVer: execution verification → **output quality, not commitment**
+- MEYRA: token/contract safety → **code safety, not behavioral delivery**
+- Hub Evidence Anchor: **multi-party obligation verification → counterparty confirms delivery**
 
 ## Repository
 
