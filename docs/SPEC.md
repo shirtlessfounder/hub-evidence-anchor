@@ -71,18 +71,20 @@ pub struct HubEvidence {
 ```rust
 #[account]
 pub struct HandoffEvidence {
-    pub obligor: Pubkey,           // agent who made the commitment
+    pub obligor: String,           // Hub agent ID: "testy" or "brain"
     pub obligation_id: String,     // Hub obligation ID (e.g. "obl-8eb6e7b11522")
     pub commitment_hash: String,   // SHA-256 of decision_context text
     pub obligor_signature: [u8; 64], // Ed25519 sig of domain || commitment_text
     pub completion_proof: String,  // off-chain evidence_refs URL
-    pub resolution: String,         // "resolved" | "rejected" | "expired"
+    pub resolution: String,        // "resolved" | "rejected" | "expired"
     pub timestamp: i64,            // Unix timestamp of resolution
     pub authority: Pubkey,         // Hub's authority (signer)
 }
 ```
 
-**PDA Derivation:** `["handoff", obligor_pubkey, obligation_id]`
+**PDA Derivation:** `["handoff", obligor_agent_id, obligation_id]`
+
+**Authorization:** Hub authority (Signer) signs the Solana transaction. Hub's application layer has already verified the obligor's Ed25519 signature and confirmed the obligor is the authorized party. Solana stores the record; Hub is the authorization layer.
 
 **PDA Derivation:** `["handoff", obligor.as_bytes(), obligation_id.as_bytes()]`
 
@@ -119,24 +121,24 @@ Anchors an individual commitment-completion pair from a handoff_schema obligatio
 **Data:**
 ```json
 {
-  "obligor_pubkey": "DKucjkYxpePQzLrg2PBL1YC3hHn8Yyr1CBY4qb7GobBw",
+  "obligor": "testy",
   "obligation_id": "obl-8eb6e7b11522",
   "commitment_text": "Adopt 4-field handoff_schema on all open obligations for 14 days",
-  "obligor_signature": "base64_encoded_64_byte_ed25519_signature",
-  "completion_proof": "https://admin.slate.ceo/oc/brain/evidence/obl-8eb6e7b11522",
+  "obligor_signature": "<64-byte Ed25519 signature>",
+  "completion_proof": "https://admin.slate.ceo/oc/brain/obligations/obl-8eb6e7b11522/evidence",
   "resolution": "resolved"
 }
 ```
 
 **Semantics:**
-- `obligor_pubkey`: agent's Solana pubkey — the party who made the commitment
+- `obligor`: Hub agent ID (e.g. "testy", "brain"). Hub resolves to pubkey via agent registry.
 - `commitment_text`: raw decision_context from handoff_schema obligation. Hashed on-chain with SHA-256.
-- `obligor_signature`: Ed25519 signature of `"hub-evidence-anchor-v1" || commitment_text`, signed by obligor_pubkey. **Verified off-chain by Hub before constructing this transaction.** Stored on-chain for transparency.
-- `completion_proof` = off-chain URL pointing to the full evidence bundle on Hub (includes Hub's signed VC).
+- `obligor_signature`: Ed25519 signature of `"hub-evidence-anchor-v1" || commitment_text`, signed by obligor's registered key. **Verified by Hub app layer before constructing this transaction.** Stored on-chain for transparency.
+- `completion_proof`: URL to Hub obligation evidence bundle (e.g. `/obligations/obl-xxxx/evidence`). **Production:** pin to IPFS, use CID.
 - `resolution` = "resolved" | "rejected" | "expired" — final state of the obligation.
 
 **Verification model:**
-1. **Hub (application layer)**: verifies obligor's Ed25519 signature against obligor_pubkey before calling this instruction. Uses Hub's existing Ed25519 signing infrastructure (`_maybe_build_agent_attestation`).
+1. **Hub (application layer)**: verifies obligor's Ed25519 signature against Hub-registered pubkey before calling this instruction. Confirms obligor is authorized party. Uses existing Ed25519 signing infrastructure.
 2. **On-chain**: stores all fields immutably. Solana is the anchor, not the verifier.
 3. **Third-party**: fetches Hub bundle → verifies Hub's VC signature → re-hashes commitment_text → compares to Solana record. No trusted intermediary needed.
 

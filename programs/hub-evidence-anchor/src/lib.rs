@@ -79,24 +79,28 @@ pub mod hub_evidence_anchor {
 
     /// Anchors a commitment-completion pair from a handoff_schema obligation.
     ///
-    /// CRITICAL SECURITY: obligor_pubkey must have signed commitment_text.
-    /// The signature must be a valid Ed25519 signature verifiable with obligor_pubkey.
-    /// Without this check, any caller could anchor commitments on behalf of any agent.
+    /// Authorization: Hub authority (Signer) signs the Solana tx.
+    /// Hub's application layer has already verified:
+    ///   1. obligor's Ed25519 signature over commitment_text
+    ///   2. obligor is the authorized party to this obligation
+    ///   3. obligation is in a terminal state
+    /// Solana stores the record. Hub is the authorization layer.
     ///
-    /// commitment_text is hashed with SHA-256 ON-CHAIN. Solana stores the hash,
-    /// not the full text. This keeps the Solana tx small (~200 bytes account).
+    /// obligor: Hub agent ID (e.g. "testy", "brain"). Hub resolves to pubkey.
+    /// obligor_signature: Ed25519 sig of "hub-evidence-anchor-v1" || commitment_text
+    ///   — verified by Hub application layer before constructing this tx
+    ///   — stored on-chain for transparency and off-chain verification
     ///
-    /// Verification model:
-    /// - Hub-native: Hub provides the obligor's Ed25519 signature + original text.
-    ///   On-chain hash proves text wasn't altered; Ed25519 verify proves obligor consented.
-    /// - Third-party: completion_proof URL points to content-addressed storage (IPFS).
-    ///   Anyone fetches, re-hashes, and verifies obligor signature — no Hub trust required.
+    /// Verification:
+    ///   - Hub-native: Hub verifies obligor's Ed25519, signs VC, fires tx
+    ///   - Solana: immutable anchor (commitment_hash + obligor_signature stored)
+    ///   - Third-party: fetches Hub bundle, verifies Hub VC sig, re-hashes, compares to Solana
     pub fn anchor_handoff(
         ctx: Context<AnchorHandoff>,
-        obligor_pubkey: Pubkey,
+        obligor: String,              // Hub agent ID: "testy" or "brain"
         obligation_id: String,
         commitment_text: String,
-        obligor_signature: [u8; 64],
+        obligor_signature: [u8; 64],  // Ed25519 sig: "hub-evidence-anchor-v1" || commitment_text
         completion_proof: String,
         resolution: String,
     ) -> Result<()> {
@@ -104,6 +108,7 @@ pub mod hub_evidence_anchor {
         let clock = Clock::get()?;
 
         require!(obligation_id.len() <= 64, ErrorCode::InvalidObligationId);
+        require!(obligor.len() <= 32, ErrorCode::InvalidObligor);
         require!(
             resolution == "resolved"
                 || resolution == "rejected"
@@ -111,33 +116,25 @@ pub mod hub_evidence_anchor {
             ErrorCode::InvalidResolution
         );
 
-        // obligor_pubkey is the agent who made the commitment.
-        // obligor_signature: Ed25519 signature of "hub-evidence-anchor-v1" || commitment_text,
-        // signed by obligor_pubkey.
-        // Verification: Hub (application layer) verifies obligor_signature against obligor_pubkey
-        // BEFORE constructing this Solana transaction. On-chain record is transparent but
-        // not self-verifying — off-chain verifiers check the stored signature.
-        // Production path: use ed25519_program CPI for on-chain verification.
-
         // SHA-256 hash of the commitment text, stored as hex string
         let mut hasher = Sha256::new();
         hasher.update(commitment_text.as_bytes());
         let hash_result = hasher.finalize();
         let commitment_hash = format!("sha256:{:x}", hash_result);
 
-        handoff.obligor = obligor_pubkey;
-        handoff.obligation_id = obligation_id;
+        handoff.obligor = obligor;
+        handoff.obligation_id = obligation_id.clone();
         handoff.commitment_hash = commitment_hash;
         handoff.obligor_signature = obligor_signature;
         handoff.completion_proof = completion_proof;
-        handoff.resolution = resolution;
+        handoff.resolution = resolution.clone();
         handoff.timestamp = clock.unix_timestamp;
         handoff.authority = ctx.accounts.authority.key();
 
         emit!(HandoffAnchored {
-            obligor: handoff.obligor,
-            obligation_id: handoff.obligation_id.clone(),
-            resolution: handoff.resolution.clone(),
+            obligor: handoff.obligor.clone(),
+            obligation_id,
+            resolution,
             timestamp: clock.unix_timestamp,
         });
 
@@ -187,13 +184,13 @@ pub struct UpdateResolution<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(obligor_pubkey: Pubkey, obligation_id: String)]
+#[instruction(obligor: String, obligation_id: String)]
 pub struct AnchorHandoff<'info> {
     #[account(
         init,
         payer = authority,
         space = HandoffEvidence::INIT_SPACE,
-        seeds = [b"handoff", obligor_pubkey.as_ref(), obligation_id.as_bytes()],
+        seeds = [b"handoff", obligor.as_bytes(), obligation_id.as_bytes()],
         bump
     )]
     pub handoff_evidence: Account<'info, HandoffEvidence>,
@@ -243,27 +240,26 @@ pub struct HubEvidence {
 }
 
 /// Individual commitment-completion pair from a handoff_schema obligation.
-/// Anchored on Solana so any party can independently verify the commitment
-/// scope and delivery without calling the Hub API.
-///
-/// Security model: obligor_pubkey and obligor_signature must be verified by the
-/// caller (Hub application layer) before constructing this transaction.
-/// The Solana record is transparent and independently re-verifiable off-chain.
+/// Anchored on Solana so any party can independently verify without calling Hub API.
 #[account]
 #[derive(InitSpace)]
 pub struct HandoffEvidence {
-    pub obligor: Pubkey,
+    /// Hub agent ID (e.g. "testy", "brain") — resolved to pubkey by Hub
+    #[max_len(32)]
+    pub obligor: String,
 
     #[max_len(64)]
     pub obligation_id: String,
 
     #[max_len(80)]
-    pub commitment_hash: String, // "sha256:..." = 8 + 64 hex chars
+    pub commitment_hash: String, // "sha256:..." (8 prefix + 64 hex)
 
-    pub obligor_signature: [u8; 64], // Ed25519 sig of "hub-evidence-anchor-v1" || commitment_text
+    /// Ed25519 signature of "hub-evidence-anchor-v1" || commitment_text,
+    /// signed by obligor's registered key. Verified by Hub app layer before tx.
+    pub obligor_signature: [u8; 64],
 
     #[max_len(256)]
-    pub completion_proof: String, // off-chain URL to full Hub evidence
+    pub completion_proof: String, // URL to Hub obligation evidence bundle
 
     #[max_len(16)]
     pub resolution: String, // "resolved" | "rejected" | "expired"
@@ -291,7 +287,7 @@ pub struct ResolutionUpdated {
 
 #[event]
 pub struct HandoffAnchored {
-    pub obligor: Pubkey,
+    pub obligor: String,
     pub obligation_id: String,
     pub resolution: String,
     pub timestamp: i64,
@@ -307,12 +303,15 @@ pub enum ErrorCode {
     #[msg("Obligation ID too long (max 64 chars)")]
     InvalidObligationId,
 
+    #[msg("Obligor ID too long (max 32 chars)")]
+    InvalidObligor,
+
     #[msg("Resolution must be 'resolved', 'rejected', or 'expired'")]
     InvalidResolution,
 
     #[msg("Overflow in arithmetic")]
     Overflow,
 
-    #[msg("Obligor Ed25519 signature verification failed — commitment not signed by obligor")]
+    #[msg("Obligor Ed25519 signature verification failed")]
     InvalidObligorSignature,
 }
