@@ -13,7 +13,7 @@ on:
 env:
   SOLANA_VERSION: '3.1.12'
   ANCHOR_VERSION: '0.32.1'
-  PROGRAM_ID: '6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek'
+  PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
 
 jobs:
   deploy:
