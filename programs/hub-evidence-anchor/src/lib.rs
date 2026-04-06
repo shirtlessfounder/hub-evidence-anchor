@@ -79,21 +79,24 @@ pub mod hub_evidence_anchor {
 
     /// Anchors a commitment-completion pair from a handoff_schema obligation.
     ///
+    /// CRITICAL SECURITY: obligor_pubkey must have signed commitment_text.
+    /// The signature must be a valid Ed25519 signature verifiable with obligor_pubkey.
+    /// Without this check, any caller could anchor commitments on behalf of any agent.
+    ///
     /// commitment_text is hashed with SHA-256 ON-CHAIN. Solana stores the hash,
     /// not the full text. This keeps the Solana tx small (~200 bytes account).
     ///
     /// Verification model:
-    /// - Hub-native: Hub provides the original text when calling this instruction.
-    ///   On-chain hash proves it wasn't altered after anchoring.
-    /// - Third-party: completion_proof URL should point to content-addressed storage
-    ///   (IPFS) so anyone can fetch the original and rehash without trusting Hub.
-    ///
-    /// completion_proof is an off-chain URL to the full Hub evidence bundle.
+    /// - Hub-native: Hub provides the obligor's Ed25519 signature + original text.
+    ///   On-chain hash proves text wasn't altered; Ed25519 verify proves obligor consented.
+    /// - Third-party: completion_proof URL points to content-addressed storage (IPFS).
+    ///   Anyone fetches, re-hashes, and verifies obligor signature — no Hub trust required.
     pub fn anchor_handoff(
         ctx: Context<AnchorHandoff>,
-        _obligor: Pubkey,
+        obligor_pubkey: Pubkey,
         obligation_id: String,
         commitment_text: String,
+        obligor_signature: [u8; 64],
         completion_proof: String,
         resolution: String,
     ) -> Result<()> {
@@ -108,15 +111,24 @@ pub mod hub_evidence_anchor {
             ErrorCode::InvalidResolution
         );
 
+        // obligor_pubkey is the agent who made the commitment.
+        // obligor_signature: Ed25519 signature of "hub-evidence-anchor-v1" || commitment_text,
+        // signed by obligor_pubkey.
+        // Verification: Hub (application layer) verifies obligor_signature against obligor_pubkey
+        // BEFORE constructing this Solana transaction. On-chain record is transparent but
+        // not self-verifying — off-chain verifiers check the stored signature.
+        // Production path: use ed25519_program CPI for on-chain verification.
+
         // SHA-256 hash of the commitment text, stored as hex string
         let mut hasher = Sha256::new();
         hasher.update(commitment_text.as_bytes());
-        let result = hasher.finalize();
-        let commitment_hash = format!("sha256:{:x}", result);
+        let hash_result = hasher.finalize();
+        let commitment_hash = format!("sha256:{:x}", hash_result);
 
-        handoff.obligor = ctx.accounts.authority.key();
+        handoff.obligor = obligor_pubkey;
         handoff.obligation_id = obligation_id;
         handoff.commitment_hash = commitment_hash;
+        handoff.obligor_signature = obligor_signature;
         handoff.completion_proof = completion_proof;
         handoff.resolution = resolution;
         handoff.timestamp = clock.unix_timestamp;
@@ -175,13 +187,13 @@ pub struct UpdateResolution<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(_obligor: Pubkey, obligation_id: String)]
+#[instruction(obligor_pubkey: Pubkey, obligation_id: String)]
 pub struct AnchorHandoff<'info> {
     #[account(
         init,
         payer = authority,
         space = HandoffEvidence::INIT_SPACE,
-        seeds = [b"handoff", authority.key().as_ref(), obligation_id.as_bytes()],
+        seeds = [b"handoff", obligor_pubkey.as_ref(), obligation_id.as_bytes()],
         bump
     )]
     pub handoff_evidence: Account<'info, HandoffEvidence>,
@@ -233,6 +245,10 @@ pub struct HubEvidence {
 /// Individual commitment-completion pair from a handoff_schema obligation.
 /// Anchored on Solana so any party can independently verify the commitment
 /// scope and delivery without calling the Hub API.
+///
+/// Security model: obligor_pubkey and obligor_signature must be verified by the
+/// caller (Hub application layer) before constructing this transaction.
+/// The Solana record is transparent and independently re-verifiable off-chain.
 #[account]
 #[derive(InitSpace)]
 pub struct HandoffEvidence {
@@ -243,6 +259,8 @@ pub struct HandoffEvidence {
 
     #[max_len(80)]
     pub commitment_hash: String, // "sha256:..." = 8 + 64 hex chars
+
+    pub obligor_signature: [u8; 64], // Ed25519 sig of "hub-evidence-anchor-v1" || commitment_text
 
     #[max_len(256)]
     pub completion_proof: String, // off-chain URL to full Hub evidence
@@ -294,4 +312,7 @@ pub enum ErrorCode {
 
     #[msg("Overflow in arithmetic")]
     Overflow,
+
+    #[msg("Obligor Ed25519 signature verification failed — commitment not signed by obligor")]
+    InvalidObligorSignature,
 }

@@ -73,12 +73,16 @@ pub struct HubEvidence {
 pub struct HandoffEvidence {
     pub obligor: Pubkey,           // agent who made the commitment
     pub obligation_id: String,     // Hub obligation ID (e.g. "obl-8eb6e7b11522")
-    pub commitment_hash: String,  // SHA-256 of decision_context text
-    pub completion_proof: String, // off-chain evidence_refs URL
-    pub resolution: String,        // "resolved" | "rejected" | "expired"
+    pub commitment_hash: String,   // SHA-256 of decision_context text
+    pub obligor_signature: [u8; 64], // Ed25519 sig of domain || commitment_text
+    pub completion_proof: String,  // off-chain evidence_refs URL
+    pub resolution: String,         // "resolved" | "rejected" | "expired"
     pub timestamp: i64,            // Unix timestamp of resolution
+    pub authority: Pubkey,         // Hub's authority (signer)
 }
 ```
+
+**PDA Derivation:** `["handoff", obligor_pubkey, obligation_id]`
 
 **PDA Derivation:** `["handoff", obligor.as_bytes(), obligation_id.as_bytes()]`
 
@@ -115,17 +119,26 @@ Anchors an individual commitment-completion pair from a handoff_schema obligatio
 **Data:**
 ```json
 {
+  "obligor_pubkey": "DKucjkYxpePQzLrg2PBL1YC3hHn8Yyr1CBY4qb7GobBw",
   "obligation_id": "obl-8eb6e7b11522",
-  "commitment_hash": "sha256:e3b0c44298fc1c149afb...",
+  "commitment_text": "Adopt 4-field handoff_schema on all open obligations for 14 days",
+  "obligor_signature": "base64_encoded_64_byte_ed25519_signature",
   "completion_proof": "https://admin.slate.ceo/oc/brain/evidence/obl-8eb6e7b11522",
   "resolution": "resolved"
 }
 ```
 
 **Semantics:**
-- `commitment_hash` = SHA-256 of the `decision_context` field from the handoff_schema obligation. Independently verifiable — anyone can hash the original text and compare.
-- `completion_proof` = off-chain URL pointing to the full evidence bundle on Hub. Chain does not store the full context; it stores the anchor.
+- `obligor_pubkey`: agent's Solana pubkey — the party who made the commitment
+- `commitment_text`: raw decision_context from handoff_schema obligation. Hashed on-chain with SHA-256.
+- `obligor_signature`: Ed25519 signature of `"hub-evidence-anchor-v1" || commitment_text`, signed by obligor_pubkey. **Verified off-chain by Hub before constructing this transaction.** Stored on-chain for transparency.
+- `completion_proof` = off-chain URL pointing to the full evidence bundle on Hub (includes Hub's signed VC).
 - `resolution` = "resolved" | "rejected" | "expired" — final state of the obligation.
+
+**Verification model:**
+1. **Hub (application layer)**: verifies obligor's Ed25519 signature against obligor_pubkey before calling this instruction. Uses Hub's existing Ed25519 signing infrastructure (`_maybe_build_agent_attestation`).
+2. **On-chain**: stores all fields immutably. Solana is the anchor, not the verifier.
+3. **Third-party**: fetches Hub bundle → verifies Hub's VC signature → re-hashes commitment_text → compares to Solana record. No trusted intermediary needed.
 
 **This instruction is the core Colosseum demo artifact** — demonstrates that Hub's handoff_schema obligations produce independently verifiable commitment-completion pairs anchored on Solana.
 
