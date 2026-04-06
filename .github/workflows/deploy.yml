@@ -12,8 +12,9 @@ on:
 
 env:
   SOLANA_VERSION: '3.1.12'
+  ANCHOR_VERSION: '0.32.1'
   PROGRAM_NAME: 'hub-evidence-anchor'
-  PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
+  PROGRAM_ID: '6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek'
 
 jobs:
   build-and-deploy:
@@ -26,15 +27,20 @@ jobs:
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
+          # Install system deps needed for cargo install of anchor-cli
+          sudo apt-get update && sudo apt-get install -y libudev-dev pkg-config
 
       - name: Verify Solana CLI
         run: solana --version && solana-keygen --version
 
       - name: Build Anchor program
         run: |
-          cargo install anchor-cli@${SOLANA_VERSION}
+          cargo install anchor-cli --version ${{ env.ANCHOR_VERSION }}
           anchor build
         env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
+          CARGO_BUILD_JOBS: '4'
+          LIBSODIUM_DEV_MAX_VERSION: '99.99.99'
           PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
 
       - name: Airdrop SOL (devnet)
@@ -44,10 +50,12 @@ jobs:
           PATH: /tmp/solana-release/bin:$PATH
 
       - name: Deploy to Solana
-        run: anchor deploy --provider.cluster ${{ inputs.cluster || 'devnet' }}
+        run: |
+          echo "${{ secrets.ANCHOR_WALLET_JSON }}" > /tmp/deploy-wallet.json
+          anchor deploy --provider.cluster ${{ inputs.cluster || 'devnet' }}
         env:
           PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
-          ANCHOR_WALLET: ${{ secrets.ANCHOR_WALLET_JSON }}
+          ANCHOR_WALLET: /tmp/deploy-wallet.json
 
       - name: Verify deployment
         run: |
