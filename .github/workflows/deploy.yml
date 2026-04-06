@@ -63,7 +63,7 @@ jobs:
         run: anchor deploy --provider.cluster ${{ inputs.cluster || 'devnet' }}
         env:
           PATH: $HOME/.cargo/bin:/usr/local/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH
-          ANCHOR_WALLET: ${{ secrets.ANCHOR_WALLET_JSON }}
+          ANCHOR_WALLET: /tmp/deploy-wallet.json
 
       - name: Verify deployment
         run: |
