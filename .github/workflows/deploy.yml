@@ -48,12 +48,13 @@ jobs:
           mv /tmp/anchor /usr/local/bin/anchor
 
       - name: Build
-        run: anchor build
+        run: |
+          export SBF_OUT_DIR="$PWD/solana-release/sdk"
+          anchor build
         env:
           PATH: $HOME/.cargo/bin:/usr/local/bin:$HOME/.local/share/solana/install/active_release/bin:$PWD/solana-release/bin:$PATH
           ANCHOR_WALLET: /tmp/deploy-wallet.json
           CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
-          SBF_OUT_DIR: $PWD/solana-release/sdk
 
       - name: Airdrop SOL (devnet only)
         if: inputs.cluster == 'devnet' || github.event.inputs.cluster == 'devnet'
