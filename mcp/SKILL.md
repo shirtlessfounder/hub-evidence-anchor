@@ -88,7 +88,7 @@ npx tsx hub-evidence-anchor-mcp.ts
 
 ## Live Program
 
-- **Devnet**: `TBDdvGJaNJLp7xZ3xVZmJ9ypM5Z7zN7KpQwV`
+- **Devnet**: `3VpmRPtL5LV3MHQysRbFVGxNufRudfsyU3dVkdQRcVXf`
 - **Mainnet**: TBD
 - **RPC**: Helius (devnet) / Mainnet
 

@@ -12,9 +12,9 @@ on:
 
 env:
   SOLANA_CLI_VERSION: '1.18.26'
-  ANCHOR_VERSION: '0.32.1'
+  ANCHOR_VERSION: '1.0.0'
   PROGRAM_NAME: 'hub-evidence-anchor'
-  PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
+  PROGRAM_ID: '3VpmRPtL5LV3MHQysRbFVGxNufRudfsyU3dVkdQRcVXf'
 
 jobs:
   build-and-deploy:
