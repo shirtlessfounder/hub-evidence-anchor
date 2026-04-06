@@ -28,13 +28,16 @@ jobs:
         run: |
           echo "${{ secrets.ANCHOR_WALLET_JSON }}" > /tmp/deploy-wallet.json
 
-      - name: Install Solana CLI + BPF toolchain
+      - name: Install Solana CLI
         run: |
-          curl -sSfL "https://github.com/solana-labs/solana/releases/download/v${SOLANA_CLI_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" -o solana.tar.bz2
-          tar xf solana.tar.bz2
-          rm solana.tar.bz2
-          echo "$PWD/solana-release/bin" >> $GITHUB_PATH
-          $PWD/solana-release/bin/solana-install add bpf-tools
+          curl -sSfL https://release.solana.com/stable/install -o install.sh
+          chmod +x install.sh
+          ./install.sh 2.0.0
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Install BPF toolchain
+        run: |
+          solana-install add bpf-tools || echo "bpf-tools may already be installed"
 
       - name: Install Anchor CLI
         run: |
