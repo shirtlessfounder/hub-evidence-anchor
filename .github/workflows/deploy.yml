@@ -25,12 +25,13 @@ jobs:
       - name: Verify Solana CLI
         run: solana --version
 
-      - name: Install build tools + Rust + Anchor CLI
+      - name: Install Anchor CLI (pre-built binary)
         run: |
-          sudo apt-get update && sudo apt-get install -y build-essential pkg-config libssl-dev
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+          ANCHOR_URL="https://github.com/solana-foundation/anchor/releases/download/v${ANCHOR_VERSION}/anchor-${ANCHOR_VERSION}-x86_64-unknown-linux-gnu"
+          curl -L "$ANCHOR_URL" -o ~/.cargo/bin/anchor
+          chmod +x ~/.cargo/bin/anchor
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          cargo install anchor-cli@${ANCHOR_VERSION}
+          anchor --version
 
       - name: Build Anchor program
         run: anchor build
