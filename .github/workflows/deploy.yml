@@ -42,34 +42,32 @@ jobs:
           curl --http1.1 -sSfL "https://github.com/solana-foundation/anchor/releases/download/v${ANCHOR_VERSION}/anchor-${ANCHOR_VERSION}-x86_64-unknown-linux-gnu" -o ~/.local/bin/anchor
           chmod +x ~/.local/bin/anchor
           echo "~/.local/bin" >> $GITHUB_PATH
-        env:
-          PATH: ~/.local/bin:/tmp/solana-release/bin:$PATH
 
       - name: Verify tools
         run: |
           solana --version
           anchor --version
         env:
-          PATH: ~/.local/bin:/tmp/solana-release/bin:$PATH
+          PATH: /tmp/solana-release/bin:~/.local/bin:/usr/bin:/bin:/usr/local/bin
 
       - name: Build Anchor program
         run: anchor build
         env:
-          PATH: ~/.local/bin:/tmp/solana-release/bin:$PATH
+          PATH: /tmp/solana-release/bin:~/.local/bin:/usr/bin:/bin:/usr/local/bin:$HOME/.cargo/bin
         timeout-minutes: 15
 
       - name: Airdrop SOL (devnet)
         if: inputs.cluster == 'devnet' || github.event.inputs.cluster == 'devnet'
         run: solana airdrop 2 --url devnet
         env:
-          PATH: /tmp/solana-release/bin:$PATH
+          PATH: /tmp/solana-release/bin:/usr/bin:/bin:/usr/local/bin
 
       - name: Deploy to Solana
         run: |
           echo "${{ secrets.ANCHOR_WALLET_JSON }}" > /tmp/deploy-wallet.json
           anchor deploy --provider.cluster ${{ inputs.cluster || 'devnet' }}
         env:
-          PATH: ~/.local/bin:/tmp/solana-release/bin:$PATH
+          PATH: /tmp/solana-release/bin:~/.local/bin:/usr/bin:/bin:/usr/local/bin:$HOME/.cargo/bin
           ANCHOR_WALLET: /tmp/deploy-wallet.json
         timeout-minutes: 10
 
@@ -80,4 +78,4 @@ jobs:
           echo "Program ID: $PROGRAM_ID"
           echo "Explorer: https://explorer.solana.com/address/$PROGRAM_ID?cluster=${{ inputs.cluster || 'devnet' }}"
         env:
-          PATH: /tmp/solana-release/bin:$PATH
+          PATH: /tmp/solana-release/bin:/usr/bin:/bin:/usr/local/bin
