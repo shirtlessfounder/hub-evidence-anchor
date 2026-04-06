@@ -39,7 +39,7 @@ jobs:
       - name: Install BPF toolchain
         run: |
           solana-install add bpf-tools || echo "bpf-tools may already be installed"
-          echo "SBF_OUT_DIR=$HOME/.local/share/solana/install/active_release" >> $GITHUB_ENV
+          echo "SBF_OUT_DIR=$PWD/solana-release/sdk" >> $GITHUB_ENV
 
       - name: Install Anchor CLI
         run: |
@@ -53,7 +53,7 @@ jobs:
           PATH: $HOME/.cargo/bin:/usr/local/bin:$HOME/.local/share/solana/install/active_release/bin:$PWD/solana-release/bin:$PATH
           ANCHOR_WALLET: /tmp/deploy-wallet.json
           CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
-          SBF_OUT_DIR: $HOME/.local/share/solana/install/active_release
+          SBF_OUT_DIR: $PWD/solana-release/sdk
 
       - name: Airdrop SOL (devnet only)
         if: inputs.cluster == 'devnet' || github.event.inputs.cluster == 'devnet'
