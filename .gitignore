@@ -2,3 +2,5 @@ target/
 solana-release/
 agave.tar.bz2
 /tmp/agave.tar.bz2
+.github/workflows/deploy.yml
+Anchor.toml
