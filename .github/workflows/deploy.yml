@@ -26,8 +26,7 @@ jobs:
         shell: bash
 
       - name: Verify Solana CLI
-        run: |
-          /tmp/solana-release/bin/solana --version
+        run: /tmp/solana-release/bin/solana --version
         shell: bash
 
       - name: Cache Anchor CLI
@@ -70,13 +69,28 @@ jobs:
         run: |
           echo "${{ secrets.ANCHOR_WALLET_JSON }}" > /tmp/encoded_b58.txt
           python3 -c "
-import base64, sys
+import base64, base58, subprocess, sys
 encoded = open('/tmp/encoded_b58.txt').read().strip()
-keypair_bytes = base64.b58decode(encoded)
+keypair_bytes = base64.b64decode(encoded)
 open('target/deploy/hub_evidence_anchor-keypair.json', 'wb').write(keypair_bytes)
 print('Keypair saved, length:', len(keypair_bytes))
+# Pubkey is bytes 32-64 of the 64-byte keypair
+pubkey_bytes = bytes(list(keypair_bytes)[32:64])
+addr = base58.b58encode(pubkey_bytes).decode()
+print('Deploy wallet pubkey:', addr)
+# Also verify with solana CLI
+try:
+    result = subprocess.run(
+        ['/tmp/solana-release/bin/solana', 'address', '--keypair', 'target/deploy/hub_evidence_anchor-keypair.json'],
+        capture_output=True, text=True, timeout=5
+    )
+    if result.returncode == 0:
+        cli_addr = result.stdout.strip()
+        print('Solana CLI confirms wallet address:', cli_addr)
+except Exception as e:
+    print('CLI check skipped:', str(e)[:50])
 "
-        shell: python3
+        shell: bash
 
       - name: Build
         run: |
@@ -90,12 +104,45 @@ print('Keypair saved, length:', len(keypair_bytes))
         timeout-minutes: 20
         shell: bash
 
+      - name: Verify build artifact
+        run: |
+          echo "=== target/deploy/ contents ==="
+          ls -la target/deploy/
+          echo ""
+          echo "=== .so file size ==="
+          ls -lh target/deploy/hub_evidence_anchor.so
+          echo ""
+          echo "✅ Build artifact confirmed"
+        shell: bash
+
       - name: Airdrop SOL + Deploy
         run: |
-          for endpoint in "$DEVNET_RPC" "https://devnet.helius-rpc.com/?api-key="; do
-            echo "Trying airdrop from \$endpoint..."
-            /tmp/solana-release/bin/solana airdrop 2 --url "\$endpoint" --keypair target/deploy/hub_evidence_anchor-keypair.json && break || true
-          done
+          # Check current balance first
+          echo "Checking current wallet balance..."
+          BALANCE=$(/tmp/solana-release/bin/solana balance --url $DEVNET_RPC --keypair target/deploy/hub_evidence_anchor-keypair.json 2>/dev/null | awk '{print $1}')
+          echo "Current balance: $BALANCE"
+          
+          if [ "$BALANCE" = "0" ] || [ -z "$BALANCE" ]; then
+            echo "Balance is 0 — attempting airdrop with retries..."
+            for i in 1 2 3; do
+              echo "=== Airdrop attempt $i/3 ==="
+              for endpoint in "$DEVNET_RPC" "https://devnet.helius-rpc.com/?api-key="; do
+                echo "  Trying \$endpoint..."
+                if /tmp/solana-release/bin/solana airdrop 2 --url "\$endpoint" --keypair target/deploy/hub_evidence_anchor-keypair.json 2>&1; then
+                  echo "  ✅ Airdrop succeeded!"
+                  break
+                fi
+                echo "  Rate-limited, waiting 30s..."
+                sleep 30
+              done
+              # Check if balance changed
+              BALANCE=$(/tmp/solana-release/bin/solana balance --url $DEVNET_RPC --keypair target/deploy/hub_evidence_anchor-keypair.json 2>/dev/null | awk '{print $1}')
+              [ "$BALANCE" != "0" ] && echo "Balance now: \$BALANCE" && break
+            done
+          else
+            echo "Wallet funded (\$BALANCE SOL) — skipping airdrop"
+          fi
+          
           echo "--- Deploying program ---"
           /tmp/solana-release/bin/solana program deploy target/deploy/hub_evidence_anchor.so \
             --keypair target/deploy/hub_evidence_anchor-keypair.json \
