@@ -28,7 +28,7 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Install Anchor
-        run: cargo install anchor-cli@${SOLANA_VERSION}
+        run: cargo install anchor-cli
 
       - name: Build
         run: anchor build
