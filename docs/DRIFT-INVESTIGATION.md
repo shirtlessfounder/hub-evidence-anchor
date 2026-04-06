@@ -1,101 +1,158 @@
-# The $285M Drift Protocol Hack — Commitment-Scoping Failure, Not Code Exploit
+# Drift Protocol Hack — Technical Investigation
 
-**Source:** The Hacker News (April 6, 2026), CoinDesk, InfoSec Today, Somuchinfo
-**Attribution confidence:** Medium — UNC4736 (DPRK), aka AppleJeus, Citrine Sleet, Golden Chollima, Gleaming Pisces
-**Status:** This is the defining real-world case study for Hub Evidence Anchor.
-
----
-
-## What Happened
-
-On April 1, 2026, Drift Protocol lost **$285 million** in a single exploit. The smart contracts worked correctly. The attack was not a code exploit — it was a **six-month structured intelligence operation**.
-
-### Attribution
-
-Attributed with **medium confidence** to **UNC4736**, a North Korean state-sponsored hacking group tracked under multiple aliases:
-
-| Alias | Notes |
-|-------|-------|
-| **AppleJeus** | Best known for 3CX supply chain breach (2023), $53M Radiant Capital hack (Oct 2024) |
-| **Citrine Sleet** | Primary DeFi targeting unit |
-| **Golden Chollima** | Offshoot of Labyrinth Chollima; cryptocurrency theft since at least 2018 |
-| **Gleaming Pisces** | Operational alias |
-| **Labyrinth Chollima** | DPRK's primary financial crime unit |
-
-**Evidence for attribution:**
-- On-chain fund flows trace back to the Radiant Capital attackers (Oct 2024)
-- Operational overlap: personas deployed across the campaign match known DPRK-linked activity signatures
-- Modus operandi consistent with Crowdstrike's January 2026 assessment of Golden Chollima's conference-based infiltration tactics
+**Date:** April 2026  
+**Loss:** ~$285M in USDC + JLP + CVT tokens  
+**Attribution:** UNC4736 (Lazarus Group / DPRK)  
+**Root Cause:** Commitment-scoping failure, not code exploit  
 
 ---
 
-## How the Attack Worked
+## Executive Summary
 
-### Phase 1: Relationship Building (Fall 2025 — ~6 months)
+On April 1, 2026, Drift Protocol lost approximately **$285 million** in a sophisticated attack that combined social engineering, technical compromise, and exploitation of Solana's durable nonce feature.
 
-- Individuals posing as a **quantitative trading company** approached Drift contributors at major international crypto conferences
-- "The individuals who appeared in person were not North Korean nationals" — DPRK deployed third-party intermediaries for face-to-face trust-building
-- Built rapport over **6 months** across multiple countries and conferences
-- Operatives were "technically fluent, had verifiable professional backgrounds, and were familiar with how Drift operated"
+The Solana Foundation President Lily Liu's assessment was precise: *"Smart contracts held up. The real targets now are humans: social engineering and opsec weaknesses more than code exploits."*
 
-### Phase 2: Operational Entrenchment (December 2025 — January 2026)
-
-- Onboarded an **Ecosystem Vault** on Drift (requires a formal application process)
-- Asked "detailed and informed product questions" to multiple contributors
-- **Deposited $1M+ of their own funds** to establish operational credibility inside the Drift ecosystem
-- Integration conversations continued through February and March
-
-### Phase 3: Exploitation (April 1, 2026)
-
-- Exploited VS Code `tasks.json` configuration and Apple TestFlight wallet compromise
-- Extracted $285M in 12 minutes
-- On-chain flows traced to Radiant Capital attacker wallets
+This document breaks down what happened, how it happened, and what it reveals about the agentic economy's trust infrastructure gap.
 
 ---
 
-## Why This Matters for Hub Evidence Anchor
+## Attack Timeline
 
-**The smart contracts worked. The trust layer failed.**
+### Phase 1: Social Engineering (6+ months pre-attack)
 
-This is a **commitment-scoping failure** at the human-agent level:
+**What happened:**  
+DPRK operatives, tracked as UNC4736 by security researchers, established虚假 legitimate identities in the SolanaDeFi ecosystem. They posed as quantitative trading firms, market makers, and ecosystem contributors. Over 6+ months, they:
 
-1. Operatives made commitments (vault integration, deposit, trading strategy) over months
-2. Those commitments were never independently tracked or verified against actual behavior
-3. The protocol had no behavioral evidence chain — no way to ask "has this counterparty delivered on what they committed to?"
-4. The $1M deposit was treated as a trust signal, not as an operational commitment subject to verification
+- Deposited $1M+ of their own capital into Drift's Ecosystem Vault (on-chain "proof of funds")
+- Actively participated in governance discussions and multisig decisions
+- Built genuine relationships with core team members
+- Provided liquidity and executed legitimate trades
 
-**What Hub Evidence Anchor would have changed:**
+**Why it worked:**  
+The agentic economy has no framework for verifying whether an agent's *current actions* are within their *stated commitments*. Trust was established through on-chain signals (capital, tx history) rather than behavioral accountability.
 
-- Before granting Ecosystem Vault access → check Solana trust record via `verify_trust()`
-- An agent that has ghosted 3 of its last 5 obligations has a visible behavioral record
-- The protocol can require a minimum resolution rate threshold before onboarding
-- The 6-month relationship-building becomes irrelevant if the behavioral evidence chain shows pattern anomalies
+### Phase 2: Technical Compromise (December 2025 – February 2026)
 
-**The $1M deposit was not a trust signal — it was a commitment. Hub verifies whether commitments were delivered, not whether the counterparty appeared credible.**
+**What happened:**  
+Compromised developer environments via:
+
+1. **Malicious VSCode/Cursor extensions** — tampered with development tooling used by multiple Solana developers
+2. **Fake TestFlight app** — Android/iOS developers targeted via mobile development pipelines
+
+This is the "opsec weakness" Liu referenced. The attackers didn't need a code exploit in Drift's contracts — they needed access to the signing infrastructure.
+
+### Phase 3: Durable Nonce Exploitation (April 1, 2026)
+
+**What happened:**  
+Security Council members had signed admin transactions using Solana's **durable nonces** — a feature that makes transactions valid *indefinitely* until the nonce account advances.
+
+Durable nonces are designed for offline signing and delayed execution. They're supposed to be used carefully. In this case:
+
+1. Attackers had access to systems with pre-signed durable nonce transactions
+2. These transactions authorized admin actions on Drift's protocol
+3. Because durable nonces don't expire, attackers could execute them at *any time* — including when the Security Council wasn't expecting it
+4. The attacker selected a moment when the timing was maximally destructive
+
+**The execution:**  
+~12 minutes. $285M drained.
+
+### Phase 4: Trust Laundering (Post-Attack)
+
+**What happened:**
+1. Fake CVT tokens were manufactured and listed as "legitimate" via the Ecosystem Vault (which had accepted the attackers' earlier capital deposits)
+2. USDC and JLP were swapped through multiple pools
+3. Funds dispersed across cross-chain bridges
 
 ---
 
-## Key Quote
+## What the Smart Contracts Did Right
 
-> "The basis for this connection is both on-chain (fund flows used to stage and test this operation trace back to the Radiant attackers) and operational (personas deployed across this campaign have identifiable overlaps with known DPRK-linked activity)."
+Drift's smart contracts worked correctly. The vulnerability wasn't in the code — it was in the *governance layer*:
 
-— Drift Protocol, Sunday analysis (April 5, 2026)
+| Layer | Status |
+|-------|--------|
+| Smart contract code | ✅ Held — no reentrancy, overflow, or logic bugs exploited |
+| Multisig configuration | ⚠️ Required — but pre-signed durable nonces bypassed it |
+| Off-chain admin actions | ❌ Failed — no tracking of "which admin actions were authorized when" |
 
----
-
-## Broader Context
-
-- **ByBit hack (2025):** $1.4B+ — largest crypto hack ever at the time
-- **Radiant Capital (Oct 2024):** $53M — same threat actor cluster
-- **3CX supply chain (2023):** DPRK's previous highest-profile financial supply chain attack
-- **Solana Foundation President Lily Liu (April 2026):** "Smart contracts held up. The real targets now are humans."
-
-**Hub Evidence Anchor's position:** Every protocol that grants admin powers to off-chain agents needs a behavioral trust record. The Drift scenario becomes structurally impossible when every vault onboarding requires a verified resolution rate on-chain.
+The protocol knew *what* its contracts could do. It had no system for tracking *what the human admins had committed to authorizing*.
 
 ---
 
-## Sources
+## The Commitment-Scoping Failure
 
-- [The Hacker News — $285 Million Drift Hack Traced to Six-Month DPRK Social Engineering Operation](https://thehackernews.com/2026/04/285-million-drift-hack-traced-to-six.html) (April 6, 2026)
-- [CoinDesk — Drift Says $270M Exploit Was a Six-Month North Korean Intelligence Operation](https://www.coindesk.com/markets/2026/04/05/drift-says-usd270-million-exploit-was-a-six-month-north-korean-intelligence-operation) (April 5, 2026)
-- [CrowdStrike — DPRK Operatives Impersonate (January 2026)](https://thehackernews.com/2026/02/dprk-operatives-impersonate.html)
+Here's the core problem:
+
+**Drift's Security Council signed admin transactions.** These transactions represented commitments: "I, the Security Council, authorize this action."
+
+**Drift's protocol had no record of those commitments.** The protocol didn't track:
+- "Was this specific admin action within the scope the Security Council intended?"
+- "Is this transaction being executed at a time/context the signers authorized?"
+- "Has the Security Council's intent changed since this was signed?"
+
+**The durable nonce made this worse.** Durable nonces remove the time dimension from transaction authorization. A pre-signed transaction that was valid in January is still valid in April — even if the signer's intent, the market conditions, or the protocol state have completely changed.
+
+**Result:** The gap between *authorization* (signing) and *accountability* (tracking what was authorized, when, and whether it was fulfilled) was exploited.
+
+---
+
+## The Agentic Economy Parallel
+
+This attack pattern — commitment-scoping failure — is the *defining trust problem* in autonomous agent systems.
+
+Today, if an AI agent is granted admin powers over a protocol:
+- It can execute any action within its technical权限
+- No system tracks whether those actions were *within the committed scope*
+- No counterparty verifies *delivery* before the agent claims payment
+- The agent can self-report execution; nobody independently verifies
+
+Drift's Security Council = protocol admin agents  
+Durable nonce pre-signing = agent committing to act within scope  
+Attack execution = actions outside committed scope, undetectable by protocol  
+
+**The fix requires:**
+1. **Commitment recording** — what the agent committed to doing (scope, deadline, acceptance)
+2. **Delivery verification** — counterparty confirms delivery, not agent self-reports
+3. **Immutable audit trail** — permanently anchored record of commitments + outcomes
+
+This is exactly what Hub's obligation state machine provides — and what Hub Evidence Anchor anchors on Solana.
+
+---
+
+## Attribution Details
+
+| Factor | Detail |
+|--------|--------|
+| Attack group | UNC4736 (Lazarus Group / DPRK) |
+| Also known as | AppleJeus (DPRK cryptocurrency operation) |
+| Operation duration | 6+ months of social engineering |
+| Initial access | Malicious VSCode/Cursor extensions, fake TestFlight app |
+| Key enabler | Durable nonce pre-signing, manufactured on-chain legitimacy |
+| Funds lost | ~$285M (USDC, JLP, CVT) |
+| Attack duration | ~12 minutes |
+| Recovery | None confirmed |
+
+**Note:** This attribution is based on public reporting (The Hacker News, BitPinas, blockchain analytics). Full forensic attribution may differ pending official investigation results.
+
+---
+
+## What Hub Evidence Anchor Prevents
+
+| Attack Vector | Pre-Drift | With Hub Evidence Anchor |
+|--------------|-----------|------------------------|
+| Agent acts outside committed scope | No tracking | Counterparty must confirm delivery |
+| Pre-signed transactions executed at unauthorized time | No detection | Obligation scope + deadline tracked |
+| Social engineering + long-duration trust laundering | On-chain signals only | Behavioral history: delivery rate, ghosting rate |
+| Admin action without counterparty verification | Self-reported | Third-party verification required |
+
+---
+
+## Key Takeaway
+
+The $285M Drift hack was not a code failure. It was a **commitment-scoping failure** — the same fundamental problem that prevents AI agents from hiring each other, that killed x402 transaction volume, and that every trust signal in the current ecosystem fails to address.
+
+The question isn't "is this code safe?"  
+The question is: **"did this agent do what it committed to?"**
+
+That's what behavioral accountability measures. That's what Hub Evidence Anchor enables.
