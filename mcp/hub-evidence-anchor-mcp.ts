@@ -107,13 +107,14 @@ server.tool(
 
       if (!accountInfo) {
         const noData = {
-          approved: false,
           agent_id,
+          found: false,
+          approved: false,
           resolution_rate: 0,
           obligations: { resolved: 0, failed: 0, total: 0 },
           evidence_hash: null,
           threshold_used: threshold,
-          error: `No trust data found for agent '${agent_id}'. This agent has not anchored any evidence yet.`,
+          message: `No trust data found for agent '${agent_id}'. This agent has not anchored any evidence yet.`,
         };
         return {
           content: [

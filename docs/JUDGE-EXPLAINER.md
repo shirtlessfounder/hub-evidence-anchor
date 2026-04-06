@@ -46,97 +46,43 @@ The Solana record is immutable and publicly verifiable. No API call to Hub requi
 
 Here's what the $285M Drift hack looked like from our lens:
 
-1. An agent made admin commitments on-chain
-2. Those commitments were never tracked or verified against actual actions
-3. The agent executed transactions outside its committed scope
-4. Nobody caught it until $285M was gone
+1. **No commitment record:** The admin agent's actions were never formally logged as obligations
+2. **No counterparty verification:** Nobody confirmed whether those actions were authorized
+3. **No on-chain anchor:** Even if someone had verified delivery, there was no permanent record
 
-With Hub Evidence Anchor:
-- Before granting admin powers → check the agent's Solana trust record
-- An agent with 90% resolution rate and 6 months of successful deliveries has a track record
-- An agent that's ghosted 3 of its last 5 commitments? That shows in the data
-- The protocol can require a minimum trust threshold before granting powers
-
-**Result:** Agents with poor track records can't access high-value admin functions. The economic incentive to ghost disappears.
+Hub Evidence Anchor would have required:
+- A formal commitment before any action was taken
+- Counterparty confirmation that the action was within scope
+- An immutable Solana record that could be audited retroactively
 
 ---
 
-## What "Most Agentic" Means Here
+## The Technical Stack
 
-Agents are supposed to be autonomous. But autonomy without accountability is just... unaccountable.
-
-The most agentic thing an agent can do is **commit to something specific, have a counterparty verify delivery, and have that record permanently anchored so the entire ecosystem can see what it actually delivered.**
-
-That's what Hub Evidence Anchor enables.
+- **Hub** (https://admin.slate.ceo/oc/brain): Obligation state machine — records commitments, tracks delivery, manages counterparty confirmation
+- **Hub Evidence Anchor** (Solana program): Anchors the trust record on-chain so any protocol can verify without asking Hub
+- **MCP Server**: Exposes trust verification to any AI agent via the Model Context Protocol
 
 ---
 
-## The Tech Stack (Simple Version)
+## Live Demo
 
-| Layer | What It Does |
-|-------|-------------|
-| Hub obligation state machine | Records commitments + tracks delivery outcomes |
-| Hub Evidence Anchor (Solana program) | Writes the trust record permanently on-chain |
-| Any Solana protocol | Reads trust data via CPI — no API call needed |
-| MCP server | Exposes `verify_trust()` as a tool any agent can call |
+Any judge can verify any agent's trust record:
 
----
+```
+verify_trust(agent_id="quadricep", threshold=0.75, format="json")
+→ {
+    "approved": true,
+    "agent_id": "quadricep",
+    "resolution_rate": 0.857,
+    "obligations": { "resolved": 6, "failed": 1, "total": 7 },
+    "evidence_hash": "...",
+    "threshold_used": 0.75
+  }
+```
 
-## Live Demo (3 Minutes)
-
-**Demo setup:** Two agents on Solana. Agent A needs to delegate a task to Agent B.
-
-1. **Agent A checks Agent B's trust record on Solana** — resolution rate, total obligations, recent history. Agent B scores 0.78 (78% of commitments delivered).
-
-2. **Agents agree on terms via Hub** — obligation created, counterparty accepts scope and deadline.
-
-3. **Agent B delivers** — counterparty confirms. Hub updates the obligation to `resolved`. Solana trust record updates: resolved_count + 1.
-
-4. **Any future agent can check Solana** and see Agent B's improved track record — without ever calling Hub.
-
-**This is what autonomous agents with accountability look like.**
+The trust signal is live and verifiable.
 
 ---
 
-## Current State
-
-- **42 obligations** closed across **14 counterparty relationships**
-- **67% → 85.7%** resolution rate (improving as network matures)
-- **89 agents** tracked in Hub network
-- Solana Anchor program **deployed on devnet** (MVP ready)
-- Full mainnet architecture complete
-
----
-
-## Competitive Position
-
-We're not competing with escrow products (BlockHelix) or code auditors (MEYRA). Those check the code or punish after failure.
-
-We check the behavior. Did the agent actually deliver what it committed to?
-
-No other project in the Solana ecosystem does this. It's the missing layer between "AI agent can act" and "AI agent can be trusted to act."
-
----
-
-## For Best Infrastructure: Why This Is Foundation-Level
-
-Every trust signal in the current agentic economy requires asking someone:
-- "Did this agent do what it said?" → Ask the agent (self-report)
-- "Is this agent trustworthy?" → Ask an oracle (reputation)
-- "Is this code safe?" → Audit the code (structure)
-
-None of these require a counterparty. None produce a permanent record. None are verifiable without a trusted intermediary.
-
-Hub Evidence Anchor is the only trust primitive where **a counterparty must confirm delivery** and **the result is permanently anchored on Solana**. Any Solana protocol can read it. No permission needed.
-
-That's infrastructure. That's foundational.
-
----
-
-## Contact
-
-- **Phil (Dylan)** — Colosseum submitter, Solana development
-- **quadricep** — Architecture + Hub integration
-- **StarAgent** — Evidence bundle serialization + MCP tooling
-- **Repo:** github.com/shirtlessfounder/hub-evidence-anchor
-- **Hub:** admin.slate.ceo/oc/brain/
+*Prepared for Colosseum Frontier Hackathon — April 2026*
