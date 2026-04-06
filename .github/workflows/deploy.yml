@@ -1,129 +1,57 @@
-name: Deploy Anchor Program to Solana Devnet
+name: Deploy to Solana Devnet
 
 on:
   push:
     branches: [main]
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 env:
-  SOLANA_VERSION: '3.1.12'
-  ANCHOR_VERSION: '1.0.0'
+  SOLANA_VERSION: '1.18.30'
   PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
-  CACHE_VERSION: 'v1'
-  DEVNET_RPC: 'https://api.devnet.solana.com'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/solana-foundation/solana-toolline:v1.18.30
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Solana CLI
-        run: |
-          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
-          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
-
-      - name: Verify Solana CLI
-        run: /tmp/solana-release/bin/solana --version
-
-      - name: Cache Anchor CLI
-        id: cache-anchor
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin/anchor
-          key: anchor-${{ env.ANCHOR_VERSION }}-${{ env.CACHE_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            anchor-${{ env.ANCHOR_VERSION }}-${{ env.CACHE_VERSION }}-
-            anchor-${{ env.ANCHOR_VERSION }}-
-
-      - name: Install system deps (cache miss)
-        if: steps.cache-anchor.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libssl-dev libudev-dev
-
-      - name: Install Rust toolchain (cache miss)
-        if: steps.cache-anchor.outputs.cache-hit != 'true'
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Install Anchor CLI (cache miss)
-        if: steps.cache-anchor.outputs.cache-hit != 'true'
-        run: cargo install anchor-cli@${ANCHOR_VERSION}
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
-        timeout-minutes: 20
-
-      - name: Verify Anchor CLI
-        run: anchor --version
-
       - name: Save deploy keypair
         run: |
           echo "${{ secrets.ANCHOR_WALLET_JSON }}" > /tmp/encoded_b58.txt
-          python3 .github/workflows/save-wallet.py
-        env:
-          ANCHOR_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
-          SOLANA_BIN: /tmp/solana-release/bin/solana
+          python3 -c "
+import base64
+encoded = open('/tmp/encoded_b58.txt').read().strip()
+keypair_bytes = base64.b58decode(encoded)
+open('/tmp/deploy-keypair.json', 'wb').write(keypair_bytes)
+"
+
+      - name: Install Rust + Anchor CLI
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          . "\$HOME/.cargo/env"
+          echo "PATH=\$HOME/.cargo/bin:\$PATH" >> \$GITHUB_PATH
+          cargo install anchor-cli
 
       - name: Build
         run: |
-          export SBF_OUT_DIR="/tmp/solana-release/sdk"
-          echo "SBF_OUT_DIR=\$SBF_OUT_DIR"
-          echo "Looking for BPF tools..."
-          find /tmp/solana-release -name "solana-bpf-tools*" -type d 2>/dev/null | head -3
+          . "\$HOME/.cargo/env"
           anchor build
-        env:
-          PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
-        timeout-minutes: 20
 
-      - name: Verify build artifact
+      - name: Airdrop + Deploy
         run: |
-          echo "=== target/deploy/ contents ==="
-          ls -la target/deploy/
-          echo ""
-          echo "=== .so file size ==="
-          ls -lh target/deploy/hub_evidence_anchor.so
+          . "\$HOME/.cargo/env"
+          for endpoint in "https://api.devnet.solana.com" "https://devnet.helius-rpc.com"; do
+            solana airdrop 2 --url "\$endpoint" --keypair /tmp/deploy-keypair.json && break || true
+          done
+          solana program deploy target/deploy/hub_evidence_anchor.so \
+            --keypair /tmp/deploy-keypair.json \
+            --url devnet \
+            --program-id target/deploy/hub_evidence_anchor-keypair.json
 
-      - name: Airdrop SOL + Deploy
+      - name: Verify
         run: |
-          echo "Checking current wallet balance..."
-          BALANCE=$(/tmp/solana-release/bin/solana balance --url $DEVNET_RPC --keypair target/deploy/hub_evidence_anchor-keypair.json 2>/dev/null | awk '{print $1}')
-          echo "Current balance: \$BALANCE"
-
-          if [ "\$BALANCE" = "0" ] || [ -z "\$BALANCE" ]; then
-            echo "Balance is 0 — attempting airdrop with retries..."
-            for i in 1 2 3; do
-              echo "=== Airdrop attempt \$i/3 ==="
-              for endpoint in "$DEVNET_RPC" "https://devnet.helius-rpc.com/?api-key="; do
-                echo "  Trying \$endpoint..."
-                if /tmp/solana-release/bin/solana airdrop 2 --url "\$endpoint" --keypair target/deploy/hub_evidence_anchor-keypair.json 2>&1; then
-                  echo "  ✅ Airdrop succeeded!"
-                  break
-                fi
-                echo "  Rate-limited, waiting 30s..."
-                sleep 30
-              done
-              BALANCE=$(/tmp/solana-release/bin/solana balance --url $DEVNET_RPC --keypair target/deploy/hub_evidence_anchor-keypair.json 2>/dev/null | awk '{print $1}')
-              [ "\$BALANCE" != "0" ] && echo "Balance now: \$BALANCE" && break
-            done
-          else
-            echo "Wallet funded (\$BALANCE SOL) — skipping airdrop"
-          fi
-
-          echo "--- Deploying program ---"
-          /tmp/solana-release/bin/solana program deploy target/deploy/hub_evidence_anchor.so \
-            --keypair target/deploy/hub_evidence_anchor-keypair.json \
-            --url $DEVNET_RPC
-        env:
-          PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
-        timeout-minutes: 15
-
-      - name: Verify deployment
-        run: |
-          /tmp/solana-release/bin/solana program show $PROGRAM_ID --url $DEVNET_RPC
-          echo ""
-          echo "✅ Program deployed!"
-          echo "Program ID: $PROGRAM_ID"
-          echo "Explorer: https://explorer.solana.com/address/\$PROGRAM_ID?cluster=devnet"
+          solana program show \$PROGRAM_ID --url devnet
