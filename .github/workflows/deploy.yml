@@ -12,9 +12,9 @@ on:
 
 env:
   SOLANA_VERSION: '3.1.12'
-  ANCHOR_VERSION: '0.32.1'
+  ANCHOR_VERSION: '1.0.0'
   PROGRAM_NAME: 'hub-evidence-anchor'
-  PROGRAM_ID: '6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek'
+  PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
 
 jobs:
   build-and-deploy:
@@ -23,25 +23,42 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Cache cargo binaries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/anchor
+            ~/.cargo/bin/anchor-cli
+            ~/.cargo/bin/solana-test-validator
+          key: cargo-solana-${SOLANA_VERSION}-anchor${ANCHOR_VERSION}
+
       - name: Install Solana CLI + Agave SDK
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
-          # Install system deps needed for cargo install of anchor-cli
-          sudo apt-get update && sudo apt-get install -y libudev-dev pkg-config
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          echo "PATH=$PATH"
 
       - name: Verify Solana CLI
-        run: solana --version && solana-keygen --version
+        run: solana --version && cargo-build-sbf --version
 
-      - name: Build Anchor program
+      - name: Install Anchor CLI (if not cached)
         run: |
-          cargo install anchor-cli --version ${{ env.ANCHOR_VERSION }}
-          anchor build
+          if ! command -v anchor &> /dev/null; then
+            cargo install anchor-cli --version ${ANCHOR_VERSION}
+          fi
+          anchor --version
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
           CARGO_BUILD_JOBS: '4'
-          LIBSODIUM_DEV_MAX_VERSION: '99.99.99'
           PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
+        timeout-minutes: 25
+
+      - name: Build Anchor program
+        run: anchor build
+        env:
+          PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
+        timeout-minutes: 15
 
       - name: Airdrop SOL (devnet)
         if: inputs.cluster == 'devnet' || github.event.inputs.cluster == 'devnet'
@@ -56,6 +73,7 @@ jobs:
         env:
           PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
           ANCHOR_WALLET: /tmp/deploy-wallet.json
+        timeout-minutes: 10
 
       - name: Verify deployment
         run: |
