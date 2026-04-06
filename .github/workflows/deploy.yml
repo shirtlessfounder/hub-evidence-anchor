@@ -4,68 +4,49 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      cluster:
-        description: 'Cluster (devnet/mainnet-beta)'
-        required: true
-        default: 'devnet'
 
 env:
   SOLANA_VERSION: '3.1.12'
-  ANCHOR_VERSION: '0.32.1'
-  PROGRAM_NAME: 'hub-evidence-anchor'
-  PROGRAM_ID: '6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek'
+  PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install system deps + Solana CLI
+      - name: Install Solana CLI + Agave SDK
         run: |
-          sudo apt-get update && sudo apt-get install -y libudev-dev pkg-config
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
 
-      - name: Install Anchor CLI (build from source — avoids GLIBC 2.38/2.39 mismatch)
-        run: cargo install anchor-cli --version ${{ env.ANCHOR_VERSION }}
+      - name: Verify Solana CLI
+        run: solana --version
+
+      - name: Install Rust + Anchor
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          cargo install anchor-cli@${SOLANA_VERSION}
+
+      - name: Build Anchor program
+        run: anchor build
         env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
-          CARGO_BUILD_JOBS: '4'
-          LIBSODIUM_DEV_MAX_VERSION: '99.99.99'
+          PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
+        timeout-minutes: 20
 
-      - name: Copy program keypair
+      - name: Airdrop SOL + Deploy
         run: |
-          mkdir -p target/deploy
-          cp keys/hub-evidence-anchor-keypair.json target/deploy/hub_evidence_anchor-keypair.json
-
-      - name: Verify tools
-        run: |
-          solana --version
-          anchor --version
-
-      - name: Build
-        run: |
-          export SBF_OUT_DIR="$PWD/solana-release/sdk"
-          anchor build
+          solana airdrop 2 --url devnet
+          anchor deploy --provider.cluster devnet
+        env:
+          PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
+          ANCHOR_WALLET: ${{ secrets.ANCHOR_WALLET_JSON }}
         timeout-minutes: 15
-
-      - name: Airdrop SOL (devnet)
-        if: inputs.cluster == 'devnet' || github.event.inputs.cluster == 'devnet'
-        run: solana airdrop 2 --url devnet
-
-      - name: Deploy
-        run: |
-          echo "${{ secrets.ANCHOR_WALLET_JSON }}" > /tmp/deploy-wallet.json
-          anchor deploy --provider.cluster ${{ inputs.cluster || 'devnet' }}
-        env:
-          ANCHOR_WALLET: /tmp/deploy-wallet.json
-        timeout-minutes: 10
 
       - name: Verify deployment
         run: |
-          solana program show $PROGRAM_ID --url ${{ inputs.cluster || 'devnet' }}
-          echo "Explorer: https://explorer.solana.com/address/$PROGRAM_ID?cluster=${{ inputs.cluster || 'devnet' }}"
+          solana program show $PROGRAM_ID --url devnet
+        env:
+          PATH: /tmp/solana-release/bin:$PATH
