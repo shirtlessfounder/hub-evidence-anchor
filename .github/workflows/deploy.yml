@@ -39,6 +39,7 @@ jobs:
       - name: Install BPF toolchain
         run: |
           solana-install add bpf-tools || echo "bpf-tools may already be installed"
+          echo "SBF_OUT_DIR=$HOME/.local/share/solana/install/active_release" >> $GITHUB_ENV
 
       - name: Install Anchor CLI
         run: |
@@ -49,25 +50,26 @@ jobs:
       - name: Build
         run: anchor build
         env:
-          PATH: $HOME/.cargo/bin:/usr/local/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH
+          PATH: $HOME/.cargo/bin:/usr/local/bin:$HOME/.local/share/solana/install/active_release/bin:$PWD/solana-release/bin:$PATH
           ANCHOR_WALLET: /tmp/deploy-wallet.json
           CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
+          SBF_OUT_DIR: $HOME/.local/share/solana/install/active_release
 
       - name: Airdrop SOL (devnet only)
         if: inputs.cluster == 'devnet' || github.event.inputs.cluster == 'devnet'
         run: solana airdrop 2 --url devnet
         env:
-          PATH: $HOME/.cargo/bin:/usr/local/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH
+          PATH: $HOME/.cargo/bin:/usr/local/bin:$HOME/.local/share/solana/install/active_release/bin:$PWD/solana-release/bin:$PATH
           ANCHOR_WALLET: /tmp/deploy-wallet.json
 
       - name: Deploy
         run: anchor deploy --provider.cluster ${{ inputs.cluster || 'devnet' }}
         env:
-          PATH: $HOME/.cargo/bin:/usr/local/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH
+          PATH: $HOME/.cargo/bin:/usr/local/bin:$HOME/.local/share/solana/install/active_release/bin:$PWD/solana-release/bin:$PATH
           ANCHOR_WALLET: /tmp/deploy-wallet.json
 
       - name: Verify deployment
         run: |
           solana program show $PROGRAM_ID --url ${{ inputs.cluster || 'devnet' }}
         env:
-          PATH: $HOME/.cargo/bin:/usr/local/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH
+          PATH: $HOME/.cargo/bin:/usr/local/bin:$HOME/.local/share/solana/install/active_release/bin:$PWD/solana-release/bin:$PATH
