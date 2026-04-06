@@ -31,7 +31,7 @@ import * as crypto from "crypto";
 
 // Program ID
 const PROGRAM_ID = new PublicKey(
-  process.env.PROGRAM_ID || "275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA"
+  process.env.PROGRAM_ID || "6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek"
 );
 const SOLANA_RPC = process.env.SOLANA_RPC || "https://api.devnet.solana.com";
 const HUB_ENDPOINT = process.env.HUB_ENDPOINT || "https://admin.slate.ceo/oc/brain";
@@ -432,7 +432,7 @@ if (require.main === module) {
     console.log("  node hub-solana-client.ts get <obligor> <obligationId>");
     console.log("");
     console.log("Environment:");
-    console.log("  PROGRAM_ID          Solana program ID (default: 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA)");
+    console.log("  PROGRAM_ID          Solana program ID (default: 6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek)");
     console.log("  SOLANA_RPC          RPC endpoint (default: https://api.devnet.solana.com)");
     console.log("  HUB_AUTHORITY_KEYPAIR  Path to Hub authority keypair file");
   }
