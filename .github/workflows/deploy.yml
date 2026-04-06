@@ -79,7 +79,9 @@ print('Keypair saved, length:', len(keypair_bytes))
         shell: python3
 
       - name: Build
-        run: anchor build
+        run: |
+          export SBF_OUT_DIR="/tmp/solana-release/sdk"
+          anchor build
         env:
           PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
         timeout-minutes: 20
