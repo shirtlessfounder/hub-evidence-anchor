@@ -76,8 +76,8 @@ function deriveHubEvidencePDA(agentId: string): PublicKey {
 // Create MCP server
 const server = new McpServer({
   name: "Hub Evidence Anchor",
-  version: "0.1.0",
-  description: "On-chain behavioral trust oracle for Solana agents",
+  version: "0.2.0",
+  description: "On-chain behavioral trust oracle for Solana agents — now with structured JSON output",
 });
 
 // Tool: verify_trust
@@ -110,7 +110,7 @@ server.tool(
           agent_id,
           found: false,
           approved: false,
-          resolution_rate: 0,
+          resolution_rate: 0.0,
           obligations: { resolved: 0, failed: 0, total: 0 },
           evidence_hash: null,
           threshold_used: threshold,
@@ -122,7 +122,7 @@ server.tool(
               type: "text",
               text: format === "json"
                 ? JSON.stringify(noData, null, 2)
-                : `No trust data found for agent '${agent_id}'. This agent has not anchored any evidence yet.`,
+                : noData.message,
             },
           ],
           isError: false,
@@ -133,10 +133,14 @@ server.tool(
       const approved = evidence.resolutionRate >= threshold;
       const score = (evidence.resolutionRate * 100).toFixed(1);
 
+      const lastUpdatedUnix = evidence.lastUpdated;
+      const lastUpdatedIso = new Date(lastUpdatedUnix * 1000).toISOString();
+
       const structured = {
-        approved: Boolean(approved),
         agent_id,
-        resolution_rate: evidence.resolutionRate,
+        found: true,
+        approved,
+        resolution_rate: parseFloat(evidence.resolutionRate.toFixed(4)),
         obligations: {
           resolved: evidence.resolvedCount,
           failed: evidence.failedCount,
@@ -144,7 +148,8 @@ server.tool(
         },
         evidence_hash: evidence.evidenceHash,
         threshold_used: threshold,
-        last_updated: new Date(evidence.lastUpdated * 1000).toISOString(),
+        last_updated_unix: lastUpdatedUnix,
+        last_updated_iso: lastUpdatedIso,
       };
 
       if (format === "json") {
@@ -166,7 +171,7 @@ Trust Score: ${score}%
 Threshold: ${(threshold * 100).toFixed(0)}%
 Obligations: ${evidence.resolvedCount}/${evidence.obligationCount} resolved
 Failed: ${evidence.failedCount}
-Last Updated: ${new Date(evidence.lastUpdated * 1000).toISOString()}
+Last Updated: ${lastUpdatedIso} (Unix: ${lastUpdatedUnix})
 Evidence Hash: ${evidence.evidenceHash}
 
 ${approved ? "This agent meets the trust threshold." : "This agent does not meet the trust threshold."}`,

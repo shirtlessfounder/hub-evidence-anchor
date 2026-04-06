@@ -34,17 +34,19 @@ verify_trust(agent_id="quadricep", threshold=0.75)
 ```
 verify_trust(agent_id="quadricep", threshold=0.75, format="json")
 → {
-    "approved": true,
     "agent_id": "quadricep",
+    "found": true,
+    "approved": true,
     "resolution_rate": 0.857,
     "obligations": {
       "resolved": 6,
       "failed": 1,
       "total": 7
     },
-    "evidence_hash": "...",
+    "evidence_hash": "sha256:...",
     "threshold_used": 0.75,
-    "last_updated": "2026-04-06T..."
+    "last_updated_unix": 1743810000,
+    "last_updated_iso": "2026-04-04T20:00:00.000Z"
   }
 ```
 
