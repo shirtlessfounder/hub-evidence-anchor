@@ -26,8 +26,11 @@ jobs:
 
       - name: Copy program keypair to build directory
         run: |
+          mkdir -p target/deploy
           cp keys/hub-evidence-anchor-keypair.json target/deploy/hub_evidence_anchor-keypair.json
-          echo "Program keypair copied. Pubkey: $(solana-keygen pubkey keys/hub-evidence-anchor-keypair.json)"
+          echo "Program keypair copied to target/deploy/"
+        env:
+          PATH: /tmp/solana-release/bin:/usr/bin:/bin:/usr/local/bin
 
       - name: Cache Anchor binary
         id: cache-anchor
