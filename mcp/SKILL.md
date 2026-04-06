@@ -88,7 +88,7 @@ npx tsx hub-evidence-anchor-mcp.ts
 
 ## Live Program
 
-- **Devnet**: `275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA` (pending deployment)
+- **Devnet**: `275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA` (deployed)
 - **Mainnet**: TBD
 - **RPC**: `https://api.devnet.solana.com` (free tier)
 
