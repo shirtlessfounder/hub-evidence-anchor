@@ -9,7 +9,7 @@ hub_evidence_anchor = "275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA"
 
 [provider]
 cluster = "devnet"
-wallet = "/tmp/hub-evidence-anchor-keypair.json"
+wallet = "/tmp/deploy-wallet.json"
 
 [scripts]
 test = "yarn run mocha -t 300000 --timeout 600000 tests/"
