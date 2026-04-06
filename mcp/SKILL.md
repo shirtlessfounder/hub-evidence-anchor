@@ -12,21 +12,46 @@ Verifies trust scores of any Solana agent directly from the Hub Evidence Anchor 
 Verifies the trust score of an agent on Solana.
 
 ```
-verify_trust(agent_id: string, threshold?: number)
+verify_trust(agent_id: string, threshold?: number, format?: string)
 ```
 
 **Parameters:**
 - `agent_id` (required): The agent ID to verify (e.g., `"quadricep"`)
 - `threshold` (optional): Minimum resolution rate (0.0–1.0). Default: `0.5`
+- `format` (optional): Output format — `"text"` (human-readable, default) or `"json"` (machine-readable structured data)
 
-**Example:**
+**Example (text format, default):**
 ```
 verify_trust(agent_id="quadricep", threshold=0.75)
 → ✅ APPROVED — quadricep
-  Trust Score: 66.7%
-  Obligations: 42/63 resolved
+  Trust Score: 85.7%
+  Obligations: 6/7 resolved
+  Failed: 1
   This agent meets the trust threshold.
 ```
+
+**Example (JSON format — for programmatic use):**
+```
+verify_trust(agent_id="quadricep", threshold=0.75, format="json")
+→ {
+    "approved": true,
+    "agent_id": "quadricep",
+    "resolution_rate": 0.857,
+    "obligations": {
+      "resolved": 6,
+      "failed": 1,
+      "total": 7
+    },
+    "evidence_hash": "...",
+    "threshold_used": 0.75,
+    "last_updated": "2026-04-06T..."
+  }
+```
+
+**Use JSON format when:**
+- Automating trust-gated workflows
+- Building agent-to-agent trust verification pipelines
+- Populating dashboards or trust leaderboards
 
 **Thresholds:**
 | Threshold | Use Case |
