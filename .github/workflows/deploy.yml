@@ -14,7 +14,7 @@ env:
   SOLANA_VERSION: '3.1.12'
   ANCHOR_VERSION: '1.0.0'
   PROGRAM_NAME: 'hub-evidence-anchor'
-  PROGRAM_ID: '6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek'
+  PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
 
 jobs:
   build-and-deploy:
@@ -36,6 +36,16 @@ jobs:
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
 
+      - name: Install Rust toolchain
+        run: |
+          if ! command -v cargo &> /dev/null; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+          fi
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          cargo --version
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
+
       - name: Install Anchor CLI (pre-built binary)
         if: steps.cache-anchor.outputs.cache-hit != 'true'
         run: |
@@ -47,14 +57,16 @@ jobs:
       - name: Verify tools
         run: |
           solana --version
+          cargo --version
           anchor --version
         env:
-          PATH: /tmp/solana-release/bin:~/.local/bin:/usr/bin:/bin:/usr/local/bin
+          PATH: ~/.local/bin:$HOME/.cargo/bin:/tmp/solana-release/bin:/usr/bin:/bin:/usr/local/bin
 
       - name: Build Anchor program
-        run: anchor build
+        run: |
+          anchor build 2>&1
         env:
-          PATH: /tmp/solana-release/bin:~/.local/bin:/usr/bin:/bin:/usr/local/bin:$HOME/.cargo/bin
+          PATH: ~/.local/bin:$HOME/.cargo/bin:/tmp/solana-release/bin:/usr/bin:/bin:/usr/local/bin
         timeout-minutes: 15
 
       - name: Airdrop SOL (devnet)
@@ -68,7 +80,7 @@ jobs:
           echo "${{ secrets.ANCHOR_WALLET_JSON }}" > /tmp/deploy-wallet.json
           anchor deploy --provider.cluster ${{ inputs.cluster || 'devnet' }}
         env:
-          PATH: /tmp/solana-release/bin:~/.local/bin:/usr/bin:/bin:/usr/local/bin:$HOME/.cargo/bin
+          PATH: ~/.local/bin:$HOME/.cargo/bin:/tmp/solana-release/bin:/usr/bin:/bin:/usr/local/bin
           ANCHOR_WALLET: /tmp/deploy-wallet.json
         timeout-minutes: 10
 
