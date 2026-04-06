@@ -23,11 +23,9 @@ jobs:
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
-        shell: bash
 
       - name: Verify Solana CLI
         run: /tmp/solana-release/bin/solana --version
-        shell: bash
 
       - name: Cache Anchor CLI
         id: cache-anchor
@@ -44,14 +42,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential pkg-config libssl-dev libudev-dev
-        shell: bash
 
       - name: Install Rust toolchain (cache miss)
         if: steps.cache-anchor.outputs.cache-hit != 'true'
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-        shell: bash
 
       - name: Install Anchor CLI (cache miss)
         if: steps.cache-anchor.outputs.cache-hit != 'true'
@@ -59,11 +55,9 @@ jobs:
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
         timeout-minutes: 20
-        shell: bash
 
       - name: Verify Anchor CLI
         run: anchor --version
-        shell: bash
 
       - name: Save deploy keypair
         run: |
@@ -74,35 +68,30 @@ encoded = open('/tmp/encoded_b58.txt').read().strip()
 keypair_bytes = base64.b64decode(encoded)
 open('target/deploy/hub_evidence_anchor-keypair.json', 'wb').write(keypair_bytes)
 print('Keypair saved, length:', len(keypair_bytes))
-# Pubkey is bytes 32-64 of the 64-byte keypair
 pubkey_bytes = bytes(list(keypair_bytes)[32:64])
 addr = base58.b58encode(pubkey_bytes).decode()
 print('Deploy wallet pubkey:', addr)
-# Also verify with solana CLI
 try:
     result = subprocess.run(
         ['/tmp/solana-release/bin/solana', 'address', '--keypair', 'target/deploy/hub_evidence_anchor-keypair.json'],
         capture_output=True, text=True, timeout=5
     )
     if result.returncode == 0:
-        cli_addr = result.stdout.strip()
-        print('Solana CLI confirms wallet address:', cli_addr)
+        print('Solana CLI confirms wallet address:', result.stdout.strip())
 except Exception as e:
-    print('CLI check skipped:', str(e)[:50])
+    print('CLI check skipped')
 "
-        shell: bash
 
       - name: Build
         run: |
           export SBF_OUT_DIR="/tmp/solana-release/sdk"
-          echo "SBF_OUT_DIR=$SBF_OUT_DIR"
+          echo "SBF_OUT_DIR=\$SBF_OUT_DIR"
           echo "Looking for BPF tools..."
           find /tmp/solana-release -name "solana-bpf-tools*" -type d 2>/dev/null | head -3
           anchor build
         env:
           PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
         timeout-minutes: 20
-        shell: bash
 
       - name: Verify build artifact
         run: |
@@ -111,21 +100,17 @@ except Exception as e:
           echo ""
           echo "=== .so file size ==="
           ls -lh target/deploy/hub_evidence_anchor.so
-          echo ""
-          echo "✅ Build artifact confirmed"
-        shell: bash
 
       - name: Airdrop SOL + Deploy
         run: |
-          # Check current balance first
           echo "Checking current wallet balance..."
           BALANCE=$(/tmp/solana-release/bin/solana balance --url $DEVNET_RPC --keypair target/deploy/hub_evidence_anchor-keypair.json 2>/dev/null | awk '{print $1}')
-          echo "Current balance: $BALANCE"
-          
-          if [ "$BALANCE" = "0" ] || [ -z "$BALANCE" ]; then
+          echo "Current balance: \$BALANCE"
+
+          if [ "\$BALANCE" = "0" ] || [ -z "\$BALANCE" ]; then
             echo "Balance is 0 — attempting airdrop with retries..."
             for i in 1 2 3; do
-              echo "=== Airdrop attempt $i/3 ==="
+              echo "=== Airdrop attempt \$i/3 ==="
               for endpoint in "$DEVNET_RPC" "https://devnet.helius-rpc.com/?api-key="; do
                 echo "  Trying \$endpoint..."
                 if /tmp/solana-release/bin/solana airdrop 2 --url "\$endpoint" --keypair target/deploy/hub_evidence_anchor-keypair.json 2>&1; then
@@ -135,14 +120,13 @@ except Exception as e:
                 echo "  Rate-limited, waiting 30s..."
                 sleep 30
               done
-              # Check if balance changed
               BALANCE=$(/tmp/solana-release/bin/solana balance --url $DEVNET_RPC --keypair target/deploy/hub_evidence_anchor-keypair.json 2>/dev/null | awk '{print $1}')
-              [ "$BALANCE" != "0" ] && echo "Balance now: \$BALANCE" && break
+              [ "\$BALANCE" != "0" ] && echo "Balance now: \$BALANCE" && break
             done
           else
             echo "Wallet funded (\$BALANCE SOL) — skipping airdrop"
           fi
-          
+
           echo "--- Deploying program ---"
           /tmp/solana-release/bin/solana program deploy target/deploy/hub_evidence_anchor.so \
             --keypair target/deploy/hub_evidence_anchor-keypair.json \
@@ -150,7 +134,6 @@ except Exception as e:
         env:
           PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
         timeout-minutes: 15
-        shell: bash
 
       - name: Verify deployment
         run: |
@@ -159,6 +142,3 @@ except Exception as e:
           echo "✅ Program deployed!"
           echo "Program ID: $PROGRAM_ID"
           echo "Explorer: https://explorer.solana.com/address/\$PROGRAM_ID?cluster=devnet"
-        env:
-          PATH: /tmp/solana-release/bin:$PATH
-        shell: bash
