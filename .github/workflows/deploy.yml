@@ -32,12 +32,13 @@ jobs:
           echo "$PWD/solana-release/bin" >> $GITHUB_PATH
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Install Anchor CLI
+      - name: Install Anchor CLI (pre-built binary from GitHub releases — no compilation)
         run: |
-          cargo install anchor-cli --version ${{ env.ANCHOR_VERSION }}
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
-          CARGO_BUILD_JOBS: '4'
+          curl -sSfL --retry 5 \
+            "https://github.com/coral-xyz/anchor/releases/download/v${{ env.ANCHOR_VERSION }}/anchor-${{ env.ANCHOR_VERSION }}-x86_64-unknown-linux-gnu" \
+            -o /tmp/anchor
+          chmod +x /tmp/anchor
+          echo "/tmp" >> $GITHUB_PATH
 
       - name: Build
         run: anchor build
