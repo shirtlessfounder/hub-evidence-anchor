@@ -24,6 +24,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Copy program keypair to build directory
+        run: |
+          cp keys/hub-evidence-anchor-keypair.json target/deploy/hub_evidence_anchor-keypair.json
+          echo "Program keypair copied. Pubkey: $(solana-keygen pubkey keys/hub-evidence-anchor-keypair.json)"
+
       - name: Cache Anchor binary
         id: cache-anchor
         uses: actions/cache@v4
