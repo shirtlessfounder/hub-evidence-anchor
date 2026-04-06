@@ -81,6 +81,9 @@ print('Keypair saved, length:', len(keypair_bytes))
       - name: Build
         run: |
           export SBF_OUT_DIR="/tmp/solana-release/sdk"
+          echo "SBF_OUT_DIR=$SBF_OUT_DIR"
+          echo "Looking for BPF tools..."
+          find /tmp/solana-release -name "solana-bpf-tools*" -type d 2>/dev/null | head -3
           anchor build
         env:
           PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
