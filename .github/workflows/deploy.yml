@@ -37,7 +37,10 @@ open('/tmp/deploy-keypair.json', 'wb').write(keypair_bytes)
           cargo install anchor-cli@1.0.0
 
       - name: Build
-        run: anchor build
+        run: |
+          export SBF_OUT_DIR="/tmp/solana-release/sdk"
+          echo "SBF_OUT_DIR=$SBF_OUT_DIR"
+          anchor build
         timeout-minutes: 20
 
       - name: Airdrop SOL + Deploy
