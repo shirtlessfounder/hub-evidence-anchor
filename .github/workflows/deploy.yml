@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      cluster:
+        description: 'Cluster (devnet/mainnet-beta)'
+        required: true
+        default: 'devnet'
 
 env:
   SOLANA_VERSION: '3.1.12'
@@ -49,7 +54,7 @@ jobs:
         run: |
           echo "${{ secrets.ANCHOR_WALLET_JSON }}" > /tmp/deploy-wallet.json
           solana airdrop 2 --url devnet
-          anchor deploy --provider.cluster devnet
+          anchor deploy --provider.cluster ${{ inputs.cluster || 'devnet' }}
         env:
           PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
           ANCHOR_WALLET: /tmp/deploy-wallet.json
