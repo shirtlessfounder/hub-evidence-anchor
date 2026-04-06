@@ -62,25 +62,10 @@ jobs:
       - name: Save deploy keypair
         run: |
           echo "${{ secrets.ANCHOR_WALLET_JSON }}" > /tmp/encoded_b58.txt
-          python3 -c "
-import base64, base58, subprocess, sys
-encoded = open('/tmp/encoded_b58.txt').read().strip()
-keypair_bytes = base64.b64decode(encoded)
-open('target/deploy/hub_evidence_anchor-keypair.json', 'wb').write(keypair_bytes)
-print('Keypair saved, length:', len(keypair_bytes))
-pubkey_bytes = bytes(list(keypair_bytes)[32:64])
-addr = base58.b58encode(pubkey_bytes).decode()
-print('Deploy wallet pubkey:', addr)
-try:
-    result = subprocess.run(
-        ['/tmp/solana-release/bin/solana', 'address', '--keypair', 'target/deploy/hub_evidence_anchor-keypair.json'],
-        capture_output=True, text=True, timeout=5
-    )
-    if result.returncode == 0:
-        print('Solana CLI confirms wallet address:', result.stdout.strip())
-except Exception as e:
-    print('CLI check skipped')
-"
+          python3 .github/workflows/save-wallet.py
+        env:
+          ANCHOR_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
+          SOLANA_BIN: /tmp/solana-release/bin/solana
 
       - name: Build
         run: |
