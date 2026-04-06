@@ -19,10 +19,13 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev pkg-config
 
       - name: Install Solana CLI
         run: |
@@ -35,28 +38,25 @@ jobs:
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
           CARGO_BUILD_JOBS: '4'
+          LIBSODIUM_DEV_MAX_VERSION: '99.99.99'
 
       - name: Build
         run: anchor build
         env:
-          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/lib/node_modules/.bin:$PATH
           CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
 
       - name: Airdrop SOL (devnet only)
         if: inputs.cluster == 'devnet' || github.event.inputs.cluster == 'devnet'
-        run: solana airdrop 2 --url devnet
+        run: |
+          solana airdrop 2 --url devnet
+          solana balance --url devnet
         env:
-          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH
           ANCHOR_WALLET: ${{ secrets.ANCHOR_WALLET_JSON }}
 
       - name: Deploy
         run: anchor deploy --provider.cluster ${{ inputs.cluster || 'devnet' }}
         env:
-          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/lib/node_modules/.bin:$PATH
           ANCHOR_WALLET: ${{ secrets.ANCHOR_WALLET_JSON }}
 
       - name: Verify deployment
-        run: |
-          solana program show $PROGRAM_ID --url ${{ inputs.cluster || 'devnet' }}
-        env:
-          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH
+        run: solana program show ${{ env.PROGRAM_ID }} --url ${{ inputs.cluster || 'devnet' }}
