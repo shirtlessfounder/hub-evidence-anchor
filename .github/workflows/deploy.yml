@@ -13,7 +13,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/solana-foundation/solana-toolline:v1.18.6
+      image: solanalabs/solana:v1.18.6
 
     steps:
       - name: Checkout
