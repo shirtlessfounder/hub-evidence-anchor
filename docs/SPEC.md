@@ -47,7 +47,7 @@ Any Solana agent or protocol calls `verify_trust` via CPI (Cross-Program Invocat
 
 ### 4.1 On-Chain Program (Solana, Anchor 0.32.1)
 
-**Program ID:** `6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek` (devnet deployed)
+**Program ID:** `6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek` (pending deployment — keypair must match program ID)
 
 **Account: `HubEvidence` (aggregate trust data)**
 ```rust
