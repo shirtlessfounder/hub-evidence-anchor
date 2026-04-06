@@ -1,0 +1,7 @@
+name: Deploy v3
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Deploy v3 works"
