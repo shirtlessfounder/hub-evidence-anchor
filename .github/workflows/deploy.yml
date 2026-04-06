@@ -11,8 +11,8 @@ on:
         default: 'devnet'
 
 env:
-  SOLANA_CLI_VERSION: '1.18.26'
-  ANCHOR_VERSION: '0.32.0'
+  SOLANA_CLI_VERSION: 'v1.18.26'
+  ANCHOR_VERSION: '0.32.1'
   PROGRAM_NAME: 'hub-evidence-anchor'
   PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
 
@@ -26,35 +26,33 @@ jobs:
 
       - name: Install Solana CLI
         run: |
-          curl -sSfL "https://github.com/solana-labs/solana/releases/download/v${SOLANA_CLI_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.xz" | tar xJ
-          ./solana-release/bin/solana-install init --version "${SOLANA_CLI_VERSION}" --no-modify-path
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          curl -sSfL "https://github.com/solana-labs/solana/releases/download/${SOLANA_CLI_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj
+          echo "$PWD/solana-release/bin" >> $GITHUB_PATH
 
-      - name: Install Anchor (npm — more reliable than cargo in CI)
+      - name: Install Anchor CLI
         run: |
-          npm install -g @coral-xyz/anchor-cli@${ANCHOR_VERSION}
-          echo "$HOME/lib/node_modules/.bin" >> $GITHUB_PATH
+          cargo install anchor-cli --version ${{ env.ANCHOR_VERSION }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
+          CARGO_BUILD_JOBS: '4'
 
       - name: Build
         run: anchor build
         env:
-          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/lib/node_modules/.bin:$PATH
           CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
 
       - name: Airdrop SOL (devnet only)
         if: inputs.cluster == 'devnet' || github.event.inputs.cluster == 'devnet'
-        run: solana airdrop 2 --url devnet
+        run: |
+          solana airdrop 2 --url devnet
+          solana balance --url devnet
         env:
-          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH
+          ANCHOR_WALLET: ${{ secrets.ANCHOR_WALLET_JSON }}
 
       - name: Deploy
         run: anchor deploy --provider.cluster ${{ inputs.cluster || 'devnet' }}
         env:
-          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/lib/node_modules/.bin:$PATH
           ANCHOR_WALLET: ${{ secrets.ANCHOR_WALLET_JSON }}
 
       - name: Verify deployment
-        run: |
-          solana program show $PROGRAM_ID --url ${{ inputs.cluster || 'devnet' }}
-        env:
-          PATH: $HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH
+        run: solana program show ${{ env.PROGRAM_ID }} --url ${{ inputs.cluster || 'devnet' }}
