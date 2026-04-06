@@ -7,7 +7,8 @@ on:
 
 env:
   SOLANA_VERSION: '3.1.12'
-  PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
+  ANCHOR_VERSION: '0.32.1'
+  PROGRAM_ID: '6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek'
 
 jobs:
   deploy:
@@ -28,21 +29,30 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          cargo install anchor-cli@${SOLANA_VERSION}
+          cargo install anchor-cli --version ${ANCHOR_VERSION}
+
+      - name: Copy program keypair
+        run: |
+          mkdir -p target/deploy
+          cp keys/hub-evidence-anchor-keypair.json target/deploy/hub_evidence_anchor-keypair.json
+          echo "Keypair: $(/tmp/solana-release/bin/solana-keygen pubkey keys/hub-evidence-anchor-keypair.json)"
 
       - name: Build Anchor program
-        run: anchor build
+        run: |
+          export SBF_OUT_DIR="$PWD/solana-release/sdk"
+          anchor build
         env:
           PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
         timeout-minutes: 20
 
       - name: Airdrop SOL + Deploy
         run: |
+          echo "${{ secrets.ANCHOR_WALLET_JSON }}" > /tmp/deploy-wallet.json
           solana airdrop 2 --url devnet
           anchor deploy --provider.cluster devnet
         env:
           PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
-          ANCHOR_WALLET: ${{ secrets.ANCHOR_WALLET_JSON }}
+          ANCHOR_WALLET: /tmp/deploy-wallet.json
         timeout-minutes: 15
 
       - name: Verify deployment
