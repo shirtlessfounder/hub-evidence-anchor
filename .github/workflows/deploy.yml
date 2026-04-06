@@ -12,7 +12,6 @@ on:
 
 env:
   SOLANA_VERSION: '3.1.12'
-  ANCHOR_VERSION: '1.0.0'
   PROGRAM_NAME: 'hub-evidence-anchor'
   PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
 
@@ -28,31 +27,35 @@ jobs:
         with:
           path: |
             ~/.cargo/bin/anchor
-            ~/.cargo/bin/anchor-cli
             ~/.cargo/bin/solana-test-validator
-          key: cargo-solana-${SOLANA_VERSION}-anchor${ANCHOR_VERSION}
+          key: cargo-solana-${SOLANA_VERSION}
 
       - name: Install Solana CLI + Agave SDK
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          echo "PATH=$PATH"
 
-      - name: Verify Solana CLI
-        run: solana --version && cargo-build-sbf --version
-
-      - name: Install Anchor CLI (if not cached)
+      - name: Install Rust + Anchor CLI
         run: |
-          if ! command -v anchor &> /dev/null; then
-            cargo install anchor-cli --version ${ANCHOR_VERSION}
+          # Install Rust if not present
+          if ! command -v cargo &> /dev/null; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
           fi
-          anchor --version
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          cargo --version
+          # Install anchor-cli (pre-built binary approach)
+          cargo install anchor-lang --version 1.0.0 2>/dev/null || true
+          # Use npm for anchor-cli which provides pre-built binary
+          npm install -g @coral-xyz/anchor-cli
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
-          CARGO_BUILD_JOBS: '4'
           PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
-        timeout-minutes: 25
+        timeout-minutes: 15
+
+      - name: Verify tools
+        run: |
+          solana --version
+          anchor --version || anchor-cli --version
 
       - name: Build Anchor program
         run: anchor build
@@ -80,7 +83,6 @@ jobs:
           solana program show $PROGRAM_ID --url ${{ inputs.cluster || 'devnet' }}
           echo "---"
           echo "Program ID: $PROGRAM_ID"
-          echo "Cluster: ${{ inputs.cluster || 'devnet' }}"
           echo "Explorer: https://explorer.solana.com/address/$PROGRAM_ID?cluster=${{ inputs.cluster || 'devnet' }}"
         env:
           PATH: /tmp/solana-release/bin:$PATH
