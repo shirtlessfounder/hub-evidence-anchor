@@ -22,9 +22,22 @@ jobs:
           echo "${{ secrets.ANCHOR_WALLET_JSON }}" > /tmp/encoded_b58.txt
           python3 -c "
 import base64
+
+ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+def b58decode(s):
+    n = 0
+    for c in s:
+        n = n * 58 + ALPHABET.index(c)
+    result = []
+    while n > 0:
+        result.append(n & 255)
+        n >>= 8
+    return bytes(result)
+
 encoded = open('/tmp/encoded_b58.txt').read().strip()
-keypair_bytes = base64.b58decode(encoded)
+keypair_bytes = b58decode(encoded)
 open('/tmp/deploy-keypair.json', 'wb').write(keypair_bytes)
+print(f'Keypair saved: {len(keypair_bytes)} bytes')
 "
 
       - name: Install Solana CLI
