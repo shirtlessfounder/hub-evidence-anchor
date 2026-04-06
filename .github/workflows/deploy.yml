@@ -41,11 +41,12 @@ jobs:
           solana-install add bpf-tools || echo "bpf-tools may already be installed"
           echo "SBF_OUT_DIR=$PWD/solana-release/sdk" >> $GITHUB_ENV
 
-      - name: Install Anchor CLI
-        run: |
-          curl -sSfL "https://github.com/coral-xyz/anchor/releases/download/v${ANCHOR_VERSION}/anchor-${ANCHOR_VERSION}-x86_64-unknown-linux-gnu" -o /tmp/anchor
-          chmod +x /tmp/anchor
-          mv /tmp/anchor /usr/local/bin/anchor
+      - name: Install Anchor CLI (via cargo — pre-built binary requires newer GLIBC than CI has)
+        run: cargo install anchor-cli --version ${{ env.ANCHOR_VERSION }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
+          CARGO_BUILD_JOBS: '4'
+          LIBSODIUM_DEV_MAX_VERSION: '99.99.99'
 
       - name: Build
         run: |
