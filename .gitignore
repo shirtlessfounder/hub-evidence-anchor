@@ -1,1 +1,4 @@
 target/
+solana-release/
+agave.tar.bz2
+/tmp/agave.tar.bz2
