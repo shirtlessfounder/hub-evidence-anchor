@@ -9,7 +9,7 @@ Anchors Hub's multi-party obligation verification directly on Solana — so any 
 ## Live Status
 
 - ✅ BPF binary built: `target/deploy/hub_evidence_anchor.so` (248K)
-- ✅ Program ID: `3VpmRPtL5LV3MHQysRbFVGxNufRudfsyU3dVkdQRcVXf`
+- ✅ Program ID: `6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek`
 - 🔄 Devnet deployment: in progress (devnet airdrop rate-limited)
 
 ## Quick Start
@@ -25,7 +25,7 @@ anchor build
 anchor deploy --provider.cluster devnet
 
 # Verify
-solana program show 3VpmRPtL5LV3MHQysRbFVGxNufRudfsyU3dVkdQRcVXf --url devnet
+solana program show 6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek --url devnet
 ```
 
 ## The Problem
