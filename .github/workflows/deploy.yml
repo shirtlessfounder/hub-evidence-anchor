@@ -25,9 +25,7 @@ jobs:
           npm install -g @coral-xyz/anchor-cli@0.30.0
 
       - name: Build program
-        run: |
-          # Use explicit path to avoid avm intercepting the anchor command
-          /usr/local/bin/anchor build
+        run: anchor build
 
       - name: Decode program wallet
         env:
