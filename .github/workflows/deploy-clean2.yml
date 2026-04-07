@@ -33,6 +33,19 @@ print('Keypair written')
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
 
+      - name: Check wallet balance
+        run: |
+          /tmp/solana-release/bin/solana balance --keypair /tmp/deploy-keypair.json --url devnet
+
+      - name: Airdrop SOL if needed
+        run: |
+          BALANCE=$(/tmp/solana-release/bin/solana balance --keypair /tmp/deploy-keypair.json --url devnet 2>/dev/null | awk '{print $1}')
+          echo "Current balance: $BALANCE SOL"
+          if [ "$BALANCE" = "0" ] || [ -z "$BALANCE" ]; then
+            echo "Airdropping 2 SOL..."
+            /tmp/solana-release/bin/solana airdrop 2 --keypair /tmp/deploy-keypair.json --url devnet || echo "Airdrop may have failed"
+          fi
+
       - name: Deploy
         run: |
           /tmp/solana-release/bin/solana program deploy programs/hub-evidence-anchor/hub_evidence_anchor.so --keypair /tmp/deploy-keypair.json --url devnet
