@@ -88,12 +88,17 @@ jobs:
 
       - name: Airdrop SOL
         run: |
-          PUBKEY=$(cat /tmp/pubkey.txt)
-          echo "Airdropping SOL to: $PUBKEY"
+          # Faucet can't credit program accounts. Generate a fresh deploy wallet.
+          echo "Generating fresh deploy wallet..."
+          /tmp/solana-release/bin/solana-keygen new --no-passphrase -o /tmp/deploy-wallet.json 2>/dev/null
+          DEPLOY_PUBKEY=$(/tmp/solana-release/bin/solana-keygen pubkey /tmp/deploy-wallet.json)
+          echo "Deploy wallet: $DEPLOY_PUBKEY"
+          echo "$DEPLOY_PUBKEY" > /tmp/deploy-pubkey.txt
+
           # Try multiple RPC endpoints to avoid rate limiting
           for endpoint in "https://api.devnet.solana.com" "https://devnet.helius-rpc.com/?api-key="; do
-            echo "Trying airdrop on $endpoint..."
-            if /tmp/solana-release/bin/solana airdrop 10 "$PUBKEY" --url "$endpoint" 2>&1 | grep -q "Success"; then
+            echo "Airdrop attempt on $endpoint..."
+            if /tmp/solana-release/bin/solana airdrop 10 "$DEPLOY_PUBKEY" --url "$endpoint" 2>&1 | grep -q "Success"; then
               echo "Airdrop succeeded on $endpoint"
               break
             fi
@@ -101,13 +106,17 @@ jobs:
             sleep 1
           done
           echo "Final balance:"
-          /tmp/solana-release/bin/solana balance "$PUBKEY" --url https://api.devnet.solana.com
+          /tmp/solana-release/bin/solana balance "$DEPLOY_PUBKEY" --url https://api.devnet.solana.com
 
       - name: Deploy
         run: |
+          DEPLOY_PUBKEY=$(cat /tmp/deploy-pubkey.txt)
+          echo "Deploying to program ID: $PROGRAM_ID"
+          echo "Signing with wallet: $DEPLOY_PUBKEY"
           /tmp/solana-release/bin/solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
-            --keypair /tmp/keypair.json \
+            --keypair /tmp/deploy-wallet.json \
+            --program-id $PROGRAM_ID \
             --url devnet
 
       - name: Verify
