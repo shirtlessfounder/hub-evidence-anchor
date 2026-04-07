@@ -33,7 +33,7 @@ jobs:
           cargo build-sbf --version
 
       - name: Install Anchor CLI
-        run: cargo install anchor-cli@0.30.0
+        run: cargo install anchor-cli@1.0.0
 
       - name: Build program
         run: anchor build
