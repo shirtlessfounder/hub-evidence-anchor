@@ -3,7 +3,7 @@ name: Deploy .so to Devnet
 on:
   push:
     branches: [main]
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 env:
   PROGRAM_ID: 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA
