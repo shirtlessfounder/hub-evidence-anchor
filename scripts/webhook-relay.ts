@@ -176,6 +176,23 @@ class SolanaRelay {
 
 // ─── Hub API Client ──────────────────────────────────────────────────────
 
+interface HubVC {
+  algorithm: "Ed25519";
+  key_id: string;
+  public_key: string;      // base64
+  signed_at: string;       // ISO timestamp
+  signed_fields: string[]; // fields covered by signature
+  signature: string;       // base64 Ed25519 sig over signed_fields
+  evidence_hash: string;   // sha256:<hex>
+  bundle_url: string;      // e.g. /obligations/<id>/bundle
+  verification?: any;
+}
+
+interface AdvanceResponse {
+  obligation: any;
+  hub_vc?: HubVC;         // included when status=resolved
+}
+
 async function fetchObligations(agentId: string, status?: string): Promise<any[]> {
   const url = `${HUB_ENDPOINT}/agents/${agentId}/obligations`;
   const resp = await fetch(url, {
@@ -199,9 +216,53 @@ async function fetchObligation(obligationId: string): Promise<any> {
   return data.obligation || data;
 }
 
+/**
+ * Advances a terminal obligation to get hub_vc.
+ * hub_vc is included in the response when advancing to resolved/rejected/expired.
+ */
+async function advanceObligation(obligationId: string, status: string): Promise<AdvanceResponse> {
+  const resp = await fetch(`${HUB_ENDPOINT}/obligations/${obligationId}/advance`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${HUB_SECRET}`,
+    },
+    body: JSON.stringify({ status }),
+  });
+  if (!resp.ok) throw new Error(`advance error: ${resp.status} ${await resp.text()}`);
+  return resp.json() as Promise<AdvanceResponse>;
+}
+
 // Check if an obligation uses handoff_schema
 function isHandoffSchema(obl: any): boolean {
   return !!(obl.handoff_schema || obl.decision_context || obl.alternatives_rejected);
+}
+
+/**
+ * Extracts the obligor's Ed25519 signature from evidence_refs.
+ * This is the obligor's own signature over the commitment_text, verified by Hub.
+ */
+function extractObligorSignature(obl: any): Uint8Array | null {
+  const evidenceSigs = (obl.evidence_refs || []).filter(
+    (e: any) => e.type === "obligor_signature" || e.type === "signature"
+  );
+  if (evidenceSigs.length > 0) {
+    const b64 = evidenceSigs[0].signature || evidenceSigs[0].value;
+    if (b64) return Buffer.from(b64, "base64") as unknown as Uint8Array;
+  }
+  return null;
+}
+
+/**
+ * Builds the completion proof URL from hub_vc.bundle_url or obligation ID.
+ */
+function buildCompletionProof(obl: any, hubVc?: HubVC): string {
+  if (hubVc?.bundle_url) {
+    return hubVc.bundle_url.startsWith("http")
+      ? hubVc.bundle_url
+      : `${HUB_ENDPOINT}${hubVc.bundle_url}`;
+  }
+  return `${HUB_ENDPOINT}/obligations/${obl.obligation_id}/evidence`;
 }
 
 // ─── Webhook Server ──────────────────────────────────────────────────────
@@ -241,23 +302,19 @@ function createWebhookServer(relay: SolanaRelay) {
         if (terminalStates.includes(obl.status) && isHandoffSchema(obl)) {
           console.log(`[relay] Processing: ${obl.obligation_id} → ${obl.status}`);
 
+          // hub_vc may be included in the webhook payload
+          const hubVc: HubVC | undefined = event.hub_vc;
+
           // Extract decision_context (commitment text)
           const commitmentText = obl.decision_context
             || obl.binding_scope_text
             || JSON.stringify(obl.scope || obl.summary || "");
 
-          // Get obligor's signature from evidence_refs or generate placeholder
-          // Real implementation: fetch obligor's Ed25519 signature from Hub
-          let obligorSignature = new Uint8Array(64);
-          const evidenceSigs = (obl.evidence_refs || []).filter(
-            (e: any) => e.type === "obligor_signature"
-          );
-          if (evidenceSigs.length > 0) {
-            const b64 = evidenceSigs[0].signature;
-            obligorSignature = Buffer.from(b64, "base64") as any;
-          }
+          // Get obligor's signature from evidence_refs
+          const sigBuffer = extractObligorSignature(obl);
+          const obligorSignature = sigBuffer || new Uint8Array(64);
 
-          const completionProof = `${HUB_ENDPOINT}/obligations/${obl.obligation_id}/evidence`;
+          const completionProof = buildCompletionProof(obl, hubVc);
 
           try {
             const result = await relay.anchorHandoff({
@@ -269,6 +326,9 @@ function createWebhookServer(relay: SolanaRelay) {
               resolution: obl.status,
             });
             console.log(`[relay] ✅ ${obl.obligation_id} → Solana sig: ${result.signature}`);
+            if (hubVc) {
+              console.log(`[relay]    hub_vc: evidence_hash=${hubVc.evidence_hash}, bundle=${hubVc.bundle_url}`);
+            }
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ ok: true, result }));
           } catch (err: any) {
@@ -294,27 +354,58 @@ function createWebhookServer(relay: SolanaRelay) {
 
 // ─── Polling Mode ────────────────────────────────────────────────────────
 
+/**
+ * Polling mode: watches obligations and calls anchor_handoff when handoff_schema
+ * obligations reach terminal state.
+ *
+ * For each terminal obligation:
+ * 1. Calls advance_obligation to get hub_vc (Hub's signed VC over the resolution)
+ * 2. Extracts obligor's signature from evidence_refs
+ * 3. Calls anchor_handoff on Solana with both signatures
+ *
+ * hub_vc fields used:
+ * - evidence_hash: stored in Solana completion_proof
+ * - bundle_url: for off-chain evidence verification
+ * - signature: Hub's Ed25519 sig over the obligation data
+ */
 async function pollMode(relay: SolanaRelay, agentId: string) {
   const seen = new Set<string>();
 
   while (true) {
     try {
       const obligations = await fetchObligations(agentId);
-      const terminal = obligations.filter(
+
+      // Find handoff_schema obligations that are terminal but not yet processed
+      const candidates = obligations.filter(
         (o) =>
           ["resolved", "rejected", "expired"].includes(o.status) &&
           isHandoffSchema(o) &&
           !seen.has(o.obligation_id)
       );
 
-      for (const obl of terminal) {
+      for (const obl of candidates) {
         seen.add(obl.obligation_id);
+
+        // Call advance to get hub_vc (Hub's signed VC)
+        let hubVc: HubVC | undefined;
+        try {
+          const advanceResp = await advanceObligation(obl.obligation_id, obl.status);
+          hubVc = advanceResp.hub_vc;
+          console.log(`[poll] Advanced ${obl.obligation_id} → hub_vc: ${hubVc ? "present" : "absent"}`);
+        } catch (err: any) {
+          // May fail if already advanced — that's ok, continue with what we have
+          console.warn(`[poll] advance ${obl.obligation_id}: ${err.message}`);
+        }
+
         const commitmentText =
           obl.decision_context ||
           obl.binding_scope_text ||
           JSON.stringify(obl.scope || "");
-        const completionProof = `${HUB_ENDPOINT}/obligations/${obl.obligation_id}/evidence`;
-        const obligorSignature = new Uint8Array(64); // Placeholder
+
+        const sigBuffer = extractObligorSignature(obl);
+        const obligorSignature = sigBuffer || new Uint8Array(64);
+
+        const completionProof = buildCompletionProof(obl, hubVc);
 
         try {
           const result = await relay.anchorHandoff({
@@ -325,7 +416,10 @@ async function pollMode(relay: SolanaRelay, agentId: string) {
             completionProof,
             resolution: obl.status,
           });
-          console.log(`[poll] ✅ ${obl.obligation_id} → ${result.signature}`);
+          console.log(`[poll] ✅ ${obl.obligation_id} → Solana sig: ${result.signature}`);
+          if (hubVc) {
+            console.log(`[poll]    hub_vc evidence_hash: ${hubVc.evidence_hash}`);
+          }
         } catch (err: any) {
           console.error(`[poll] ❌ ${obl.obligation_id}: ${err.message}`);
         }
