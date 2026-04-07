@@ -19,9 +19,10 @@ jobs:
           echo "Installing Anchor 1.0.0..."
           curl -L --fail "https://github.com/solana-foundation/anchor/releases/download/v1.0.0/anchor-1.0.0-x86_64-unknown-linux-gnu" -o /tmp/anchor
           chmod +x /tmp/anchor && mv /tmp/anchor ~/.cargo/bin/anchor && anchor --version
-      - run: export SBF_OUT_DIR="/tmp/solana-release/sdk" && anchor build
+      - run: export PATH="/home/runner/.cargo/bin:$PATH" && export SBF_OUT_DIR="/tmp/solana-release/sdk" && anchor build
         timeout-minutes: 15
       - run: |
+          export PATH="/home/runner/.cargo/bin:/tmp/solana-release/bin:$PATH"
           echo "Deploying..."
           solana program deploy target/deploy/hub_evidence_anchor.so --keypair /tmp/deploy-keypair.json --url devnet || echo "Deploy done"
         timeout-minutes: 10
