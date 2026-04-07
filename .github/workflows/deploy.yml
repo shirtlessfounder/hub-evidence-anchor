@@ -28,10 +28,9 @@ jobs:
           # Format 1: raw base64 bytes -> write binary
           try:
               raw = base64.b64decode(secret)
-              print(f'b64decode: len={len(raw)}, first3={[x for x in raw[:3]]}')
               if len(raw) == 64:
                   open('/tmp/keypair.bin', 'wb').write(raw)
-                  print('Format: raw b64 -> binary (64 bytes)')
+                  print(f'Format: raw b64 -> binary (64 bytes)')
                   exit(0)
           except Exception as e:
               print(f'Format 1 failed: {e}')
@@ -42,7 +41,7 @@ jobs:
               if isinstance(arr, list) and len(arr) == 64:
                   with open('/tmp/keypair.json', 'w') as f:
                       json.dump(arr, f)
-                  print(f'Format: b64(JSON) -> JSON file, first3={arr[:3]}')
+                  print(f'Format: b64(JSON) -> JSON file')
                   exit(0)
           except Exception as e:
               print(f'Format 2 failed: {e}')
@@ -53,10 +52,26 @@ jobs:
               if isinstance(arr, list) and len(arr) == 64:
                   with open('/tmp/keypair.json', 'w') as f:
                       json.dump(arr, f)
-                  print(f'Format: plain JSON, first3={arr[:3]}')
+                  print(f'Format: plain JSON array')
                   exit(0)
           except Exception as e:
               print(f'Format 3 failed: {e}')
+
+          # Format 4: base58-encoded raw 64 bytes -> decode -> write as JSON array
+          try:
+              ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+              n = 0
+              for c in secret:
+                  if c not in ALPHABET:
+                      raise ValueError(f'not base58: {c}')
+                  n = n * 58 + ALPHABET.index(c)
+              raw = n.to_bytes(64, 'big')
+              with open('/tmp/keypair.json', 'w') as f:
+                  json.dump(list(raw), f)
+              print(f'Format: base58 -> JSON array')
+              exit(0)
+          except Exception as e:
+              print(f'Format 4 (base58) failed: {e}')
 
           print('ERROR: cannot decode wallet')
           exit(1)
@@ -76,7 +91,7 @@ jobs:
         run: |
           /tmp/solana-release/bin/solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
-            --keypair /tmp/keypair.bin \
+            --keypair /tmp/keypair.json \
             --url devnet \
             --commitment finalized
 
