@@ -1,0 +1,21 @@
+name: Python Test
+on: workflow_dispatch
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test inline Python
+        run: |
+          python3 -c "
+import base64
+ALPHABET='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+def b58decode(s):
+    n=0
+    for c in s:
+        n=n*58+ALPHABET.index(c)
+    r=[]
+    while n>0:
+        r.append(n&255); n>>=8
+    return bytes(r)
+print('Python works')
+"

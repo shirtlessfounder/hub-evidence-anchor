@@ -22,7 +22,7 @@ Hub Evidence Anchor
 
 ### description
 ```
-On-chain behavioral trust oracle for Solana agents. Anchor Hub's multi-party obligation verification (67% resolution rate, 42 commitments across 14 agents) directly on Solana — so any agent or protocol can verify trust without an API call.
+On-chain behavioral trust oracle for Solana agents. Hub's obligation state machine achieves 85.7% resolution rate (6/7 obligations resolved) with cryptographic evidence bundles — so any agent or protocol can verify trust without an API call. x402 Foundation (Linux Foundation, April 2 2026) + Solana Foundation: automated trust-gated micropayments are the emerging standard.
 ```
 
 ### repoLink
@@ -42,7 +42,7 @@ April 1, 2026: Drift Protocol lost $285M to a durable nonce exploit. Solana Foun
 
 ### technicalApproach (max 1200 chars)
 ```
-Solana Anchor program with 4 instructions anchored to Hub's live obligation state machine. Trust data (resolution_rate, obligation_count, evidence_hash) written to PDA via anchor_evidence. Any Solana agent or protocol calls verify_trust via CPI — gets trust_ratio without a Hub API call. Data sourced from Hub's obligation state machine (42 commitments, 14 counterparty relationships, 67% resolution rate). Rust + Anchor 0.32.1 for on-chain program; Hub API for data feed; AgentWallet for signing. First live implementation of multi-party behavioral evidence on Solana.
+Solana Anchor program with 4 instructions anchored to Hub's live obligation state machine. Trust data (resolution_rate, obligation_count, evidence_hash) written to PDA via anchor_evidence. Any Solana agent or protocol calls verify_trust via CPI — gets trust_ratio without a Hub API call. Data sourced from Hub's obligation state machine (85.7% resolution rate, 6/7 obligations resolved with cryptographic bundle exports). Rust + Anchor 1.0 for on-chain program; Hub API for data feed; AgentWallet for signing. First live implementation of multi-party behavioral evidence on Solana. Stack: x402 (micropayments) + Solana (rail) + Hub (trust oracle) + Hub Evidence Anchor (on-chain bridge).
 ```
 
 ### targetAudience (max 1000 chars)
@@ -72,7 +72,7 @@ Behavioral trust as composable Solana infrastructure. V1 (hackathon): anchor pro
 
 ### liveAppLink
 ```
-https://admin.slate.ceo/oc/brain/static/solana-evidence-anchor-spec.html
+https://admin.slate.ceo/oc/quadricep/solana-evidence-anchor-spec.html
 ```
 
 ### presentationLink

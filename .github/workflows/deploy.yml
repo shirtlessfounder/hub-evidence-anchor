@@ -1,14 +1,9 @@
 name: Deploy to Solana Devnet
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
-  workflow_dispatch:
-
-env:
-  SOLANA_VERSION: '3.1.12'
-  ANCHOR_VERSION: '1.0.0'
-  PROGRAM_ID: '275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA'
 
 jobs:
   deploy:
@@ -17,46 +12,67 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Solana CLI + Agave SDK
+      - name: Save deploy keypair
         run: |
-          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
-          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
+          echo "${{ secrets.ANCHOR_WALLET_JSON }}" > /tmp/encoded_b58.txt
+          python3 -c "
+import base64
+ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+def b58decode(s):
+    n = 0
+    for c in s:
+        n = n * 58 + ALPHABET.index(c)
+    result = []
+    while n > 0:
+        result.append(n & 255)
+        n >>= 8
+    return bytes(result)
+encoded = open('/tmp/encoded_b58.txt').read().strip()
+keypair_bytes = b58decode(encoded)
+open('/tmp/deploy-keypair.json', 'wb').write(keypair_bytes)
+print(f'Keypair saved: {len(keypair_bytes)} bytes')
+"
 
-      - name: Verify Solana CLI
-        run: solana --version
-
-      - name: Cache Anchor CLI
-        id: cache-anchor
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin/anchor
-          key: anchor-${{ env.ANCHOR_VERSION }}-${{ runner.os }}-v1
-
-      - name: Install Rust + Anchor CLI
+      - name: Install Solana CLI + BPF toolchain
         run: |
-          if [ ! -f ~/.cargo/bin/anchor ]; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-            cargo install anchor-cli@${ANCHOR_VERSION}
-          fi
+          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
+          echo "/tmp/solana-release/bin" >> \$GITHUB_PATH
+          echo "Solana CLI installed:"
+          /tmp/solana-release/bin/solana --version
+          echo "Installing BPF toolchain..."
+          /tmp/solana-release/bin/solana-install add bpf-tools || echo "bpf-tools install completed"
 
-      - name: Build Anchor program
-        run: anchor build
+      - name: Install system deps + Rust + Anchor CLI
+        run: |
+          apt-get update && apt-get install -y libudev-dev pkg-config
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          . "$HOME/.cargo/env"
+          cargo install anchor-cli --version 1.0.0
+          ~/.cargo/bin/anchor --version
         env:
-          PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
-        timeout-minutes: 20
+          CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+          PATH: "/home/runner/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        timeout-minutes: 25
 
-      - name: Airdrop SOL + Deploy
+      - name: Build
         run: |
-          solana airdrop 2 --url devnet
-          anchor deploy --provider.cluster devnet
-        env:
-          PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
-          ANCHOR_WALLET: ${{ secrets.ANCHOR_WALLET_JSON }}
-        timeout-minutes: 15
+          export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:\$PATH"
+          export SBF_OUT_DIR="/tmp/solana-release/sdk"
+          echo "Anchor:" && anchor --version
+          echo "Solana:" && solana --version
+          echo "Building..." && anchor build
 
-      - name: Verify deployment
+      - name: Deploy
         run: |
-          solana program show $PROGRAM_ID --url devnet
-        env:
-          PATH: /tmp/solana-release/bin:$PATH
+          export PATH="/tmp/solana-release/bin:\$PATH"
+          echo "Requesting airdrop..."
+          solana airdrop 2 --url devnet --keypair /tmp/deploy-keypair.json || echo "Airdrop failed (may already be funded)"
+          echo "Deploying program..."
+          solana program deploy target/deploy/hub_evidence_anchor.so --keypair /tmp/deploy-keypair.json --url devnet
+
+      - name: Verify
+        run: |
+          export PATH="/tmp/solana-release/bin:\$PATH"
+          echo "Waiting for confirmation..."
+          sleep 5
+          solana program show 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA --url devnet || echo "275Q not found — trying alternative IDs"

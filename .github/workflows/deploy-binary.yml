@@ -1,0 +1,26 @@
+name: Deploy v10 — Pre-built Binary
+on: workflow_dispatch
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Save deploy keypair (base64)
+        env:
+          ANCHOR_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
+        run: |
+          echo "$ANCHOR_WALLET_JSON" > /tmp/encoded.txt && python3 -c "import base64;kb=base64.b64decode(open('/tmp/encoded.txt').read().strip());open('/tmp/deploy-keypair.json','wb').write(kb);print('Keypair:',len(kb),'bytes')"
+
+      - name: Install Solana CLI
+        run: |
+          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
+          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
+          /tmp/solana-release/bin/solana --version
+
+      - name: Deploy pre-built binary
+        run: |
+          /tmp/solana-release/bin/solana program deploy programs/hub-evidence-anchor/hub_evidence_anchor.so --keypair /tmp/deploy-keypair.json --url devnet
+
+      - name: Verify
+        run: /tmp/solana-release/bin/solana program show 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA --url devnet

@@ -43,7 +43,7 @@ const web3_js_1 = require("@solana/web3.js");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 // ─── Config ─────────────────────────────────────────────────────────────────
-const PROGRAM_ID = new web3_js_1.PublicKey("275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA");
+const PROGRAM_ID = new web3_js_1.PublicKey("6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek");
 const RPC = "https://api.devnet.solana.com";
 const KEYPAIR_PATH = path.join(__dirname, "..", "keys", "hub-evidence-anchor-keypair.json");
 // ─── Load Keypair ────────────────────────────────────────────────────────────

@@ -1,0 +1,13 @@
+name: Anchor Install Test
+on: workflow_dispatch
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Anchor CLI
+        run: |
+          V=$(curl -s https://api.github.com/repos/solana-foundation/anchor/releases/latest | python3 -c "import sys,json;print(json.load(sys.stdin)['tag_name'])")
+          echo "Installing Anchor $V"
+          ASSET="anchor-$V-x86_64-unknown-linux-gnu"
+          curl -L "https://github.com/solana-foundation/anchor/releases/download/$V/$ASSET" -o /tmp/anchor
+          chmod +x /tmp/anchor && mv /tmp/anchor ~/.cargo/bin/anchor && anchor --version

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hub Evidence Anchor — Solana Trust Oracle</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #0a0a0a; color: #e0e0e0; }
+  h1 { color: #9945FF; font-size: 1.8em; margin-bottom: 0.5em; }
+  h2 { color: #14F195; font-size: 1.3em; margin-top: 1.5em; border-bottom: 1px solid #333; padding-bottom: 0.3em; }
+  h3 { color: #00D4FF; font-size: 1.1em; margin-top: 1.2em; }
+  .stat { display: inline-block; background: #1a1a2e; border: 1px solid #9945FF; border-radius: 8px; padding: 12px 20px; margin: 8px 8px 8px 0; text-align: center; }
+  .stat-num { font-size: 2em; font-weight: bold; color: #14F195; }
+  .stat-label { font-size: 0.85em; color: #888; margin-top: 4px; }
+  code { background: #1a1a2e; padding: 2px 6px; border-radius: 4px; color: #00D4FF; }
+  pre { background: #1a1a2e; padding: 16px; border-radius: 8px; overflow-x: auto; border-left: 3px solid #9945FF; }
+  .tag { display: inline-block; background: #9945FF22; border: 1px solid #9945FF; color: #9945FF; padding: 2px 8px; border-radius: 4px; font-size: 0.85em; margin: 2px; }
+  a { color: #14F195; }
+  hr { border: none; border-top: 1px solid #333; margin: 24px 0; }
+</style>
+</head>
+<body>
+
+<h1>🏛️ Hub Evidence Anchor</h1>
+<p><strong>On-chain behavioral trust oracle for Solana agents.</strong> Anchors Hub's obligation completion data on Solana — so any protocol can verify whether an agent actually delivered what it committed to.</p>
+
+<div style="margin: 20px 0;">
+  <span class="tag">Solana</span>
+  <span class="tag">Anchor/Rust</span>
+  <span class="tag">Trust Infrastructure</span>
+  <span class="tag">Agentic AI</span>
+  <span class="tag">x402 Payments</span>
+</div>
+
+<hr>
+
+<h2>Live Trust Stats</h2>
+<div>
+  <div class="stat">
+    <div class="stat-num">85.7%</div>
+    <div class="stat-label">Resolution Rate</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">6/7</div>
+    <div class="stat-label">Obligations Resolved</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">79</div>
+    <div class="stat-label">Hub Agents Tracked</div>
+  </div>
+</div>
+
+<hr>
+
+<h2>The Problem</h2>
+<p>April 1, 2026: <strong>Drift Protocol lost $285M</strong> via durable nonce exploit + social engineering.</p>
+<p>Solana Foundation President Lily Liu: <em>"Smart contracts held up. The real targets now are humans."</em></p>
+<p>The hack wasn't a code bug — it was a <strong>commitment-scoping failure</strong>. No system tracked: <em>"was this admin action within the committed operational scope?"</em></p>
+<p>The agentic economy is stalling: x402 tx volume down 95%+ from peak. Agents can't hire agents reliably because there's no behavioral evidence chain.</p>
+
+<hr>
+
+<h2>The Solution</h2>
+<p>Hub Evidence Anchor exposes Hub's behavioral trust data on Solana via a verifiable CPI call:</p>
+
+<pre>// Any Solana protocol calls via CPI — no API call needed
+verify_trust(agent_id) → {
+  resolution_rate: 0.857,
+  obligation_count: 7,
+  evidence_hash: "sha256:...",
+  can_execute_admin: true
+}</pre>
+
+<h3>4 Instructions</h3>
+<ul>
+  <li><code>anchor_evidence</code> — Write trust ratio + obligation count + evidence hash to Solana PDA</li>
+  <li><code>update_resolution</code> — Update resolution data after new obligations resolve</li>
+  <li><code>verify_trust</code> — Return trust ratio to any caller via CPI</li>
+  <li><code>close_stale</code> — Archive outdated accounts</li>
+</ul>
+
+<hr>
+
+<h2>The Stack</h2>
+<table style="width:100%; border-collapse: collapse;">
+<tr style="border-bottom: 1px solid #333;">
+  <td style="padding:8px 0;"><strong>x402</strong></td>
+  <td style="padding:8px 0; color:#888;">Open micropayments standard (Linux Foundation)</td>
+</tr>
+<tr style="border-bottom: 1px solid #333;">
+  <td style="padding:8px 0;"><strong>Solana</strong></td>
+  <td style="padding:8px 0; color:#888;">Payment rail (65% of all x402 volume)</td>
+</tr>
+<tr style="border-bottom: 1px solid #333;">
+  <td style="padding:8px 0;"><strong>Hub</strong></td>
+  <td style="padding:8px 0; color:#888;">Behavioral trust oracle — what was promised vs delivered</td>
+</tr>
+<tr>
+  <td style="padding:8px 0;"><strong>Hub Evidence Anchor</strong></td>
+  <td style="padding:8px 0; color:#888;">On-chain bridge — verifiable CPI call to trust data</td>
+</tr>
+</table>
+
+<hr>
+
+<h2>Program ID (Devnet)</h2>
+<pre>275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA</pre>
+<p><a href="https://explorer.solana.com/address/275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA?cluster=devnet">View on Solana Explorer →</a></p>
+
+<hr>
+
+<h2>Repository</h2>
+<p><a href="https://github.com/shirtlessfounder/hub-evidence-anchor">github.com/shirtlessfounder/hub-evidence-anchor</a></p>
+<p><strong>Colosseum Frontier Hackathon</strong> — April 6 – May 11, 2026</p>
+
+</body>
+</html>

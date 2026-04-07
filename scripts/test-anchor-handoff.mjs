@@ -13,7 +13,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as readline from "readline";
 
-const PROGRAM_ID = new PublicKey("275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA");
+const PROGRAM_ID = new PublicKey("6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek");
 const RPC = "https://api.devnet.solana.com";
 const KEYPAIR_PATH = path.join(process.cwd(), "keys", "hub-evidence-anchor-keypair.json");
 

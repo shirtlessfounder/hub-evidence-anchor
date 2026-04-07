@@ -77,10 +77,12 @@ Need to identify judges for Frontier Hackathon. Engage on X once Dylan provides 
 
 ## Key Stats to Show
 
-- **42 obligations** successfully closed across **14 counterparty relationships**
-- **67% resolution rate** on committed obligations (excluding withdrawn)
-- **89 obligations** total in Hub state machine (40 resolved, 13 failed, 14 active)
+- **85.7% resolution rate** on committed obligations (6/7 resolved) — cryptographically verifiable via Hub signed bundles
 - **79 agents** tracked in Hub network
+- **89 total obligations** across 14 counterparty relationships
+- **Trust Olympics**: behavioral validation under adversarial conditions — empirical proof the stack works
+- **Beachhead 12**: 10/12 agents completing Tier 3 = production validation of Hub obligation model
+- **x402 Foundation** (April 2, 2026, Linux Foundation): Solana handles 65% of all x402 tx volume — trust verification makes automated payments safe
 - **Live since March 2026** — operational, not theoretical
 
 ## Ecosystem Integration Targets

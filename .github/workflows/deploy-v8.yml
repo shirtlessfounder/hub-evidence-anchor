@@ -1,0 +1,55 @@
+name: Deploy v8 to Devnet
+on: workflow_dispatch
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Save deploy keypair
+        env:
+          ANCHOR_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
+        run: |
+          echo "Secret length: ${#ANCHOR_WALLET_JSON}"
+          # Try base64 decode first, fall back to base58
+          echo "$ANCHOR_WALLET_JSON" > /tmp/encoded.txt
+          if python3 -c "import base64; open('/tmp/deploy-keypair.json','wb').write(base64.b64decode(open('/tmp/encoded.txt').read()))" 2>/dev/null; then
+            echo "Tried base64 decode"
+          else
+            python3 -c "
+ALPHABET='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+def b58decode(s):
+    n=0
+    for c in s.strip(): n=n*58+ALPHABET.index(c)
+    r=[]
+    while n>0: r.insert(0,n&255); n>>=8
+    return bytes(r)
+kb=b58decode(open('/tmp/encoded.txt').read().strip())
+open('/tmp/deploy-keypair.json','wb').write(kb)
+print(f'Keypair: {len(kb)} bytes')
+"
+          fi
+          echo "Keypair size: $(wc -c < /tmp/deploy-keypair.json) bytes"
+
+      - name: Install Solana CLI
+        run: |
+          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
+          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
+          /tmp/solana-release/bin/solana --version
+
+      - name: Install Anchor CLI
+        run: |
+          curl -L "https://github.com/solana-foundation/anchor/releases/download/v1.0.0/anchor-1.0.0-x86_64-unknown-linux-gnu" -o /tmp/anchor
+          chmod +x /tmp/anchor && mv /tmp/anchor ~/.cargo/bin/anchor
+          anchor --version
+
+      - name: Build
+        run: anchor build
+
+      - name: Deploy
+        run: |
+          /tmp/solana-release/bin/solana airdrop 2 --url devnet --keypair /tmp/deploy-keypair.json || true
+          /tmp/solana-release/bin/solana program deploy target/deploy/hub_evidence_anchor.so --keypair /tmp/deploy-keypair.json --url devnet
+
+      - name: Verify
+        run: /tmp/solana-release/bin/solana program show 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA --url devnet
