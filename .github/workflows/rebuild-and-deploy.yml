@@ -85,18 +85,17 @@ jobs:
       - name: Build program
         run: |
           # Delete ALL Cargo.lock files — v4 requires nightly Rust
+          # Repo is double-nested: hub-evidence-anchor/hub-evidence-anchor/
           rm -f Cargo.lock
+          rm -f hub-evidence-anchor/Cargo.lock
           rm -f programs/hub-evidence-anchor/Cargo.lock
           cd programs/hub-evidence-anchor
           rm -f ../Cargo.lock
-          # Find where anchor build puts the .so
+          rm -f ../../Cargo.lock
           anchor build 2>&1 | tail -30
           echo "=== Finding .so files ==="
           find . -name "*.so" 2>/dev/null
-          echo "=== Checking standard locations ==="
-          ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null || echo "NOT at target/deploy/"
-          ls -la ../../target/deploy/hub_evidence_anchor.so 2>/dev/null || echo "NOT at ../../target/deploy/"
-          ls -la target/deploy/ 2>/dev/null || echo "target/deploy/ does not exist"
+          ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
           grep declare_id src/lib.rs
 
       - name: Deploy
