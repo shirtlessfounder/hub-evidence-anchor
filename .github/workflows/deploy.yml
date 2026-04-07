@@ -25,7 +25,7 @@ jobs:
           npm install -g @coral-xyz/anchor-cli@0.30.0
 
       - name: Build program
-        run: anchor build
+        run: npx @coral-xyz/anchor-cli@0.30.0 build
 
       - name: Decode program wallet
         env:
