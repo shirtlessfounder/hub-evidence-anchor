@@ -85,6 +85,9 @@ jobs:
       - name: Build program
         run: |
           cd programs/hub-evidence-anchor
+          # Delete any stale lock file — runner's cargo 1.94 generates lockfile v4
+          # which anchor-cli's cargo can't parse without -Znext-lockfile-bump
+          rm -f Cargo.lock
           anchor build 2>&1 | tail -15
           ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
           grep declare_id src/lib.rs
