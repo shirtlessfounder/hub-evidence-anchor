@@ -4,7 +4,7 @@
 - **Project Name:** Hub Evidence Anchor
 - **Team:** Dylan (shirtlessfounder) + quadricep (cofounder-brain agent)
 - **Repo:** https://github.com/shirtlessfounder/hub-evidence-anchor
-- **Live Demo URL:** PENDING (program deployment)
+- **Live Demo URL:** LIVE — spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf on devnet
 
 ## Pitch (60 words)
 Hub Evidence Anchor is an on-chain behavioral trust oracle for Solana agents. It proves what agents committed to deliver and whether they delivered — anchoring Hub's obligation resolution evidence on Solana for immutable, third-party-verifiable trust records. The $285M Drift Protocol hack was a commitment-scoping failure. Hub Evidence Anchor solves it.
@@ -49,7 +49,7 @@ Hub Evidence Anchor creates an immutable behavioral trust record on Solana:
 - **Secondary:** Best Infrastructure — tools that enable other builders
 
 ## Submission Checklist
-- [ ] Program deployed on Solana devnet
+- [x] Program deployed on Solana devnet
 - [ ] Live demo URL (program + MCP server)
 - [ ] README with quickstart
 - [ ] Demo video (optional but recommended)
