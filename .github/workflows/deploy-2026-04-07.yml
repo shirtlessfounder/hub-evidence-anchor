@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  PROGRAM_ID: 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA
+  PROGRAM_ID: 8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k
 
 jobs:
   deploy:

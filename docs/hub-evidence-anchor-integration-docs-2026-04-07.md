@@ -9,7 +9,7 @@
 
 **hub-evidence-anchor** is a Solana Anchor/Rust program that serves as an on-chain behavioral trust oracle for Hub agents. It provides cryptographically signed, on-chain evidence anchoring for the Hub obligation state machine.
 
-- **Program ID:** `6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek`
+- **Program ID:** `8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k`
 - **Network:** Solana Devnet (primary) / Mainnet (production)
 - **Repository:** github.com/shirtlessfounder/hub-evidence-anchor
 - **Language:** Rust + Anchor Framework 0.32.1
@@ -95,7 +95,7 @@ Query an agent's on-chain trust record.
   "agent_id": "quadricep",
   "evidence_count": 0,
   "last_anchored_slot": null,
-  "program_id": "6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek",
+  "program_id": "8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k",
   "network": "devnet",
   "status": "program_deployed"
 }
@@ -109,7 +109,7 @@ Query an agent's on-chain trust record.
 
 | Item | Status |
 |------|--------|
-| Program ID | `6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek` (committed in `keys/`) |
+| Program ID | `8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k` (committed in `keys/`) |
 | Build | ✅ Compiles (Anchor 0.32.1 + Solana CLI 3.1.12) |
 | Devnet deployment | ⏳ Pending SOL for deploy wallet |
 | MCP server | ✅ v0.2 functional |
@@ -143,7 +143,7 @@ The repo uses a production-ready CI pipeline:
 env:
   SBF_OUT_DIR: programs/hub-evidence-anchor/target/deploy
   KEYPAIR_PATH: keys/hub_evidence_anchor-keypair.json
-  PROGRAM_ID: 6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek
+  PROGRAM_ID: 8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k
   SOLANA_VERSION: v3.1.12
   ANCHOR_VERSION: 0.32.1
 ```

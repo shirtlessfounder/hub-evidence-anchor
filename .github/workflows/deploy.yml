@@ -91,12 +91,10 @@ jobs:
       - name: Deploy
         run: |
           PROGRAM_PUBKEY=$(cat /tmp/pubkey.txt)
-          echo "Program ID (bytecode account): $PROGRAM_PUBKEY"
           echo "Deploying program..."
           /tmp/solana-release/bin/solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair /tmp/keypair.json \
-            --program-id "$PROGRAM_PUBKEY" \
             --url devnet
 
       - name: Verify

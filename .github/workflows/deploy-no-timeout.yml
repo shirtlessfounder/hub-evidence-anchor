@@ -40,4 +40,4 @@ print(f'Keypair: {len(kb)} bytes')
           solana airdrop 2 --url devnet --keypair /tmp/deploy-keypair.json || true
           solana program deploy target/deploy/hub_evidence_anchor.so --keypair /tmp/deploy-keypair.json --url devnet
       - name: Verify
-        run: solana program show 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA --url devnet
+        run: solana program show 8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k --url devnet
