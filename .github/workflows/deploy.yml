@@ -23,8 +23,13 @@ jobs:
       - name: Install npm dependencies
         run: npm install
 
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
       - name: Install Anchor CLI
-        run: npm install -g @coral-xyz/anchor-cli@0.31.0
+        run: cargo install anchor-cli
 
       - name: Build program
         run: anchor build
