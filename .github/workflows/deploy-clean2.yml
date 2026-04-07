@@ -1,5 +1,8 @@
 name: Deploy Clean v2
-on: workflow_dispatch
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -15,33 +18,14 @@ import os, base64
 secret = os.environ.get('ANCHOR_WALLET_JSON', '')
 print(f'Secret length: {len(secret)} chars')
 if len(secret) < 10:
-    print('ERROR: Secret is empty or too short!')
+    print('ERROR: Secret empty!')
     exit(1)
-# Try decoding as base64
-try:
-    decoded = base64.b64decode(secret.strip())
-    print(f'Base64 decode: {len(decoded)} bytes')
-    with open('/tmp/deploy-keypair.json', 'wb') as f:
-        f.write(decoded)
-except Exception as e:
-    print(f'Base64 decode failed: {e}')
-    # Try as base58
-    try:
-        import base58
-        decoded = base58.b58decode(secret.strip())
-        print(f'Base58 decode: {len(decoded)} bytes')
-        with open('/tmp/deploy-keypair.json', 'wb') as f:
-            f.write(decoded)
-    except:
-        print('Both decodes failed')
-        exit(1)
+decoded = base64.b64decode(secret.strip())
+print(f'Decoded: {len(decoded)} bytes')
+with open('/tmp/deploy-keypair.json', 'wb') as f:
+    f.write(decoded)
 print('Keypair written')
 "
-
-      - name: Verify keypair
-        run: |
-          wc -c /tmp/deploy-keypair.json
-          xxd /tmp/deploy-keypair.json | head -3
 
       - name: Install Solana CLI
         run: |
