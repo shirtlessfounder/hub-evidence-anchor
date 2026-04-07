@@ -18,12 +18,71 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate program wallet
+      - name: Decode program wallet
+        env:
+          PROGRAM_WALLET_JSON: ${{ secrets.PROGRAM_WALLET_JSON }}
         run: |
-          # Generate a fresh wallet — this IS the program ID
-          /tmp/solana-keygen new --no-passphrase -o /tmp/program-wallet.json 2>/dev/null
-          /tmp/solana-keygen pubkey /tmp/program-wallet.json > /tmp/program-pubkey.txt
-          echo "Program wallet (program ID): $(cat /tmp/program-pubkey.txt)"
+          python3 << 'PYEOF'
+          import os, json, base64
+
+          ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+          secret = os.environ.get("PROGRAM_WALLET_JSON", "").strip()
+          print(f"Secret len={len(secret)}")
+
+          raw = None
+
+          # Try base58 first (88-char Solana key format)
+          if len(secret) == 88:
+              try:
+                  n = 0
+                  for c in secret:
+                      n = n * 58 + ALPHABET.index(c)
+                  raw = n.to_bytes(64, "big")
+                  print("Format: base58 -> 64 bytes")
+              except ValueError:
+                  raw = None
+
+          # Try raw base64
+          if raw is None:
+              try:
+                  raw = base64.b64decode(secret)
+                  if len(raw) != 64:
+                      raw = None
+                  else:
+                      print("Format: base64 raw -> 64 bytes")
+              except Exception:
+                  raw = None
+
+          # Try JSON array format
+          if raw is None:
+              try:
+                  arr = json.loads(secret)
+                  if isinstance(arr, list) and len(arr) == 64:
+                      raw = bytes(int(x) if isinstance(x, int) else x for x in arr)
+                      print("Format: JSON array -> 64 bytes")
+              except Exception:
+                  pass
+
+          if raw is None:
+              print("ERROR: cannot decode wallet secret")
+              exit(1)
+
+          # Write as Solana JSON keypair format
+          with open("/tmp/program-wallet.json", "w") as f:
+              json.dump(list(raw), f)
+          print("Keypair saved: /tmp/program-wallet.json")
+
+          # Extract pubkey
+          pubkey_bytes = raw[32:]
+          npub = int.from_bytes(pubkey_bytes, "big")
+          addr = ""
+          while npub > 0:
+              npub, rem = divmod(npub, 58)
+              addr = ALPHABET[rem] + addr
+          with open("/tmp/program-pubkey.txt", "w") as f:
+              f.write(addr)
+          print(f"Program wallet (program ID): {addr}")
+          PYEOF
 
       - name: Install Solana CLI
         run: |
@@ -34,7 +93,7 @@ jobs:
         run: |
           PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
           echo "Airdropping to: $PROGRAM_PUBKEY"
-          # Fresh wallet — faucet should work (not a program account)
+          # Fixed wallet — faucet should work (not a program account)
           for i in 1 2 3 4 5; do
             echo "Airdrop attempt $i..."
             if /tmp/solana-release/bin/solana airdrop 2 "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com 2>&1 | grep -q "Success"; then
