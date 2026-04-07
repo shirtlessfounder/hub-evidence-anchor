@@ -42,16 +42,22 @@ print(f'Keypair saved: {len(keypair_bytes)} bytes')
           echo "Installing BPF toolchain..."
           /tmp/solana-release/bin/solana-install add bpf-tools || echo "bpf-tools install completed"
 
-      - name: Install Anchor CLI
+      - name: Install system deps + Rust + Anchor CLI
         run: |
-          mkdir -p ~/.cargo/bin
-          curl -L --fail --retry 3 "https://github.com/solana-foundation/anchor/releases/download/v1.0.0/anchor-1.0.0-x86_64-unknown-linux-gnu" -o ~/.cargo/bin/anchor
-          chmod +x ~/.cargo/bin/anchor
-          anchor --version
+          apt-get update && apt-get install -y libudev-dev pkg-config
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          . "$HOME/.cargo/env"
+          cargo install anchor-cli --version 1.0.0
+          ~/.cargo/bin/anchor --version
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+          PATH: "/home/runner/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        timeout-minutes: 25
 
       - name: Build
         run: |
           export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:\$PATH"
+          export SBF_OUT_DIR="/tmp/solana-release/sdk"
           echo "Anchor:" && anchor --version
           echo "Solana:" && solana --version
           echo "Building..." && anchor build
