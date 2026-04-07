@@ -49,9 +49,11 @@ print(f'Keypair saved: {len(keypair_bytes)} bytes')
       - name: Build
         run: |
           export SBF_OUT_DIR="/tmp/solana-release/sdk"
-          anchor build
-        env:
-          PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
+          export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:$PATH"
+          echo "=== Directory ===" && pwd && ls -la
+          echo "=== Anchor version ===" && anchor --version
+          echo "=== Solana version ===" && solana --version
+          echo "=== Building ===" && anchor build 2>&1 | head -50
         timeout-minutes: 15
 
       - name: Deploy
