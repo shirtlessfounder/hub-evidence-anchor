@@ -18,65 +18,60 @@ jobs:
         env:
           WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
-          python3 << 'PYEOF'
-          import json, base64, os
+          python3 << PYEOF
+import json, base64, os
 
-          ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-          secret = os.environ.get('WALLET_JSON', '').strip()
-          print(f'Secret len={len(secret)}')
+ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+secret = os.environ.get("WALLET_JSON", "").strip()
+print("Secret len:", len(secret), "start:", secret[:10])
 
-          raw = None
+raw = None
 
-          # Try base58 decode first
-          try:
-              n = 0
-              for c in secret:
-                  if c not in ALPHABET:
-                      raise ValueError('not base58')
-                  n = n * 58 + ALPHABET.index(c)
-              raw = n.to_bytes(64, 'big')
-              print('Format: base58 -> 64 bytes')
-          except Exception as e:
-              print(f'base58 failed: {e}')
+# Try base58 decode
+try:
+    n = 0
+    for c in secret:
+        if c not in ALPHABET:
+            raise ValueError("not base58")
+        n = n * 58 + ALPHABET.index(c)
+    raw = n.to_bytes(64, "big")
+    print("Format: base58 -> 64 bytes, first3:", list(raw[:3]))
+except Exception as e:
+    print("base58 failed:", e)
 
-          # Try base64 as fallback
-          if raw is None:
-              try:
-                  raw = base64.b64decode(secret)
-                  if len(raw) == 64:
-                      print('Format: base64 -> 64 bytes')
-                  else:
-                      raw = None
-              except: pass
+# Try base64 as fallback
+if raw is None:
+    try:
+        raw = base64.b64decode(secret)
+        if len(raw) == 64:
+            print("Format: base64 -> 64 bytes")
+    except:
+        pass
 
-          # Try JSON array as fallback
-          if raw is None:
-              try:
-                  arr = json.loads(secret)
-                  if isinstance(arr, list) and len(arr) == 64:
-                      raw = bytes(arr)
-                      print('Format: JSON array -> 64 bytes')
-              except: pass
+if raw is None:
+    print("ERROR: cannot decode wallet")
+    exit(1)
 
-          if raw is None:
-              print('ERROR: cannot decode wallet')
-              exit(1)
+# Write as bs58 string
+n2 = int.from_bytes(raw, "big")
+b58 = ""
+while n2 > 0:
+    n2, rem = divmod(n2, 58)
+    b58 = ALPHABET[rem] + b58
+with open("/tmp/keypair.txt", "w") as f:
+    f.write(b58)
+print("Written:", len(b58), "char bs58 string to /tmp/keypair.txt")
 
-          # Write as raw binary (solana-keygen format)
-          with open('/tmp/keypair.bin', 'wb') as f:
-              f.write(raw)
-          print(f'Written: {len(raw)}-byte raw binary')
-
-          # Extract pubkey
-          pub = int.from_bytes(raw[32:], 'big')
-          pubkey = ''
-          while pub > 0:
-              pub, rem = divmod(pub, 58)
-              pubkey = ALPHABET[rem] + pubkey
-          print(f'PUBKEY: {pubkey}')
-          with open('/tmp/pubkey.txt', 'w') as f:
-              f.write(pubkey)
-          PYEOF
+# Extract pubkey
+pub = int.from_bytes(raw[32:], "big")
+pubkey = ""
+while pub > 0:
+    pub, rem = divmod(pub, 58)
+    pubkey = ALPHABET[rem] + pubkey
+print("PUBKEY:", pubkey)
+with open("/tmp/pubkey.txt", "w") as f:
+    f.write(pubkey)
+PYEOF
 
       - name: Install Solana CLI
         run: |
@@ -94,7 +89,7 @@ jobs:
         run: |
           /tmp/solana-release/bin/solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
-            --keypair /tmp/keypair.bin \
+            --keypair /tmp/keypair.txt \
             --url devnet \
             --commitment finalized
 
