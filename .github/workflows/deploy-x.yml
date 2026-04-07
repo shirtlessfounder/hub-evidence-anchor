@@ -22,7 +22,23 @@ jobs:
         env:
           WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
-          echo "$WALLET_JSON" | base64 -d > /tmp/key.json
+          echo "$WALLET_JSON" > /tmp/key_b64.txt
+          python3 -c "
+import base64
+data = open('/tmp/key_b64.txt').read().strip()
+try:
+    decoded = base64.b64decode(data)
+    open('/tmp/key.json', 'wb').write(decoded)
+    print(f'base64 decode OK: {len(decoded)} bytes')
+except Exception as e:
+    open('/tmp/key.json', 'w').write(data)
+    print(f'Wrote as-is: {len(data)} bytes')
+
+# Verify
+import json
+d = json.load(open('/tmp/key.json'))
+print(f'Keypair array length: {len(d)}')
+"
 
       - name: Install Solana CLI
         run: |
