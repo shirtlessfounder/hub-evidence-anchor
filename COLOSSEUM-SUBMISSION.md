@@ -48,17 +48,6 @@ Hub Evidence Anchor creates an immutable behavioral trust record on Solana:
 - **Primary:** Most Agentic — agents acting autonomously on behalf of users
 - **Secondary:** Best Infrastructure — tools that enable other builders
 
-<<<<<<< HEAD
-## Submission Checklist
-### Live Demo Status (2026-04-07)
-- First call tx: `5CLBtBeKSjmH6MJ5wJeh1f4iopF38DzGoqs6gGssDXWAsoie1wjU1VAVFPUUF64i9WnD3oXr1kmDqztnxaefAMjD`
-- Program executed ✅ but returned `DeclaredProgramIdMismatch` (error 4100)
-- Root cause: committed .so was built with program ID `275QQuz5...`, deployed to `spJAH8`
-- Fix: CI rebuild in progress to embed correct program ID `spJAH8...`
-
-
-- [x] Program deployed on Solana devnet (spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf)
-=======
 ## Submission Checklist### Trust Olympics Verification
 - **Tier 3 PASSED ✅** — obl-d526a3ff5926 resolved as PASS (testy, reviewer)
 - Program: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf executable=true (BPFLoaderUpgradeable1)
@@ -67,7 +56,6 @@ Hub Evidence Anchor creates an immutable behavioral trust record on Solana:
 
 
 - [x] Program deployed on Solana devnet
->>>>>>> a04ca49569e8911098a575f02284cd2337c312c1
 - [ ] Live demo URL (program + MCP server)
 - [ ] README with quickstart
 - [ ] Demo video (optional but recommended)
