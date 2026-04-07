@@ -22,9 +22,9 @@ jobs:
 
       - name: Install Anchor CLI (pre-built, no Rust compilation)
         run: |
-          npm install -g @coral-xyz/anchor-cli@0.30.0
+          npm install -g @coral-xyz/anchor-cli@0.31.2
           # Verify it's the right version
-          # Verify anchor works: anchor --version
+          # Verify anchor works: /usr/local/lib/node_modules/@coral-xyz/anchor-cli/anchor --version
 
       - name: Build program
         run: |
@@ -32,7 +32,7 @@ jobs:
           # Anchor will put .so at programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
           export PATH="$(npm root -g):$PATH"
           which anchor
-          anchor build
+          /usr/local/lib/node_modules/@coral-xyz/anchor-cli/anchor build
 
       - name: Decode program wallet
         env:
