@@ -62,15 +62,10 @@ jobs:
               print('ERROR: cannot decode wallet')
               exit(1)
 
-          # Write as base58 string (solana-keygen format)
-          n2 = int.from_bytes(raw, 'big')
-          b58 = ''
-          while n2 > 0:
-              n2, rem = divmod(n2, 58)
-              b58 = ALPHABET[rem] + b58
-          with open('/tmp/keypair.txt', 'w') as f:
-              f.write(b58)
-          print(f'Written: {len(b58)}-char base58 string')
+          # Write as raw binary (solana-keygen format)
+          with open('/tmp/keypair.bin', 'wb') as f:
+              f.write(raw)
+          print(f'Written: {len(raw)}-byte raw binary')
 
           # Extract pubkey
           pub = int.from_bytes(raw[32:], 'big')
@@ -99,7 +94,7 @@ jobs:
         run: |
           /tmp/solana-release/bin/solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
-            --keypair /tmp/keypair.txt \
+            --keypair /tmp/keypair.bin \
             --url devnet \
             --commitment finalized
 
