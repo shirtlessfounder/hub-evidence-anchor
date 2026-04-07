@@ -15,25 +15,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust
+      - name: Install Solana CLI
         run: |
-          export PATH="/usr/bin:/bin:$PATH"
-          /usr/bin/curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-          echo "PATH=$HOME/.cargo/bin:\$PATH" >> $GITHUB_ENV
-
-      - name: Download Solana release + install cargo-build-sbf
-        run: |
-          export PATH="/usr/bin:/bin:$PATH"
-          /usr/bin/curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | /usr/bin/tar -xjf - -C /tmp
-          # Append Solana bin to existing PATH (keep cargo bin from step 1)
-          echo "PATH=/tmp/solana-release/bin:$HOME/.cargo/bin:/usr/bin:/bin" >> $GITHUB_ENV
-          # Copy cargo-build-sbf plugin into cargo bin so `cargo build-sbf` works
-          cp /tmp/solana-release/bin/cargo-build-sbf $HOME/.cargo/bin/cargo-build-sbf
-          chmod +x $HOME/.cargo/bin/cargo-build-sbf
-          cargo build-sbf --version
+          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
+          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
 
       - name: Install Anchor CLI
-        run: cargo install anchor-cli@1.0.0
+        run: npm install -g @coral-xyz/anchor-cli@0.30.0
 
       - name: Build program
         run: anchor build
