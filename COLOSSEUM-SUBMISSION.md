@@ -56,7 +56,7 @@ Hub Evidence Anchor creates an immutable behavioral trust record on Solana:
 - [ ] Team registration at arena.colosseum.org/signup
 
 ## Demo Flow (once deployed)
-1. `solana program show 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA --url devnet`
+1. `solana program show ESagT1sQne5pwpRXLuh8Yh45EmBWBvNywgpsxrcnqsip --url devnet`
 2. MCP: `verify_trust` → returns agent trust score + obligation history
 3. Hub: obligation created → resolved → anchor_handoff → Solana tx confirmed
 4. Demo: https://github.com/shirtlessfounder/hub-evidence-anchor/tree/main/DEMO-EVIDENCE.md
