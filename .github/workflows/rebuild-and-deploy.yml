@@ -73,28 +73,22 @@ jobs:
           done
           /tmp/solana-release/bin/solana balance "$PROGRAM_PUBKEY" --url devnet
 
-      - name: Install Rust + Solana toolchain
+      - name: Install Rust
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
           source "$HOME/.cargo/env"
           rustup --version
-          rustup toolchain install stable
-          rustup target add bpfel-unknown-none --toolchain stable
-          rustup target add bpfeb-unknown-none --toolchain stable
 
-      - name: Install Solana Rust toolchain
+      - name: Install Solana toolchain + build
         run: |
           source "$HOME/.cargo/env"
           rustup toolchain install solana
           rustup default solana
           cargo build-sbf --version
-
-      - name: Build program
-        run: |
-          source "$HOME/.cargo/env"
+          echo "Building program..."
           cd programs/hub-evidence-anchor
-          SBF_OUT_DIR=target/deploy cargo build-sbf --release 2>&1 | tail -10
-          ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null || echo "Build may have failed"
+          cargo +solana build-sbf --release 2>&1 | tail -10
+          ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
 
       - name: Deploy
         if: always()
@@ -102,15 +96,16 @@ jobs:
           source "$HOME/.cargo/env"
           PROGRAM_PUBKEY=$(cat /tmp/pubkey.txt)
           echo "Program ID: $PROGRAM_PUBKEY"
-          if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then
-            echo "Deploying from programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so..."
+          SO_PATH="programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so"
+          if [ -f "$SO_PATH" ]; then
+            echo "Deploying from $SO_PATH..."
             /tmp/solana-release/bin/solana program deploy \
-              programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
+              "$SO_PATH" \
               --keypair /tmp/wallet.json \
               --program-id "$PROGRAM_PUBKEY" \
               --url devnet 2>&1
           else
-            echo "ERROR: .so not found"
+            echo "ERROR: .so not found at $SO_PATH"
             ls programs/hub-evidence-anchor/target/deploy/ 2>/dev/null || echo "deploy dir missing"
             exit 1
           fi
