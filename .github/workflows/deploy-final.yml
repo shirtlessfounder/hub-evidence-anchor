@@ -42,13 +42,9 @@ print(f'Keypair saved: {len(keypair_bytes)} bytes')
       - name: Deploy
         run: |
           /tmp/solana-release/bin/solana program deploy \
-            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
+            programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair target/deploy/hub_evidence_anchor-keypair.json \
             --url devnet
-
-      - name: Verify
-        run: |
-          /tmp/solana-release/bin/solana program show 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA --url devnet
 
       - name: Verify
         run: |
