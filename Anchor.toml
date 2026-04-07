@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-hub_evidence_anchor = "Fksv5UYJErj7au37USPeRJm7MP2QtyQ3XsvRVqc4jBED"
+hub_evidence_anchor = "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"
 
 [provider]
 cluster = "devnet"

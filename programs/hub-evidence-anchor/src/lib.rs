@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use sha2::{Sha256, Digest};
 
-declare_id!("Fksv5UYJErj7au37USPeRJm7MP2QtyQ3XsvRVqc4jBED");
+declare_id!("spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf");
 
 #[program]
 pub mod hub_evidence_anchor {
