@@ -36,7 +36,9 @@ print(f'Keypair: {len(kb)} bytes')
         run: |
           mkdir -p target/deploy
           cp /tmp/deploy-keypair.json target/deploy/hub_evidence_anchor-keypair.json
-          echo "Program keypair: $(cat target/deploy/hub_evidence_anchor-keypair.json | python3 -c 'import sys,json,base64; print(base64.b64encode(json.load(sys.stdin)).decode())')"
+          echo "Keypair pubkey: $(cat target/deploy/hub_evidence_anchor-keypair.json | python3 -c 'import sys,json,base64; print(base64.b64encode(json.load(sys.stdin)).decode())')"
+          echo "Workspace: $GITHUB_WORKSPACE"
+          echo "PWD: $(pwd)"
 
       - name: Install Solana CLI
         run: |
@@ -51,7 +53,10 @@ print(f'Keypair: {len(kb)} bytes')
           anchor --version
 
       - name: Build
-        run: anchor build
+        run: |
+          pwd
+          ls -la target/deploy/
+          anchor build
 
       - name: Deploy
         run: |
