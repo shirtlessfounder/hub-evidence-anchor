@@ -101,7 +101,7 @@ PYEOF
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair /tmp/keypair.json \
             --url devnet \
-            --commitment finalized
+            
 
       - name: Verify
         run: |
