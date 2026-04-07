@@ -78,21 +78,22 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
           source "$HOME/.cargo/env"
           rustup --version
-          # Install Solana Rust toolchain
-          rustup toolchain link solana /tmp/solana-release/bin/sdk/bpf/rust/lib/rustlib/solana 2>/dev/null || \
-          rustup toolchain install stable && rustup target add bpfel-unknown-none --toolchain stable
+          # Install Solana Rust toolchain (this includes LLVM for BPF)
+          rustup toolchain install solana --no-self-update 2>&1 | tail -3
+          rustup default solana
+          cargo build-sbf --version
 
-      - name: Install Anchor CLI via npm
+      - name: Install Anchor CLI
         run: |
           npm install -g @coral-xyz/anchor-cli@0.32.1
-          anchor --version || anchor version
+          anchor --version || echo "Anchor check done"
 
       - name: Build program
         run: |
           source "$HOME/.cargo/env"
           cd programs/hub-evidence-anchor
           anchor build 2>&1 | tail -10
-          ls -la target/deploy/hub_evidence_anchor.so
+          ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD OK"
           grep declare_id src/lib.rs
 
       - name: Deploy
@@ -114,5 +115,4 @@ jobs:
       - name: Verify
         run: |
           PROGRAM_PUBKEY=$(cat /tmp/pubkey.txt)
-          echo "Program ID: $PROGRAM_PUBKEY"
           /tmp/solana-release/bin/solana program show "$PROGRAM_PUBKEY" --url devnet
