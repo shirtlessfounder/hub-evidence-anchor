@@ -19,7 +19,7 @@ jobs:
           WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
           python3 << 'PYEOF'
-          import json, base64
+          import json, base64, os
 
           ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
           secret = os.environ.get('WALLET_JSON', '').strip()
