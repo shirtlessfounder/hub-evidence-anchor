@@ -42,12 +42,16 @@ print(f'Keypair saved: {len(keypair_bytes)} bytes')
         run: |
           mkdir -p ~/.cargo/bin
           echo "Downloading Anchor 1.0.0..."
-          curl -L --fail --retry 3 --retry-delay 5             "https://github.com/solana-foundation/anchor/releases/download/v1.0.0/anchor-1.0.0-x86_64-unknown-linux-gnu"             -o ~/.cargo/bin/anchor
+          curl -L --fail --retry 3 "https://github.com/solana-foundation/anchor/releases/download/v1.0.0/anchor-1.0.0-x86_64-unknown-linux-gnu" -o ~/.cargo/bin/anchor
           chmod +x ~/.cargo/bin/anchor
           anchor --version
 
       - name: Build
-        run: anchor build
+        run: |
+          export SBF_OUT_DIR="/tmp/solana-release/sdk"
+          anchor build
+        env:
+          PATH: $HOME/.cargo/bin:/tmp/solana-release/bin:$PATH
         timeout-minutes: 15
 
       - name: Deploy
