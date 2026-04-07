@@ -13,11 +13,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: bpfel-unknown-none, bpfeb-unknown-none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Install Solana CLI
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v${{ env.SOLANA_CLI_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
-          /tmp/solana-release/bin/solana --version
+
+      - name: Install Anchor CLI via npm
+        run: |
+          npm install -g @coral-xyz/anchor-cli@0.30.0
+          anchor --version || echo "Anchor installed"
 
       - name: Decode wallet
         env:
@@ -39,8 +53,7 @@ jobs:
           if raw is None:
               try:
                   raw = base64.b64decode(secret)
-                  if len(raw) != 64:
-                      raw = None
+                  if len(raw) != 64: raw = None
               except Exception:
                   raw = None
           if raw is None:
@@ -61,10 +74,10 @@ jobs:
 
       - name: Airdrop SOL
         run: |
+          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v${{ env.SOLANA_CLI_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           PROGRAM_PUBKEY=$(cat /tmp/pubkey.txt)
-          echo "Airdropping to: $PROGRAM_PUBKEY"
           for i in 1 2 3 4 5; do
-            echo "Airdrop attempt $i..."
+            echo "Airdrop $i to $PROGRAM_PUBKEY..."
             if /tmp/solana-release/bin/solana airdrop 2 "$PROGRAM_PUBKEY" --url devnet 2>&1 | grep -q "Success"; then
               echo "Airdrop $i succeeded"
               break
@@ -73,24 +86,8 @@ jobs:
           done
           /tmp/solana-release/bin/solana balance "$PROGRAM_PUBKEY" --url devnet
 
-      - name: Install Rust + Solana toolchain
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
-          source "$HOME/.cargo/env"
-          rustup --version
-          # Install Solana Rust toolchain (this includes LLVM for BPF)
-          rustup toolchain install solana --no-self-update 2>&1 | tail -3
-          rustup default solana
-          cargo build-sbf --version
-
-      - name: Install Anchor CLI
-        run: |
-          npm install -g @coral-xyz/anchor-cli@0.32.1
-          anchor --version || echo "Anchor check done"
-
       - name: Build program
         run: |
-          source "$HOME/.cargo/env"
           cd programs/hub-evidence-anchor
           anchor build 2>&1 | tail -10
           ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD OK"
@@ -99,7 +96,6 @@ jobs:
       - name: Deploy
         run: |
           PROGRAM_PUBKEY=$(cat /tmp/pubkey.txt)
-          echo "Program ID: $PROGRAM_PUBKEY"
           SO_PATH="programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so"
           if [ -f "$SO_PATH" ]; then
             /tmp/solana-release/bin/solana program deploy \
