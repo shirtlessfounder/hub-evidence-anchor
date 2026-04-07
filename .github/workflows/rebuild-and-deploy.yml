@@ -100,13 +100,11 @@ jobs:
 
       - name: Deploy
         run: |
-          PROGRAM_PUBKEY=$(cat /tmp/pubkey.txt)
           SO_PATH="programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so"
           if [ -f "$SO_PATH" ]; then
             /tmp/solana-release/bin/solana program deploy \
               "$SO_PATH" \
               --keypair /tmp/wallet.json \
-              --program-id "$PROGRAM_PUBKEY" \
               --url devnet 2>&1
           else
             echo "ERROR: .so not found at $SO_PATH"
@@ -115,5 +113,4 @@ jobs:
 
       - name: Verify
         run: |
-          PROGRAM_PUBKEY=$(cat /tmp/pubkey.txt)
-          /tmp/solana-release/bin/solana program show "$PROGRAM_PUBKEY" --url devnet
+          /tmp/solana-release/bin/solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url devnet
