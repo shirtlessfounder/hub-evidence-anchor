@@ -40,8 +40,9 @@ print(f'Keypair saved: {len(keypair_bytes)} bytes')
 
       - name: Install Anchor CLI
         run: |
-          echo "Downloading Anchor 1.0.0 for Linux..."
-          curl -L "https://github.com/solana-foundation/anchor/releases/download/v1.0.0/anchor-1.0.0-x86_64-unknown-linux-gnu" -o ~/.cargo/bin/anchor
+          mkdir -p ~/.cargo/bin
+          echo "Downloading Anchor 1.0.0..."
+          curl -L --fail --retry 3 --retry-delay 5             "https://github.com/solana-foundation/anchor/releases/download/v1.0.0/anchor-1.0.0-x86_64-unknown-linux-gnu"             -o ~/.cargo/bin/anchor
           chmod +x ~/.cargo/bin/anchor
           anchor --version
 
