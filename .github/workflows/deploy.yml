@@ -29,7 +29,7 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install Anchor CLI
-        run: cargo install anchor-cli
+        run: npm install -g @coral-xyz/anchor-cli@0.31.0
 
       - name: Build program
         run: anchor build
@@ -131,7 +131,6 @@ jobs:
           /tmp/solana-release/bin/solana program deploy \
             programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
-            --program-id $PROGRAM_ID \
             --url devnet
 
       - name: Verify
