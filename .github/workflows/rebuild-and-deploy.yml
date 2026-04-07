@@ -24,11 +24,16 @@ jobs:
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
 
-      - name: Install Rust toolchain with SBF support
+      - name: Install Rust toolchain
         run: |
-          rustup install 1.81.0 && rustup default 1.81.0
-          rustup target add sbf --toolchain 1.81.0
-          cargo +1.81.0 build-sbf --version || echo "SBF ready"
+          rustup install 1.77.0 && rustup default 1.77.0
+          rustc --version
+
+      - name: Install cargo-sbf (Solana SBF build tool)
+        run: |
+          # cargo-sbf compiles with standard Rust but produces SBF binaries
+          cargo +1.77.0 install cargo-sbf --locked
+          cargo sbf --version
 
       - name: Decode wallet
         env:
@@ -87,10 +92,7 @@ jobs:
         run: |
           cd programs/hub-evidence-anchor
           rm -f ../Cargo.lock Cargo.lock
-          # Use explicit toolchain: rustup cargo 1.81 (not Solana CLI's bundled cargo 1.94)
-          export CARGO="$HOME/.cargo/bin/cargo"
-          export PATH="$HOME/.cargo/bin:$PATH"
-          cargo +1.81.0 build-sbf 2>&1 | tail -20
+          cargo sbf build 2>&1 | tail -30
           ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
           grep declare_id src/lib.rs
 
