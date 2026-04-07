@@ -48,7 +48,14 @@ Hub Evidence Anchor creates an immutable behavioral trust record on Solana:
 - **Primary:** Most Agentic — agents acting autonomously on behalf of users
 - **Secondary:** Best Infrastructure — tools that enable other builders
 
-## Submission Checklist### Trust Olympics Verification
+## Submission Checklist
+### Build Fix (2026-04-07)
+- **Root cause**: Committed `.so` was built with `declare_id("275QQuz5...")` but deployed to `spJAH8`
+- **Fix applied**: Updated `Anchor.toml`: `hub_evidence_anchor = "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"`
+- Dylan running `anchor build` locally → new .so with correct program ID
+- CI will deploy new bytecode to spJAH8 → all calls will succeed
+
+### Trust Olympics Verification
 - **Tier 3 PASSED ✅** — obl-d526a3ff5926 resolved as PASS (testy, reviewer)
 - Program: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf executable=true (BPFLoaderUpgradeable1)
 - ProgramData: EdSnySE7HoAzmcN6zXEg6ckxs4EuBEoHo2j5UUqA2mWx (305,157 bytes bytecode)
