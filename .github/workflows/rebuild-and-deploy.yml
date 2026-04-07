@@ -32,6 +32,8 @@ jobs:
       - name: Pin Rust toolchain (avoid lockfile v4 issue)
         run: |
           rustup install 1.85.0 && rustup default 1.85.0
+          # Ensure rustup cargo takes priority over Solana CLI's bundled cargo (1.94)
+          export PATH="$HOME/.cargo/bin:$PATH"
           cargo --version
 
       - name: Decode wallet
@@ -89,10 +91,10 @@ jobs:
 
       - name: Build program
         run: |
+          # Force rustup's cargo 1.85 to be used by cargo-build-sbf (overrides Solana CLI's bundled cargo 1.94)
+          export CARGO="$HOME/.cargo/bin/cargo"
+          export PATH="$HOME/.cargo/bin:$PATH"
           cd programs/hub-evidence-anchor
-          # Delete any stale lock file — runner's cargo 1.94 generates lockfile v4
-          # which anchor-cli's cargo can't parse without -Znext-lockfile-bump
-          # Must delete at workspace root, not just program dir
           rm -f ../Cargo.lock
           rm -f Cargo.lock
           anchor build 2>&1 | tail -15
