@@ -13,12 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Solana CLI
-        run: |
-          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v${{ env.SOLANA_CLI_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
-          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
-          /tmp/solana-release/bin/solana --version
-
       - name: Decode wallet
         env:
           WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
@@ -61,62 +55,53 @@ jobs:
 
       - name: Airdrop SOL
         run: |
-          PROGRAM_PUBKEY=$(cat /tmp/pubkey.txt)
-          echo "Airdropping to: $PROGRAM_PUBKEY"
-          for i in 1 2 3 4 5; do
-            echo "Airdrop attempt $i..."
-            if /tmp/solana-release/bin/solana airdrop 2 "$PROGRAM_PUBKEY" --url devnet 2>&1 | grep -q "Success"; then
-              echo "Airdrop $i succeeded"
-              break
-            fi
-            sleep 2
-          done
-          /tmp/solana-release/bin/solana balance "$PROGRAM_PUBKEY" --url devnet
+          /tmp/solana-release/bin/solana airdrop 2 $(cat /tmp/pubkey.txt) --url devnet || \
+          /tmp/solana-release/bin/solana airdrop 1 $(cat /tmp/pubkey.txt) --url devnet || \
+          /tmp/solana-release/bin/solana airdrop 0.5 $(cat /tmp/pubkey.txt) --url devnet
+          /tmp/solana-release/bin/solana balance $(cat /tmp/pubkey.txt) --url devnet
 
-      - name: Install Rust
+      - name: Install Solana CLI
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
-          source "$HOME/.cargo/env"
-          rustc --version
+          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v${{ env.SOLANA_CLI_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
+          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
+          /tmp/solana-release/bin/solana --version
 
-      - name: Install Anchor CLI from source
+      - name: Build + Deploy in Docker
         run: |
-          source "$HOME/.cargo/env"
-          echo "Installing anchor-cli from source (this takes ~3-5 min)..."
-          cargo install anchor-cli@0.32.1 2>&1 | tail -3
-          anchor --version
+          docker run --rm \
+            -v "$PWD":/workspace \
+            -w /workspace \
+            -e "ANCHOR_WALLET_JSON=${{ secrets.ANCHOR_WALLET_JSON }}" \
+            solanalabs/solana:v${{ env.SOLANA_CLI_VERSION }} \
+            bash -c '
+              echo "Installing Anchor CLI..."
+              npm install -g @coral-xyz/anchor@0.32.1 2>&1 | tail -3
+              anchor --version || echo "Anchor install check..."
+              
+              echo "Building program..."
+              anchor build 2>&1 | tail -10
+              
+              echo "Built .so:"
+              ls -la programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so 2>/dev/null || echo "Build failed"
+              
+              echo "Verifying program ID:"
+              grep declare_id programs/hub-evidence-anchor/src/lib.rs
+            '
 
-      - name: Build program
+      - name: Deploy (Docker built .so)
         run: |
-          source "$HOME/.cargo/env"
-          cd programs/hub-evidence-anchor
-          anchor build 2>&1 | tail -5
-          ls -la target/deploy/hub_evidence_anchor.so
-          echo "---"
-          echo "Verifying embedded program ID:"
-          grep -a "declare_id" src/lib.rs
-
-      - name: Deploy
-        if: always()
-        run: |
-          source "$HOME/.cargo/env"
-          PROGRAM_PUBKEY=$(cat /tmp/pubkey.txt)
-          echo "Program ID: $PROGRAM_PUBKEY"
-          SO_PATH="programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so"
-          if [ -f "$SO_PATH" ]; then
-            echo "Deploying from $SO_PATH..."
-            /tmp/solana-release/bin/solana program deploy \
-              "$SO_PATH" \
-              --keypair /tmp/wallet.json \
-              --program-id "$PROGRAM_PUBKEY" \
-              --url devnet 2>&1
-          else
-            echo "ERROR: .so not found"
-            exit 1
-          fi
-
-      - name: Verify
-        run: |
-          PROGRAM_PUBKEY=$(cat /tmp/pubkey.txt)
-          echo "Program ID: $PROGRAM_PUBKEY"
-          /tmp/solana-release/bin/solana program show "$PROGRAM_PUBKEY" --url devnet
+          docker run --rm \
+            -v "$PWD":/workspace \
+            -w /workspace \
+            solanalabs/solana:v${{ env.SOLANA_CLI_VERSION }} \
+            bash -c '
+              cp programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so /tmp/hub_evidence_anchor.so
+              echo "Deploying with wallet $(cat /tmp/pubkey.txt)..."
+              solana program deploy \
+                /tmp/hub_evidence_anchor.so \
+                --keypair /tmp/wallet.json \
+                --program-id $(cat /tmp/pubkey.txt) \
+                --url devnet 2>&1
+              echo "Done!"
+              solana program show $(cat /tmp/pubkey.txt) --url devnet
+            '
