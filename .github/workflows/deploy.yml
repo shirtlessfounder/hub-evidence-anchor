@@ -23,58 +23,71 @@ jobs:
           import json, base64, os
 
           secret = os.environ.get('WALLET_JSON', '').strip()
-          print(f'Secret len={len(secret)}, starts={secret[:10]}')
+          print(f'Secret len={len(secret)}')
+
+          decoded = False
 
           # Format 1: raw base64 bytes -> write binary
           try:
               raw = base64.b64decode(secret)
               if len(raw) == 64:
-                  open('/tmp/keypair.bin', 'wb').write(raw)
-                  print(f'Format: raw b64 -> binary (64 bytes)')
-                  exit(0)
-          except Exception as e:
-              print(f'Format 1 failed: {e}')
+                  open('/tmp/keypair.json', 'wb').write(raw)
+                  print('Format: raw b64 -> binary')
+                  decoded = True
+          except: pass
 
           # Format 2: b64 of JSON string -> parse -> write JSON
-          try:
-              arr = json.loads(base64.b64decode(secret).decode('utf-8'))
-              if isinstance(arr, list) and len(arr) == 64:
-                  with open('/tmp/keypair.json', 'w') as f:
-                      json.dump(arr, f)
-                  print(f'Format: b64(JSON) -> JSON file')
-                  exit(0)
-          except Exception as e:
-              print(f'Format 2 failed: {e}')
+          if not decoded:
+              try:
+                  arr = json.loads(base64.b64decode(secret).decode('utf-8'))
+                  if isinstance(arr, list) and len(arr) == 64:
+                      with open('/tmp/keypair.json', 'w') as f:
+                          json.dump(arr, f)
+                      print('Format: b64(JSON) -> JSON')
+                      decoded = True
+              except: pass
 
           # Format 3: plain JSON array
-          try:
-              arr = json.loads(secret)
-              if isinstance(arr, list) and len(arr) == 64:
-                  with open('/tmp/keypair.json', 'w') as f:
-                      json.dump(arr, f)
-                  print(f'Format: plain JSON array')
-                  exit(0)
-          except Exception as e:
-              print(f'Format 3 failed: {e}')
+          if not decoded:
+              try:
+                  arr = json.loads(secret)
+                  if isinstance(arr, list) and len(arr) == 64:
+                      with open('/tmp/keypair.json', 'w') as f:
+                          json.dump(arr, f)
+                      print('Format: plain JSON array')
+                      decoded = True
+              except: pass
 
           # Format 4: base58-encoded raw 64 bytes -> decode -> write as JSON array
-          try:
-              ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-              n = 0
-              for c in secret:
-                  if c not in ALPHABET:
-                      raise ValueError(f'not base58: {c}')
-                  n = n * 58 + ALPHABET.index(c)
-              raw = n.to_bytes(64, 'big')
-              with open('/tmp/keypair.json', 'w') as f:
-                  json.dump(list(raw), f)
-              print(f'Format: base58 -> JSON array')
-              exit(0)
-          except Exception as e:
-              print(f'Format 4 (base58) failed: {e}')
+          if not decoded:
+              try:
+                  ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+                  n = 0
+                  for c in secret:
+                      if c not in ALPHABET:
+                          raise ValueError(f'not base58: {c}')
+                      n = n * 58 + ALPHABET.index(c)
+                  raw = n.to_bytes(64, 'big')
+                  with open('/tmp/keypair.json', 'w') as f:
+                      json.dump(list(raw), f)
+                  print('Format: base58 -> JSON array')
+                  decoded = True
+                  # Save pubkey for airdrop
+                  pubkey_bytes = raw[32:]
+                  npub = int.from_bytes(pubkey_bytes, 'big')
+                  pubkey = ''
+                  while npub > 0:
+                      npub, rem = divmod(npub, 58)
+                      pubkey = ALPHABET[rem] + pubkey
+                  print(f'PUBKEY: {pubkey}')
+                  with open('/tmp/pubkey.txt', 'w') as f:
+                      f.write(pubkey)
+              except Exception as e:
+                  print(f'Format 4 (base58) failed: {e}')
 
-          print('ERROR: cannot decode wallet')
-          exit(1)
+          if not decoded:
+              print('ERROR: cannot decode wallet')
+              exit(1)
           PYEOF
 
       - name: Install Solana CLI
@@ -83,9 +96,11 @@ jobs:
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
 
-      - name: Airdrop SOL
+      - name: Airdrop SOL to deploy wallet
         run: |
-          /tmp/solana-release/bin/solana airdrop 2 --url devnet || echo "Airdrop may have rate-limited"
+          PUBKEY=$(cat /tmp/pubkey.txt)
+          echo "Airdropping to: $PUBKEY"
+          /tmp/solana-release/bin/solana airdrop 2 "$PUBKEY" --url devnet || echo "Airdrop may have rate-limited"
 
       - name: Deploy pre-built .so
         run: |
