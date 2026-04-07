@@ -24,10 +24,9 @@ jobs:
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
 
-      - name: Install Anchor CLI (build from source)
+      - name: Install Anchor CLI (npm, matches Anchor.toml anchor_version = 0.30.0)
         run: |
-          # Build from source to avoid GLIBC 2.38/2.39 mismatch and avm issues
-          cargo install anchor-cli --version 0.30.0
+          npm install -g @coral-xyz/anchor-cli@0.30.0
           anchor --version
 
       - name: Decode wallet
