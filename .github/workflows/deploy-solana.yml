@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/deploy-solana.yml
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
   deploy:
