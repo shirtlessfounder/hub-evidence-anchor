@@ -96,6 +96,7 @@ jobs:
           /tmp/solana-release/bin/solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair /tmp/keypair.json \
+            --program-id "$PROGRAM_PUBKEY" \
             --url devnet
 
       - name: Verify
