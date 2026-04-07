@@ -20,6 +20,8 @@ jobs:
           WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
           python3 << 'PYEOF'
+          # Diagnostic: show first bytes of keypair file
+          print("HEXDUMP keypair: $(xxd -l 16 -p /tmp/keypair.bin 2>/dev/null || od -An -tx1 -N16 /tmp/keypair.bin 2>/dev/null || echo cannot dump)")
           import json, base64, os
 
           ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
@@ -93,6 +95,8 @@ jobs:
           with open('/tmp/pubkey.txt', 'w') as f:
               f.write(pubkey)
           PYEOF
+          # Diagnostic: show first bytes of keypair file
+          print("HEXDUMP keypair: $(xxd -l 16 -p /tmp/keypair.bin 2>/dev/null || od -An -tx1 -N16 /tmp/keypair.bin 2>/dev/null || echo cannot dump)")
 
       - name: Install Solana CLI
         run: |
