@@ -63,25 +63,17 @@ print(f'Keypair saved: {len(keypair_bytes)} bytes')
           PATH: "/home/runner/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
         timeout-minutes: 25
 
-      - name: Build
-        run: |
-          export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:$PATH"
-          export SBF_OUT_DIR="/tmp/solana-release/sdk"
-          echo "Anchor:" && anchor --version
-          echo "Solana:" && solana --version
-          echo "Building..." && anchor build
-
-      - name: Deploy
+      - name: Deploy pre-built .so
         run: |
           export PATH="/tmp/solana-release/bin:$PATH"
+          echo "Deploying committed .so (no build needed):"
+          ls -la programs/hub-evidence-anchor/hub_evidence_anchor.so
           echo "Requesting airdrop..."
-          solana airdrop 2 --url devnet --keypair /tmp/deploy-keypair.json || echo "Airdrop failed (may already be funded)"
+          solana airdrop 2 --url devnet --keypair /tmp/deploy-keypair.json || echo "Airdrop may have failed"
           echo "Deploying program..."
-          solana program deploy target/deploy/hub_evidence_anchor.so --keypair /tmp/deploy-keypair.json --url devnet
+          solana program deploy programs/hub-evidence-anchor/hub_evidence_anchor.so --keypair /tmp/deploy-keypair.json --url devnet
 
       - name: Verify
         run: |
           export PATH="/tmp/solana-release/bin:$PATH"
-          echo "Waiting for confirmation..."
-          sleep 5
-          solana program show 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA --url devnet || echo "275Q not found — trying alternative IDs"
+          solana program show 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA --url devnet
