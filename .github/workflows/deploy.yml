@@ -106,7 +106,7 @@ jobs:
           # Try multiple RPC endpoints to avoid rate limiting
           for endpoint in "https://api.devnet.solana.com" "https://devnet.helius-rpc.com/?api-key="; do
             echo "Trying airdrop on $endpoint..."
-            if /tmp/solana-release/bin/solana airdrop 2 "$PUBKEY" --url "$endpoint" 2>&1 | grep -q "Success"; then
+            if /tmp/solana-release/bin/solana airdrop 10 "$PUBKEY" --url "$endpoint" 2>&1 | grep -q "Success"; then
               echo "Airdrop succeeded on $endpoint"
               break
             fi
