@@ -8,7 +8,7 @@
  *
  * Usage:
  *   HUB_AUTHORITY_KEYPAIR=/path/to/keypair.json \
- *   PROGRAM_ID=ESagT1sQne5pwpRXLuh8Yh45EmBWBvNywgpsxrcnqsip \
+ *   PROGRAM_ID=8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k \
  *   SOLANA_RPC=https://api.devnet.solana.com \
  *   node scripts/test-full-flow.ts
  *
@@ -31,7 +31,7 @@ import * as crypto from "crypto";
 // ─── Config ──────────────────────────────────────────────────────────────
 
 const PROGRAM_ID = new PublicKey(
-  process.env.PROGRAM_ID || "ESagT1sQne5pwpRXLuh8Yh45EmBWBvNywgpsxrcnqsip"
+  process.env.PROGRAM_ID || "8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k"
 );
 const SOLANA_RPC = process.env.SOLANA_RPC || "https://api.devnet.solana.com";
 const KEYPAIR_PATH = process.env.HUB_AUTHORITY_KEYPAIR || "./keypair.json";

@@ -6,7 +6,9 @@ on:
   workflow_dispatch: {}
 
 env:
-  PROGRAM_ID: ESagT1sQne5pwpRXLuh8Yh45EmBWBvNywgpsxrcnqsip
+  # NOTE: Program ID is derived from the program wallet keypair generated in CI
+  # This is printed in the Airdrop step
+  PROGRAM_ID: placeholder
 
 jobs:
   deploy:
@@ -87,38 +89,67 @@ jobs:
           /tmp/solana-release/bin/solana --version
 
       - name: Airdrop SOL
+        env:
+          PROGRAM_WALLET_JSON: ${{ secrets.PROGRAM_WALLET_JSON }}
         run: |
-          # Faucet can't credit program accounts. Generate a fresh deploy wallet.
-          echo "Generating fresh deploy wallet..."
-          /tmp/solana-release/bin/solana-keygen new --no-passphrase -o /tmp/deploy-wallet.json 2>/dev/null
-          DEPLOY_PUBKEY=$(/tmp/solana-release/bin/solana-keygen pubkey /tmp/deploy-wallet.json)
-          echo "Deploy wallet: $DEPLOY_PUBKEY"
-          echo "$DEPLOY_PUBKEY" > /tmp/deploy-pubkey.txt
+          # Write the program wallet (same keypair each time = fixed program ID)
+          python3 << 'PYEOF'
+          import os, json, base64
+          ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+          secret = os.environ.get("PROGRAM_WALLET_JSON", "").strip()
+          raw = None
+          if len(secret) == 88:
+              try:
+                  n = 0
+                  for c in secret:
+                      n = n * 58 + ALPHABET.index(c)
+                  raw = n.to_bytes(64, "big")
+              except ValueError:
+                  raw = None
+          if raw is None:
+              raw = base64.b64decode(secret)
+          with open("/tmp/program-wallet.json", "w") as f:
+              json.dump(list(raw), f)
+          pubkey_bytes = raw[32:]
+          npub = int.from_bytes(pubkey_bytes, "big")
+          addr = ""
+          while npub > 0:
+              npub, rem = divmod(npub, 58)
+              addr = ALPHABET[rem] + addr
+          with open("/tmp/program-pubkey.txt", "w") as f:
+              f.write(addr)
+          print(f"PROGRAM_PUBKEY={addr}")
+          with open(os.environ["GITHUB_ENV"], "a") as f:
+              f.write(f"\nPROGRAM_PUBKEY={addr}\n")
+          PYEOF
 
-          # Try multiple RPC endpoints to avoid rate limiting
-          for endpoint in "https://api.devnet.solana.com" "https://devnet.helius-rpc.com/?api-key="; do
+          PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
+          echo "Program wallet (program ID): $PROGRAM_PUBKEY"
+
+          # Airdrop (fresh wallet, should work)
+          for endpoint in "https://api.devnet.solana.com"; do
             echo "Airdrop attempt on $endpoint..."
-            if /tmp/solana-release/bin/solana airdrop 10 "$DEPLOY_PUBKEY" --url "$endpoint" 2>&1 | grep -q "Success"; then
-              echo "Airdrop succeeded on $endpoint"
+            if /tmp/solana-release/bin/solana airdrop 10 "$PROGRAM_PUBKEY" --url "$endpoint" 2>&1 | grep -q "Success"; then
+              echo "Airdrop succeeded"
               break
             fi
-            echo "Rate-limited on $endpoint, trying next..."
-            sleep 1
+            echo "Rate-limited, retrying in 2s..."
+            sleep 2
           done
           echo "Final balance:"
-          /tmp/solana-release/bin/solana balance "$DEPLOY_PUBKEY" --url https://api.devnet.solana.com
+          /tmp/solana-release/bin/solana balance "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com
 
       - name: Deploy
         run: |
-          DEPLOY_PUBKEY=$(cat /tmp/deploy-pubkey.txt)
-          echo "Deploying to program ID: $PROGRAM_ID"
-          echo "Signing with wallet: $DEPLOY_PUBKEY"
+          PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
+          echo "Deploying to program ID: $PROGRAM_PUBKEY"
+          echo "Signing with: $PROGRAM_PUBKEY"
           /tmp/solana-release/bin/solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
-            --keypair /tmp/deploy-wallet.json \
-            --program-id $PROGRAM_ID \
+            --keypair /tmp/program-wallet.json \
             --url devnet
 
       - name: Verify
         run: |
-          /tmp/solana-release/bin/solana program show $PROGRAM_ID --url devnet
+          PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
+          /tmp/solana-release/bin/solana program show "$PROGRAM_PUBKEY" --url devnet

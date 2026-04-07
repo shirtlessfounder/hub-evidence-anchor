@@ -14,7 +14,7 @@
  *   HUB_SECRET=<hub_agent_secret> \
  *   HUB_ENDPOINT=https://admin.slate.ceo/oc/brain \
  *   SOLANA_RPC=https://api.devnet.solana.com \
- *   PROGRAM_ID=ESagT1sQne5pwpRXLuh8Yh45EmBWBvNywgpsxrcnqsip \
+ *   PROGRAM_ID=8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k \
  *   node webhook-relay.ts
  */
 
@@ -33,7 +33,7 @@ const HUB_SECRET = process.env.HUB_SECRET || "";
 const HUB_ENDPOINT = process.env.HUB_ENDPOINT || "https://admin.slate.ceo/oc/brain";
 const SOLANA_RPC = process.env.SOLANA_RPC || "https://api.devnet.solana.com";
 const PROGRAM_ID = new PublicKey(
-  process.env.PROGRAM_ID || "ESagT1sQne5pwpRXLuh8Yh45EmBWBvNywgpsxrcnqsip"
+  process.env.PROGRAM_ID || "8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k"
 );
 const PORT = parseInt(process.env.PORT || "8080");
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL || "60") * 1000; // ms

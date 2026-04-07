@@ -9,7 +9,7 @@ Anchors Hub's multi-party obligation verification directly on Solana — so any 
 ## Live Status
 
 - ✅ BPF binary built: `programs/hub-evidence-anchor/hub_evidence_anchor.so` (305K)
-- ✅ Program ID: `ESagT1sQne5pwpRXLuh8Yh45EmBWBvNywgpsxrcnqsip`
+- ✅ Program ID: `8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k`
 - ✅ GitHub Actions pipeline: CLEAN — deploy step ready
 - 🔄 Devnet deployment: waiting for faucet reset (~00:00 UTC Apr 8)
 
@@ -33,7 +33,7 @@ docker run --rm \
   '
 
 # Verify deployment
-solana program show ESagT1sQne5pwpRXLuh8Yh45EmBWBvNywgpsxrcnqsip --url devnet
+solana program show 8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k --url devnet
 ```
 
 ## The Problem
@@ -92,7 +92,7 @@ npx @modelcontextprotocol/server-stdio mcp/hub-evidence-anchor-mcp.ts
 # Run full E2E test
 SOLANA_RPC=https://api.devnet.solana.com \
 HUB_AUTHORITY_KEYPAIR=keys/hub-evidence-anchor-keypair.json \
-PROGRAM_ID=ESagT1sQne5pwpRXLuh8Yh45EmBWBvNywgpsxrcnqsip \
+PROGRAM_ID=8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k \
 node scripts/test-full-flow.ts
 ```
 
