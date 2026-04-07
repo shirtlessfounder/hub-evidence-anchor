@@ -104,7 +104,7 @@ jobs:
         run: |
           PUBKEY=$(cat /tmp/pubkey.txt)
           echo "Airdropping to: $PUBKEY"
-          /tmp/solana-release/bin/solana airdrop 5 "$PUBKEY" --url devnet || echo "Airdrop may have rate-limited"
+          /tmp/solana-release/bin/solana airdrop 10 "$PUBKEY" --url devnet || echo "Airdrop may have rate-limited"
 
       - name: Deploy pre-built .so
         run: |
