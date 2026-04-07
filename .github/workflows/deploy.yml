@@ -11,90 +11,10 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Decode wallet keypair
-        env:
-          WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
-        run: |
-          python3 << 'PYEOF'
-          # Diagnostic: show first bytes of keypair file
-          import json, base64, os
-
-          ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-          secret = os.environ.get('WALLET_JSON', '').strip()
-          print(f'Secret len={len(secret)}')
-
-          decoded = False
-          raw = None
-
-          # Format 1: raw base64 bytes -> write binary
-          if not decoded:
-              try:
-                  raw = base64.b64decode(secret)
-                  if len(raw) == 64:
-                      open('/tmp/keypair.bin', 'wb').write(raw)
-                      print('Format: raw b64 -> binary')
-                      decoded = True
-                  else:
-                      raw = None
-              except: pass
-
-          # Format 2: b64 of JSON string -> parse -> write binary
-          if not decoded:
-              try:
-                  arr = json.loads(base64.b64decode(secret).decode('utf-8'))
-                  if isinstance(arr, list) and len(arr) == 64:
-                      raw = bytes(arr)
-                      open('/tmp/keypair.bin', 'wb').write(raw)
-                      print('Format: b64(JSON) -> binary')
-                      decoded = True
-              except: pass
-
-          # Format 3: plain JSON array -> write binary
-          if not decoded:
-              try:
-                  arr = json.loads(secret)
-                  if isinstance(arr, list) and len(arr) == 64:
-                      raw = bytes(arr)
-                      open('/tmp/keypair.bin', 'wb').write(raw)
-                      print('Format: plain JSON array -> binary')
-                      decoded = True
-              except: pass
-
-          # Format 4: base58-encoded raw 64 bytes -> write binary
-          if not decoded:
-              try:
-                  n = 0
-                  for c in secret:
-                      if c not in ALPHABET:
-                          raise ValueError('not base58')
-                      n = n * 58 + ALPHABET.index(c)
-                  raw = n.to_bytes(64, 'big')
-                  open('/tmp/keypair.bin', 'wb').write(raw)
-                  print('Format: base58 -> binary')
-                  decoded = True
-              except Exception as e:
-                  print(f'Format 4 failed: {e}')
-
-          if not decoded:
-              print('ERROR: cannot decode wallet')
-              exit(1)
-
-          # Extract pubkey for airdrop
-          pubkey_bytes = raw[32:]
-          npub = int.from_bytes(pubkey_bytes, 'big')
-          pubkey = ''
-          while npub > 0:
-              npub, rem = divmod(npub, 58)
-              pubkey = ALPHABET[rem] + pubkey
-          print(f'PUBKEY: {pubkey}')
-          with open('/tmp/pubkey.txt', 'w') as f:
-              f.write(pubkey)
-          PYEOF
-          # Diagnostic: show first bytes of keypair file
 
       - name: Install Solana CLI
         run: |
@@ -102,14 +22,48 @@ jobs:
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
 
-      - name: Airdrop SOL to deploy wallet
+      - name: Decode wallet and airdrop
+        env:
+          WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
+          set -e
+          python3 -c "
+import os, json, base64
+
+ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+secret = os.environ.get('WALLET_JSON', '').strip()
+print('Secret len:', len(secret), 'start:', secret[:10])
+
+# Try formats in order
+# Format: bs58(raw 64-byte keypair) -> big-endian decode
+try:
+    n = 0
+    for c in secret:
+        n = n * 58 + ALPHABET.index(c)
+    raw = n.to_bytes(64, 'big')
+    open('/tmp/keypair.bin', 'wb').write(raw)
+    print('Decoded bs58 -> 64 bytes OK')
+    pubkey_bytes = raw[32:]
+    npub = int.from_bytes(pubkey_bytes, 'big')
+    addr = ''
+    while npub > 0:
+        npub, rem = divmod(npub, 58)
+        addr = ALPHABET[rem] + addr
+    open('/tmp/pubkey.txt', 'w').write(addr)
+    print('Pubkey:', addr)
+except Exception as e:
+    print('Error:', e)
+    exit(1)
+"
           PUBKEY=$(cat /tmp/pubkey.txt)
-          echo "Airdropping to: $PUBKEY"
+          echo "Airdropping 10 SOL to: $PUBKEY"
           /tmp/solana-release/bin/solana airdrop 10 "$PUBKEY" --url devnet || echo "Airdrop may have rate-limited"
 
       - name: Deploy pre-built .so
         run: |
+          echo "Files:"
+          ls -la /tmp/keypair* /tmp/pubkey* 2>/dev/null || echo "No files found"
+          echo "Keypair first 3 bytes (hex): $(od -An -tx1 -N3 /tmp/keypair.bin 2>/dev/null || echo 'cannot read')"
           /tmp/solana-release/bin/solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair /tmp/keypair.bin \
