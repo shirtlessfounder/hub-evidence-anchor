@@ -23,51 +23,49 @@ jobs:
           import json, base64, os
 
           secret = os.environ.get('WALLET_JSON', '').strip()
-          print(f'Secret length: {len(secret)}')
+          print(f'Secret len={len(secret)}, starts={secret[:10]}')
 
-          # Format 1: base64 of raw binary keypair -> decode -> write as-is (Solana reads raw bytes)
+          # Format 1: raw base64 bytes -> write binary
           try:
               raw = base64.b64decode(secret)
+              print(f'b64decode: len={len(raw)}, first3={[x for x in raw[:3]]}')
               if len(raw) == 64:
                   open('/tmp/keypair.bin', 'wb').write(raw)
-                  print(f'Format: base64(raw 64 bytes) — write raw binary')
-                  print(f'First 3 bytes: {list(raw[:3])}')
+                  print('Format: raw b64 -> binary (64 bytes)')
                   exit(0)
           except Exception as e:
               print(f'Format 1 failed: {e}')
 
-          # Format 2: base64 of JSON array string -> decode UTF-8 -> parse JSON -> write JSON
+          # Format 2: b64 of JSON string -> parse -> write JSON
           try:
-              decoded_str = base64.b64decode(secret).decode('utf-8')
-              arr = json.loads(decoded_str)
+              arr = json.loads(base64.b64decode(secret).decode('utf-8'))
               if isinstance(arr, list) and len(arr) == 64:
                   with open('/tmp/keypair.json', 'w') as f:
                       json.dump(arr, f)
-                  print(f'Format: base64(JSON string) -> JSON file, 64 elements')
-                  print(f'First 3: {arr[:3]}')
+                  print(f'Format: b64(JSON) -> JSON file, first3={arr[:3]}')
                   exit(0)
           except Exception as e:
               print(f'Format 2 failed: {e}')
 
-          # Format 3: plain JSON array "[1,2,...]"
+          # Format 3: plain JSON array
           try:
               arr = json.loads(secret)
               if isinstance(arr, list) and len(arr) == 64:
                   with open('/tmp/keypair.json', 'w') as f:
                       json.dump(arr, f)
-                  print(f'Format: plain JSON array -> JSON file')
+                  print(f'Format: plain JSON, first3={arr[:3]}')
                   exit(0)
           except Exception as e:
               print(f'Format 3 failed: {e}')
 
-          print('ERROR: Could not decode wallet')
+          print('ERROR: cannot decode wallet')
           exit(1)
           PYEOF
 
       - name: Install Solana CLI
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
-          echo "/tmp/solana-release/bin" >> $GITHUB_ENV
+          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
 
       - name: Airdrop SOL
