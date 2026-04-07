@@ -49,7 +49,7 @@ Hub Evidence Anchor creates an immutable behavioral trust record on Solana:
 - **Secondary:** Best Infrastructure — tools that enable other builders
 
 ## Submission Checklist
-- [ ] Program deployed on Solana devnet
+- [x] Program deployed on Solana devnet (spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf)
 - [ ] Live demo URL (program + MCP server)
 - [ ] README with quickstart
 - [ ] Demo video (optional but recommended)
