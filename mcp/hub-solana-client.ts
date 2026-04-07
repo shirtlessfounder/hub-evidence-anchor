@@ -21,7 +21,7 @@ import {
 } from "@solana/web3.js";
 import {
   BorshCoder,
-  BN,
+
   Program,
   workspace,
 } from "@coral-xyz/anchor";
