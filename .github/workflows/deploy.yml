@@ -3,42 +3,21 @@ name: Deploy to Solana Devnet
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      program_id:
-        description: "Program ID to deploy to"
-        required: false
-        default: "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"
+  workflow_dispatch: {}
 
 env:
-  PROGRAM_ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
+  PROGRAM_ID: placeholder
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install npm dependencies
-        run: npm install
-
-      - name: Install Anchor CLI
-        run: npm install -g @coral-xyz/anchor-cli@0.32.1
-
-      - name: Build program
-        run: anchor build
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: "true"
-
       - name: Decode program wallet
         env:
-          PROGRAM_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
+          PROGRAM_WALLET_JSON: ${{ secrets.PROGRAM_WALLET_JSON }}
         run: |
           python3 << 'PYEOF'
           import os, json, base64
@@ -105,34 +84,60 @@ jobs:
       - name: Install Solana CLI
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
-          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
-          solana --version
+          /tmp/solana-release/bin/solana --version
 
-      - name: Fund program wallet
+      - name: Airdrop SOL
         run: |
           PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
-          echo "Funding: $PROGRAM_PUBKEY"
-          for i in 1 2 3 4 5; do
-            echo "Airdrop $i..."
-            if solana airdrop 2 "$PROGRAM_PUBKEY" --url devnet 2>&1 | grep -q "Success"; then
+          echo "Airdropping to: $PROGRAM_PUBKEY"
+          # Airdrop 5 SOL per attempt, up to 20 SOL total (devnet faucet can be flaky)
+          for i in 1 2 3 4; do
+            echo "Airdrop attempt $i..."
+            if /tmp/solana-release/bin/solana airdrop 5 "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com 2>&1 | grep -q "Success"; then
               echo "Airdrop $i succeeded"
-              break
+            else
+              echo "Airdrop $i failed, retrying in 3s..."
+              sleep 3
             fi
-            sleep 2
           done
-          solana balance "$PROGRAM_PUBKEY" --url devnet
+          echo "Final balance:"
+          /tmp/solana-release/bin/solana balance "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com
 
-      - name: Deploy program
+      - name: Check if program already deployed
         run: |
           PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
-          echo "Deploying .so to: $PROGRAM_ID"
+          echo "Checking if program $PROGRAM_PUBKEY is already deployed..."
+          RESULT=$(/tmp/solana-release/bin/solana program show "$PROGRAM_PUBKEY" --url devnet 2>&1)
+          echo "Program show output: $RESULT"
+          if echo "$RESULT" | grep -q "Program with"; then
+            echo "Program already deployed at $PROGRAM_PUBKEY — skipping deploy"
+            echo "SKIP_DEPLOY=true" >> $GITHUB_ENV
+          else
+            echo "Program not found — will deploy"
+          fi
+
+      - name: Recover stale buffer if present
+        if: env.SKIP_DEPLOY != 'true'
+        run: |
+          PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
+          echo "Recovering stale buffer if any..."
+          # Try to recover any outstanding buffer from previous failed deploys
+          # This is safe to run even if there's no buffer
+          /tmp/solana-release/bin/solana program close --buffers --keypair /tmp/program-wallet.json --url devnet 2>&1 || true
+          echo "Buffer cleanup done"
+
+      - name: Deploy
+        if: env.SKIP_DEPLOY != 'true'
+        run: |
+          PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
+          echo "Deploying to program ID: $PROGRAM_PUBKEY"
           echo "Signing with: $PROGRAM_PUBKEY"
-          solana program deploy \
-            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
+          /tmp/solana-release/bin/solana program deploy \
+            programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
-            --program-id $PROGRAM_ID \
             --url devnet
 
       - name: Verify
         run: |
-          solana program show $PROGRAM_ID --url devnet
+          PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
+          /tmp/solana-release/bin/solana program show "$PROGRAM_PUBKEY" --url devnet
