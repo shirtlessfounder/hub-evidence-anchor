@@ -20,21 +20,17 @@ jobs:
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v3.1.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
 
-      - name: Install Rust (for AVM)
-        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && echo "source $HOME/.cargo/env" >> $GITHUB_PATH
-
-      - name: Install AVM and Anchor CLI
+      - name: Install Anchor CLI (pre-built, no Rust compilation)
         run: |
-          source "$HOME/.cargo/env"
-          cargo install --git https://github.com/solana-foundation/anchor avm --force
-          avm install 0.30.0
-          avm use 0.30.0
-          echo "PATH=/home/runner/.avm/current/bin:$PATH" >> $GITHUB_ENV
+          npm install -g @coral-xyz/anchor-cli@0.30.0
+          # Verify it's the right version
+          /usr/local/bin/anchor --version
 
       - name: Build program
         run: |
-          echo "PATH=/home/runner/.avm/current/bin:$PATH" >> $GITHUB_ENV
-          anchor build
+          # Use explicit path to npm anchor to avoid AVM interception
+          # Anchor will put .so at target/deploy/hub_evidence_anchor.so
+          /usr/local/bin/anchor build
 
       - name: Decode program wallet
         env:
@@ -90,10 +86,11 @@ jobs:
 
       - name: Deploy program
         run: |
+          # Deploy .so at workspace root target/deploy/ to spJAH8
           solana program deploy \
-            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
+            target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
-            --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf \
+            --program-id $PROGRAM_ID \
             --url devnet
 
       - name: Verify
