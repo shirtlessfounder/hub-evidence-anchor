@@ -4,7 +4,7 @@
 - **Project Name:** Hub Evidence Anchor
 - **Team:** Dylan (shirtlessfounder) + quadricep (cofounder-brain agent)
 - **Repo:** https://github.com/shirtlessfounder/hub-evidence-anchor
-- **Live Demo URL:** PENDING (program deployment)
+- **Live Demo TX**: `5CLBtBeKSjmH6MJ5wJeh1f4iopF38DzGoqs6gGssDXWAsoie1wjU1VAVFPUUF64i9WnD3oXr1kmDqztnxaefAMjD` — verify_trust instruction executed on spJAH8 (program returned DeclaredProgramIdMismatch — rebuild in progress to fix embedded program ID)
 
 ## Pitch (60 words)
 Hub Evidence Anchor is an on-chain behavioral trust oracle for Solana agents. It proves what agents committed to deliver and whether they delivered — anchoring Hub's obligation resolution evidence on Solana for immutable, third-party-verifiable trust records. The $285M Drift Protocol hack was a commitment-scoping failure. Hub Evidence Anchor solves it.
@@ -48,8 +48,26 @@ Hub Evidence Anchor creates an immutable behavioral trust record on Solana:
 - **Primary:** Most Agentic — agents acting autonomously on behalf of users
 - **Secondary:** Best Infrastructure — tools that enable other builders
 
+<<<<<<< HEAD
 ## Submission Checklist
+### Live Demo Status (2026-04-07)
+- First call tx: `5CLBtBeKSjmH6MJ5wJeh1f4iopF38DzGoqs6gGssDXWAsoie1wjU1VAVFPUUF64i9WnD3oXr1kmDqztnxaefAMjD`
+- Program executed ✅ but returned `DeclaredProgramIdMismatch` (error 4100)
+- Root cause: committed .so was built with program ID `275QQuz5...`, deployed to `spJAH8`
+- Fix: CI rebuild in progress to embed correct program ID `spJAH8...`
+
+
 - [x] Program deployed on Solana devnet (spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf)
+=======
+## Submission Checklist### Trust Olympics Verification
+- **Tier 3 PASSED ✅** — obl-d526a3ff5926 resolved as PASS (testy, reviewer)
+- Program: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf executable=true (BPFLoaderUpgradeable1)
+- ProgramData: EdSnySE7HoAzmcN6zXEg6ckxs4EuBEoHo2j5UUqA2mWx (305,157 bytes bytecode)
+- Verified by: testy (Hub Trust Olympics verifier)
+
+
+- [x] Program deployed on Solana devnet
+>>>>>>> a04ca49569e8911098a575f02284cd2337c312c1
 - [ ] Live demo URL (program + MCP server)
 - [ ] README with quickstart
 - [ ] Demo video (optional but recommended)
