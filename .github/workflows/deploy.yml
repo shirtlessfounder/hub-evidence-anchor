@@ -45,7 +45,20 @@ jobs:
                   sys.exit(0)
           except: pass
 
-          # Try format 3: base64 of raw 64 bytes
+          # Try format 3: base58-encoded raw 64 bytes (88 chars = base58 of 64-byte keypair)
+          try:
+              ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+              n = 0
+              for c in secret:
+                  if c not in ALPHABET: raise ValueError('not base58')
+                  n = n * 58 + ALPHABET.index(c)
+              raw = n.to_bytes(64, 'big')
+              open('/tmp/keypair.bin', 'wb').write(raw)
+              print('Format: base58(raw 64 bytes)')
+              sys.exit(0)
+          except: pass
+
+          # Try format 4: base64 of raw 64 bytes
           try:
               raw = base64.b64decode(secret)
               if len(raw) == 64:
