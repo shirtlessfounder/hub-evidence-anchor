@@ -9,11 +9,11 @@ env:
 jobs:
   rebuild:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Solana CLI + tools
+      - name: Install Solana CLI
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v${{ env.SOLANA_CLI_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
@@ -77,18 +77,24 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
           source "$HOME/.cargo/env"
-          rustup --version
+          rustc --version
 
-      - name: Install Solana toolchain + build
+      - name: Install Anchor CLI from source
         run: |
           source "$HOME/.cargo/env"
-          rustup toolchain install solana
-          rustup default solana
-          cargo build-sbf --version
-          echo "Building program..."
+          echo "Installing anchor-cli from source (this takes ~3-5 min)..."
+          cargo install anchor-cli@0.32.1 2>&1 | tail -3
+          anchor --version
+
+      - name: Build program
+        run: |
+          source "$HOME/.cargo/env"
           cd programs/hub-evidence-anchor
-          cargo +solana build-sbf --release 2>&1 | tail -10
-          ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
+          anchor build 2>&1 | tail -5
+          ls -la target/deploy/hub_evidence_anchor.so
+          echo "---"
+          echo "Verifying embedded program ID:"
+          grep -a "declare_id" src/lib.rs
 
       - name: Deploy
         if: always()
@@ -105,11 +111,9 @@ jobs:
               --program-id "$PROGRAM_PUBKEY" \
               --url devnet 2>&1
           else
-            echo "ERROR: .so not found at $SO_PATH"
-            ls programs/hub-evidence-anchor/target/deploy/ 2>/dev/null || echo "deploy dir missing"
+            echo "ERROR: .so not found"
             exit 1
           fi
-          echo "Deploy complete!"
 
       - name: Verify
         run: |
