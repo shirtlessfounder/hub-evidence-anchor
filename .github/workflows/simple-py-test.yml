@@ -1,7 +1,0 @@
-name: Py Simple
-on: workflow_dispatch
-jobs:
-  t:
-    runs-on: ubuntu-latest
-    steps:
-      - run: python3 -c "print('hi')"
