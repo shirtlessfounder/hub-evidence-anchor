@@ -34,49 +34,46 @@ jobs:
               try:
                   raw = base64.b64decode(secret)
                   if len(raw) == 64:
-                      open('/tmp/keypair.json', 'wb').write(raw)
+                      open('/tmp/keypair.bin', 'wb').write(raw)
                       print('Format: raw b64 -> binary')
                       decoded = True
                   else:
                       raw = None
               except: pass
 
-          # Format 2: b64 of JSON string -> parse -> write JSON
+          # Format 2: b64 of JSON string -> parse -> write binary
           if not decoded:
               try:
                   arr = json.loads(base64.b64decode(secret).decode('utf-8'))
                   if isinstance(arr, list) and len(arr) == 64:
                       raw = bytes(arr)
-                      with open('/tmp/keypair.json', 'w') as f:
-                          json.dump(arr, f)
-                      print('Format: b64(JSON) -> JSON')
+                      open('/tmp/keypair.bin', 'wb').write(raw)
+                      print('Format: b64(JSON) -> binary')
                       decoded = True
               except: pass
 
-          # Format 3: plain JSON array
+          # Format 3: plain JSON array -> write binary
           if not decoded:
               try:
                   arr = json.loads(secret)
                   if isinstance(arr, list) and len(arr) == 64:
                       raw = bytes(arr)
-                      with open('/tmp/keypair.json', 'w') as f:
-                          json.dump(arr, f)
-                      print('Format: plain JSON array')
+                      open('/tmp/keypair.bin', 'wb').write(raw)
+                      print('Format: plain JSON array -> binary')
                       decoded = True
               except: pass
 
-          # Format 4: base58-encoded raw 64 bytes -> decode -> write as JSON array
+          # Format 4: base58-encoded raw 64 bytes -> write binary
           if not decoded:
               try:
                   n = 0
                   for c in secret:
                       if c not in ALPHABET:
-                          raise ValueError(f'not base58')
+                          raise ValueError('not base58')
                       n = n * 58 + ALPHABET.index(c)
                   raw = n.to_bytes(64, 'big')
-                  with open('/tmp/keypair.json', 'w') as f:
-                      json.dump(list(raw), f)
-                  print('Format: base58 -> JSON array')
+                  open('/tmp/keypair.bin', 'wb').write(raw)
+                  print('Format: base58 -> binary')
                   decoded = True
               except Exception as e:
                   print(f'Format 4 failed: {e}')
@@ -85,17 +82,16 @@ jobs:
               print('ERROR: cannot decode wallet')
               exit(1)
 
-          # Always extract pubkey for airdrop
-          if raw is not None:
-              pubkey_bytes = raw[32:]
-              npub = int.from_bytes(pubkey_bytes, 'big')
-              pubkey = ''
-              while npub > 0:
-                  npub, rem = divmod(npub, 58)
-                  pubkey = ALPHABET[rem] + pubkey
-              print(f'PUBKEY: {pubkey}')
-              with open('/tmp/pubkey.txt', 'w') as f:
-                  f.write(pubkey)
+          # Extract pubkey for airdrop
+          pubkey_bytes = raw[32:]
+          npub = int.from_bytes(pubkey_bytes, 'big')
+          pubkey = ''
+          while npub > 0:
+              npub, rem = divmod(npub, 58)
+              pubkey = ALPHABET[rem] + pubkey
+          print(f'PUBKEY: {pubkey}')
+          with open('/tmp/pubkey.txt', 'w') as f:
+              f.write(pubkey)
           PYEOF
 
       - name: Install Solana CLI
@@ -108,26 +104,15 @@ jobs:
         run: |
           PUBKEY=$(cat /tmp/pubkey.txt)
           echo "Airdropping to: $PUBKEY"
-          # Try multiple small airdrops to avoid rate limiting
-          for i in 1 2 3; do
-            echo "Airdrop attempt $i..."
-            if /tmp/solana-release/bin/solana airdrop 2 "$PUBKEY" --url devnet 2>&1 | grep -q "Success"; then
-              echo "Airdrop $i succeeded"
-              break
-            fi
-            echo "Airdrop $i failed or rate-limited, waiting 2s..."
-            sleep 2
-          done
-          echo "Final balance:"
-          /tmp/solana-release/bin/solana balance "$PUBKEY" --url devnet
+          /tmp/solana-release/bin/solana airdrop 5 "$PUBKEY" --url devnet || echo "Airdrop may have rate-limited"
 
       - name: Deploy pre-built .so
         run: |
           /tmp/solana-release/bin/solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
-            --keypair /tmp/keypair.json \
+            --keypair /tmp/keypair.bin \
             --url devnet \
-            --commitment confirmed
+            --commitment finalized
 
       - name: Verify deployment
         run: |
