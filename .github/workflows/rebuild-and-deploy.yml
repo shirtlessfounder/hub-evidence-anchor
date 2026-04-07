@@ -32,7 +32,7 @@ jobs:
       - name: Install cargo-sbf (Solana SBF build tool)
         run: |
           # cargo-sbf compiles with standard Rust but produces SBF binaries
-          cargo +1.77.0 install cargo-sbf --locked
+          cargo +1.77.0 install cargo-sbf
           cargo sbf --version
 
       - name: Decode wallet
