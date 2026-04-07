@@ -6,98 +6,58 @@ on:
   workflow_dispatch: {}
 
 env:
-  # NOTE: Program ID is derived from the program wallet keypair generated in CI
-  # This is printed in the Airdrop step
+  # NOTE: Program ID is derived from PROGRAM_WALLET_JSON secret (the program wallet itself)
+  # Generate a fresh wallet: solana-keygen new -o /tmp/program-wallet.json
+  # Encode as base58 for the secret: python3 -c "import json; d=json.load(open('/tmp/program-wallet.json')); ..."
   PROGRAM_ID: placeholder
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      - name: Decode wallet
-        env:
-          WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
+      - name: Generate program wallet
         run: |
-          python3 << 'PYEOF'
-          import os, json, base64
-
-          ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-          secret = os.environ.get("WALLET_JSON", "").strip()
-          print(f"Secret len={len(secret)}")
-
-          raw = None
-
-          # Try base58 first (88-char Solana key format)
-          if len(secret) == 88:
-              try:
-                  n = 0
-                  for c in secret:
-                      n = n * 58 + ALPHABET.index(c)
-                  raw = n.to_bytes(64, "big")
-                  print("Format: base58 -> 64 bytes")
-              except ValueError:
-                  raw = None
-
-          # Try raw base64
-          if raw is None:
-              try:
-                  raw = base64.b64decode(secret)
-                  if len(raw) != 64:
-                      raw = None
-                  else:
-                      print("Format: base64 raw -> 64 bytes")
-              except Exception:
-                  pass
-
-          # Try JSON array format ["1","2",...]
-          if raw is None:
-              try:
-                  arr = json.loads(secret)
-                  if isinstance(arr, list) and len(arr) == 64:
-                      raw = bytes(int(x) if isinstance(x, int) else x for x in arr)
-                      print("Format: JSON array -> 64 bytes")
-              except Exception:
-                  pass
-
-          if raw is None:
-              print("ERROR: cannot decode wallet secret")
-              exit(1)
-
-          # Write as Solana JSON keypair format
-          with open("/tmp/keypair.json", "w") as f:
-              json.dump(list(raw), f)
-          print("Keypair saved: /tmp/keypair.json")
-
-          # Extract pubkey for airdrop
-          pubkey_bytes = raw[32:]
-          npub = int.from_bytes(pubkey_bytes, "big")
-          addr = ""
-          while npub > 0:
-              npub, rem = divmod(npub, 58)
-              addr = ALPHABET[rem] + addr
-          with open("/tmp/pubkey.txt", "w") as f:
-              f.write(addr)
-          print(f"Pubkey: {addr}")
-          PYEOF
+          # Generate a fresh wallet — this IS the program ID
+          /tmp/solana-keygen new --no-passphrase -o /tmp/program-wallet.json 2>/dev/null
+          /tmp/solana-keygen pubkey /tmp/program-wallet.json > /tmp/program-pubkey.txt
+          echo "Program wallet (program ID): $(cat /tmp/program-pubkey.txt)"
 
       - name: Install Solana CLI
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           /tmp/solana-release/bin/solana --version
-          /tmp/solana-release/bin/solana --version
+
+      - name: Airdrop SOL
+        run: |
+          PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
+          echo "Airdropping to: $PROGRAM_PUBKEY"
+          # Fresh wallet — faucet should work (not a program account)
+          for i in 1 2 3 4 5; do
+            echo "Airdrop attempt $i..."
+            if /tmp/solana-release/bin/solana airdrop 2 "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com 2>&1 | grep -q "Success"; then
+              echo "Airdrop $i succeeded"
+              break
+            fi
+            echo "Rate-limited, retrying in 2s..."
+            sleep 2
+          done
+          echo "Final balance:"
+          /tmp/solana-release/bin/solana balance "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com
 
       - name: Deploy
         run: |
-          PROGRAM_PUBKEY=$(cat /tmp/pubkey.txt)
-          echo "Deploying program..."
-          /tmp/solana-release/bin/solana program deploy \
+          PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
+          echo "Deploying to program ID: $PROGRAM_PUBKEY"
+          echo "Signing with: $PROGRAM_PUBKEY"
+          /tmp/solana-keygen program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
-            --keypair /tmp/keypair.json \
+            --keypair /tmp/program-wallet.json \
             --url devnet
 
       - name: Verify
         run: |
-          PROGRAM_PUBKEY=$(cat /tmp/pubkey.txt)
-          /tmp/solana-release/bin/solana program show "$PROGRAM_PUBKEY" --url devnet
+          PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
+          /tmp/solana-keygen program show "$PROGRAM_PUBKEY" --url devnet
