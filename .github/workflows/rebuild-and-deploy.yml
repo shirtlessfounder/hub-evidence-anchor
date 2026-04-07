@@ -84,11 +84,13 @@ jobs:
 
       - name: Build program
         run: |
-          # Delete stale Cargo.lock files (version 4 = requires nightly Rust)
+          # Delete ALL Cargo.lock files — v4 requires nightly Rust
           rm -f Cargo.lock
           rm -f programs/hub-evidence-anchor/Cargo.lock
           cd programs/hub-evidence-anchor
-          anchor build 2>&1 | tail -20
+          # Also delete workspace root's Cargo.lock (anchor build reads from workspace root)
+          rm -f ../Cargo.lock
+          anchor build 2>&1 | tail -30
           ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
           grep declare_id src/lib.rs
 
