@@ -15,24 +15,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Solana CLI
+      - name: Install Rust + Solana toolchain
         run: |
-          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v3.1.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
-          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
+          export PATH="/usr/bin:/bin:$PATH"
+          /usr/bin/curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+          # Persist cargo bin to PATH for all subsequent steps
+          echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+          rustc --version
 
-      - name: Install Anchor CLI (pre-built, no Rust compilation)
+      - name: Download Solana release
         run: |
-          npm install -g @coral-xyz/anchor-cli@0.31.2
-          # Verify it's the right version
-          # Verify anchor works: /usr/local/lib/node_modules/@coral-xyz/anchor-cli/anchor --version
+          export PATH="/usr/bin:/bin:$HOME/.cargo/bin:$PATH"
+          /usr/bin/curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | /usr/bin/tar -xjf - -C /tmp
+          echo "PATH=/tmp/solana-release/bin:\$PATH" >> $GITHUB_ENV
+          # Install cargo-build-sbf from Solana release into cargo bin so anchor can build
+          cp /tmp/solana-release/bin/cargo-build-sbf $HOME/.cargo/bin/
+          chmod +x $HOME/.cargo/bin/cargo-build-sbf
+          cargo build-sbf --version
+
+      - name: Install Anchor CLI
+        run: |
+          export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:$PATH"
+          cargo install anchor-cli@0.30.0
 
       - name: Build program
         run: |
-          # Use explicit path to npm anchor to avoid AVM interception
-          # Anchor will put .so at programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
-          export PATH="$(npm root -g):$PATH"
-          which anchor
-          /usr/local/lib/node_modules/@coral-xyz/anchor-cli/anchor build
+          export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:$PATH"
+          anchor --version
+          anchor build
 
       - name: Decode program wallet
         env:
@@ -73,6 +83,7 @@ jobs:
 
       - name: Airdrop SOL
         run: |
+          export PATH="/tmp/solana-release/bin:$PATH"
           PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
           echo "Funding: $PROGRAM_PUBKEY"
           for i in 1 2 3 4; do
@@ -84,11 +95,13 @@ jobs:
           solana balance "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com
 
       - name: Recover stale buffer
-        run: solana program close --buffers --keypair /tmp/program-wallet.json --url devnet 2>&1 || true
+        run: |
+          export PATH="/tmp/solana-release/bin:$PATH"
+          solana program close --buffers --keypair /tmp/program-wallet.json --url devnet 2>&1 || true
 
       - name: Deploy program
         run: |
-          # Deploy .so at workspace root target/deploy/ to spJAH8
+          export PATH="/tmp/solana-release/bin:$PATH"
           solana program deploy \
             programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
@@ -96,4 +109,6 @@ jobs:
             --url devnet
 
       - name: Verify
-        run: solana program show $PROGRAM_ID --url devnet
+        run: |
+          export PATH="/tmp/solana-release/bin:$PATH"
+          solana program show $PROGRAM_ID --url devnet

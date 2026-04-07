@@ -1,3 +1,8 @@
+// @quadricep: force_rebuild_2026-04-07-22-20
+// @quadricep 2026-04-07-22-20
+// @quadricep_build_timestamp: 2026-04-07-22-20
+// Build verification: force rebuild on source change
+const _BUILD_TIMESTAMP: &str = "2026-04-07-22-20-quadricep";
 use anchor_lang::prelude::*;
 use sha2::{Sha256, Digest};
 
