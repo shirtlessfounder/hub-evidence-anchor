@@ -15,24 +15,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install npm dependencies
-        run: npm install
-
-      - name: Install Rust
+      - name: Install Rust + Solana toolchain
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          rustc --version
+          # Download Solana release with BPF toolchain (from anza-xyz, accessible in CI)
+          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
+          # Copy Solana Rust toolchain into rustup so +solana override works
+          SOLANA_TOOLCHAIN=$(find /tmp/solana-release -name "rustc" -path "*/platform-tools/*" 2>/dev/null | head -1 | xargs -I{} dirname $(dirname {}) 2>/dev/null || echo "")
+          echo "Found Solana toolchain at: $SOLANA_TOOLCHAIN"
+          if [ -n "$SOLANA_TOOLCHAIN" ]; then
+            ln -sf "$SOLANA_TOOLCHAIN" "$HOME/.rustup/toolchains/solana"
+            rustup run solana rustc --version && echo "Solana toolchain OK" || echo "Solana toolchain link failed"
+          else
+            echo "WARNING: Solana toolchain not found in release, trying direct link"
+            ls /tmp/solana-release/bin/
+          fi
 
       - name: Install Anchor CLI
-        run: npm install -g @coral-xyz/anchor-cli@0.31.0
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          cargo install anchor-cli@0.30.0
 
       - name: Build program
-        run: anchor build
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          anchor build
 
       - name: Decode program wallet
         env:
@@ -40,99 +49,62 @@ jobs:
         run: |
           python3 << 'PYEOF'
           import os, json, base64
-
           ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
           secret = os.environ.get("PROGRAM_WALLET_JSON", "").strip()
-          print(f"Secret len={len(secret)}")
-
           raw = None
-
-          # Try base58 first (88-char Solana key format)
           if len(secret) == 88:
               try:
                   n = 0
                   for c in secret:
                       n = n * 58 + ALPHABET.index(c)
                   raw = n.to_bytes(64, "big")
-                  print("Format: base58 -> 64 bytes")
-              except ValueError:
-                  raw = None
-
-          # Try raw base64
+              except ValueError: raw = None
           if raw is None:
               try:
                   raw = base64.b64decode(secret)
-                  if len(raw) != 64:
-                      raw = None
-                  else:
-                      print("Format: base64 raw -> 64 bytes")
-              except Exception:
-                  raw = None
-
-          # Try JSON array format
+                  if len(raw) != 64: raw = None
+              except: raw = None
           if raw is None:
               try:
                   arr = json.loads(secret)
                   if isinstance(arr, list) and len(arr) == 64:
                       raw = bytes(int(x) if isinstance(x, int) else x for x in arr)
-                      print("Format: JSON array -> 64 bytes")
-              except Exception:
-                  pass
-
-          if raw is None:
-              print("ERROR: cannot decode wallet secret")
-              exit(1)
-
-          # Write as Solana JSON keypair format
-          with open("/tmp/program-wallet.json", "w") as f:
-              json.dump(list(raw), f)
-          print("Keypair saved: /tmp/program-wallet.json")
-
-          # Extract pubkey
-          pubkey_bytes = raw[32:]
-          npub = int.from_bytes(pubkey_bytes, "big")
+              except: pass
+          if raw is None: exit(1)
+          with open("/tmp/program-wallet.json", "w") as f: json.dump(list(raw), f)
+          npub = int.from_bytes(raw[32:], "big")
           addr = ""
-          while npub > 0:
-              npub, rem = divmod(npub, 58)
-              addr = ALPHABET[rem] + addr
-          with open("/tmp/program-pubkey.txt", "w") as f:
-              f.write(addr)
-          print(f"Program wallet (pubkey): {addr}")
+          while npub > 0: npub, rem = divmod(npub, 58); addr = ALPHABET[rem] + addr
+          with open("/tmp/program-pubkey.txt", "w") as f: f.write(addr)
+          print(f"Wallet: {addr}")
           PYEOF
 
-      - name: Install Solana CLI
+      - name: Install Solana CLI (for deploy)
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
-          /tmp/solana-release/bin/solana --version
+          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
+          solana --version
 
       - name: Airdrop SOL
         run: |
           PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
-          echo "Funding: $PROGRAM_PUBKEY"
           for i in 1 2 3 4; do
-            echo "Airdrop $i..."
-            if /tmp/solana-release/bin/solana airdrop 5 "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com 2>&1 | grep -q "Success"; then
-              echo "Airdrop $i succeeded"
-              break
+            if solana airdrop 5 "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com 2>&1 | grep -q "Success"; then
+              echo "Airdrop $i succeeded"; break
             fi
             sleep 3
           done
-          echo "Balance:"
-          /tmp/solana-release/bin/solana balance "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com
+          solana balance "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com
 
       - name: Recover stale buffer
-        run: |
-          /tmp/solana-release/bin/solana program close --buffers --keypair /tmp/program-wallet.json --url devnet 2>&1 || true
+        run: solana program close --buffers --keypair /tmp/program-wallet.json --url devnet 2>&1 || true
 
       - name: Deploy program
         run: |
-          echo "Deploying .so to: $PROGRAM_ID"
-          echo "Signing wallet: $(cat /tmp/program-pubkey.txt)"
-          /tmp/solana-release/bin/solana program deploy \
+          solana program deploy \
             programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
             --url devnet
 
       - name: Verify
-        run: |
-          /tmp/solana-release/bin/solana program show $PROGRAM_ID --url devnet
+        run: solana program show $PROGRAM_ID --url devnet
