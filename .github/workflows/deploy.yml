@@ -25,7 +25,8 @@ jobs:
         run: |
           export PATH="/usr/bin:/bin:$PATH"
           /usr/bin/curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | /usr/bin/tar -xjf - -C /tmp
-          echo "PATH=/tmp/solana-release/bin:\$PATH" >> $GITHUB_ENV
+          # Append Solana bin to existing PATH (keep cargo bin from step 1)
+          echo "PATH=/tmp/solana-release/bin:$HOME/.cargo/bin:/usr/bin:/bin" >> $GITHUB_ENV
           # Copy cargo-build-sbf plugin into cargo bin so `cargo build-sbf` works
           cp /tmp/solana-release/bin/cargo-build-sbf $HOME/.cargo/bin/cargo-build-sbf
           chmod +x $HOME/.cargo/bin/cargo-build-sbf
