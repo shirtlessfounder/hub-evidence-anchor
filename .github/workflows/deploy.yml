@@ -15,26 +15,48 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Save deploy keypair
+      - name: Save and decode deploy keypair
         env:
-          ANCHOR_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
+          WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
-          echo "$ANCHOR_WALLET_JSON" | base64 -d > /tmp/wallet.json
-          python3 -c "
-import json
-ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-def b58encode(b):
-    n = int.from_bytes(b, 'big')
-    r = []
-    while n > 0:
-        n, rem = divmod(n, 58)
-        r.append(ALPHABET[rem])
-    return ''.join(reversed(r))
-d = json.load(open('/tmp/wallet.json'))
-kp = bytes(d)
-pub = b58encode(kp[32:])
-print('WALLET:', pub)
-"
+          # Try all possible input formats and save as raw 64-byte keypair
+          python3 << 'PYEOF'
+          import json, base64, os, sys
+
+          secret = os.environ.get('WALLET_JSON', '').strip()
+          print(f'Secret length: {len(secret)}')
+
+          # Try format 1: base64 of JSON array "[1,2,...]"
+          try:
+              decoded = base64.b64decode(secret)
+              arr = json.loads(decoded)
+              if isinstance(arr, list) and len(arr) == 64:
+                  open('/tmp/keypair.bin', 'wb').write(bytes(arr))
+                  print('Format: base64(JSON array) -> 64-byte keypair')
+                  sys.exit(0)
+          except: pass
+
+          # Try format 2: plain JSON array "[1,2,...]"
+          try:
+              arr = json.loads(secret)
+              if isinstance(arr, list) and len(arr) == 64:
+                  open('/tmp/keypair.bin', 'wb').write(bytes(arr))
+                  print('Format: plain JSON array -> 64-byte keypair')
+                  sys.exit(0)
+          except: pass
+
+          # Try format 3: base64 of raw 64 bytes
+          try:
+              raw = base64.b64decode(secret)
+              if len(raw) == 64:
+                  open('/tmp/keypair.bin', 'wb').write(raw)
+                  print('Format: base64(raw 64 bytes)')
+                  sys.exit(0)
+          except: pass
+
+          print('ERROR: Could not decode wallet')
+          sys.exit(1)
+          PYEOF
 
       - name: Install Solana CLI
         run: |
@@ -42,15 +64,15 @@ print('WALLET:', pub)
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
 
-      - name: Airdrop SOL to deploy wallet
+      - name: Airdrop SOL
         run: |
-          /tmp/solana-release/bin/solana airdrop 2 /tmp/wallet.json --url devnet || echo "Airdrop may have rate-limited"
+          /tmp/solana-release/bin/solana airdrop 2 --url devnet || echo "Airdrop may have rate-limited"
 
       - name: Deploy pre-built .so
         run: |
           /tmp/solana-release/bin/solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
-            --keypair /tmp/wallet.json \
+            --keypair /tmp/keypair.bin \
             --url devnet \
             --commitment finalized
 
