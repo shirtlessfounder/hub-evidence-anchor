@@ -22,10 +22,11 @@ jobs:
 
       - name: Install Anchor CLI
         run: |
-          npm install -g @coral-xyz/anchor-cli@0.30.0
+          curl -sSfL "https://github.com/coral-xyz/anchor/releases/download/v0.30.0/anchor-linux-x86_64.tar.gz" | tar xz -C /usr/local/bin
+          /usr/local/bin/anchor version
 
       - name: Build program
-        run: npx @coral-xyz/anchor-cli@0.30.0 build
+        run: /usr/local/bin/anchor build
 
       - name: Decode program wallet
         env:
