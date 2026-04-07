@@ -1,7 +1,6 @@
 name: deploy-z
 
-on:
-  workflow_dispatch: {}
+on: workflow_dispatch
 
 env:
   PROGRAM_ID: 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA
@@ -20,7 +19,6 @@ jobs:
 import json, base64, os
 ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 data = os.environ.get('WALLET_JSON', '').strip()
-# Try JSON array [1,2,...]
 try:
     arr = json.loads(data)
     if isinstance(arr, list):
@@ -28,7 +26,6 @@ try:
         print('JSON array:', len(arr))
         exit(0)
 except: pass
-# Try base64 encoded
 try:
     raw = base64.b64decode(data)
     if len(raw) == 64:
@@ -36,7 +33,6 @@ try:
         print('base64:', len(raw))
         exit(0)
 except: pass
-# Try base58 encoded
 try:
     n = 0
     for c in data:
@@ -52,15 +48,11 @@ PYEOF
       - name: Install Solana CLI
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
-          echo "/tmp/solana-release/bin" >> $GITHUB_ENV
+          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
 
       - name: Deploy
         run: |
-          /tmp/solana-release/bin/solana program deploy \
-            programs/hub-evidence-anchor/hub_evidence_anchor.so \
-            --keypair /tmp/wallet.json \
-            --url devnet
+          /tmp/solana-release/bin/solana program deploy programs/hub-evidence-anchor/hub_evidence_anchor.so --keypair /tmp/wallet.json --url devnet
 
       - name: Verify
-        run: |
-          /tmp/solana-release/bin/solana program show $PROGRAM_ID --url devnet
+        run: /tmp/solana-release/bin/solana program show $PROGRAM_ID --url devnet
