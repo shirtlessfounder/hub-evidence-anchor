@@ -41,7 +41,7 @@ try:
     for c in secret:
         n = n * 58 + ALPHABET.index(c)
     raw = n.to_bytes(64, 'big')
-    open('/tmp/keypair.bin', 'wb').write(raw)
+    with open('/tmp/keypair.json', 'w') as f: f.write(json.dumps(list(raw)))
     print('Decoded bs58 -> 64 bytes OK')
     pubkey_bytes = raw[32:]
     npub = int.from_bytes(pubkey_bytes, 'big')
@@ -63,10 +63,10 @@ except Exception as e:
         run: |
           echo "Files:"
           ls -la /tmp/keypair* /tmp/pubkey* 2>/dev/null || echo "No files found"
-          echo "Keypair first 3 bytes (hex): $(od -An -tx1 -N3 /tmp/keypair.bin 2>/dev/null || echo 'cannot read')"
+          echo "Keypair first 3 bytes (hex): $(od -An -tx1 -N3 /tmp/keypair.json 2>/dev/null || echo 'cannot read')"
           /tmp/solana-release/bin/solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
-            --keypair /tmp/keypair.bin \
+            --keypair /tmp/keypair.json \
             --url devnet \
             --commitment finalized
 
