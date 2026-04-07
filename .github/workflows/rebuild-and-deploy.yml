@@ -92,9 +92,10 @@ jobs:
           cd programs/hub-evidence-anchor
           rm -f ../Cargo.lock
           rm -f ../../Cargo.lock
+          # Delete old build artifacts to force fresh compile
+          rm -rf target/deploy
           anchor build 2>&1 | tail -30
-          echo "=== Finding .so files ==="
-          find . -name "*.so" 2>/dev/null
+          echo "=== Build artifacts ==="
           ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
           grep declare_id src/lib.rs
 
