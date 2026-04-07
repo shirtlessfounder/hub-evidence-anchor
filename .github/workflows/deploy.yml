@@ -86,19 +86,6 @@ jobs:
           /tmp/solana-release/bin/solana --version
           /tmp/solana-release/bin/solana --version
 
-      - name: Install Rust + SBF toolchain
-        run: |
-          # Remove lock file if it exists (version 4 = nightly-only)
-          rm -f Cargo.lock programs/hub-evidence-anchor/Cargo.lock
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.io | sh -s -- -y --default-toolchain stable
-          . "$HOME/.cargo/env"
-          rustc --version
-          export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
-          export SBF_OUT_DIR="$PWD/target/deploy"
-          cargo build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1 | tail -10
-          cp target/deploy/hub_evidence_anchor.so programs/hub-evidence-anchor/hub_evidence_anchor.so 2>/dev/null || true
-          ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null || ls -la programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so 2>/dev/null
-
       - name: Airdrop SOL
         run: |
           PUBKEY=$(cat /tmp/pubkey.txt)
