@@ -49,3 +49,7 @@ print(f'Keypair saved: {len(keypair_bytes)} bytes')
       - name: Verify
         run: |
           /tmp/solana-release/bin/solana program show 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA --url devnet
+
+      - name: Verify
+        run: |
+          /tmp/solana-release/bin/solana program show 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA --url devnet
