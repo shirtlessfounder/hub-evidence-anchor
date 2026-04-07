@@ -31,6 +31,12 @@ jobs:
           chmod +x /tmp/anchor && mv /tmp/anchor ~/.cargo/bin/anchor
           anchor --version
 
+      - name: Setup program keypair for anchor build
+        run: |
+          mkdir -p target/deploy
+          cp /tmp/deploy-keypair.json target/deploy/hub_evidence_anchor-keypair.json
+          echo "Program keypair ready: $(solana-keygen pubkey target/deploy/hub_evidence_anchor-keypair.json)"
+
       - name: Build
         run: anchor build
 
