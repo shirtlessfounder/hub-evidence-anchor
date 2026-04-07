@@ -9,7 +9,7 @@ env:
 jobs:
   rebuild:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -24,16 +24,10 @@ jobs:
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
 
-      - name: Install Rust toolchain
+      - name: Install Anchor CLI (build from source — uses Solana's bundled cargo which supports SBF)
         run: |
-          rustup install 1.77.0 && rustup default 1.77.0
-          rustc --version
-
-      - name: Install cargo-sbf (Solana SBF build tool)
-        run: |
-          # cargo-sbf compiles with standard Rust but produces SBF binaries
-          cargo +1.77.0 install cargo-sbf
-          cargo sbf --version
+          cargo install anchor-cli --version 0.30.0
+          anchor --version
 
       - name: Decode wallet
         env:
@@ -90,9 +84,11 @@ jobs:
 
       - name: Build program
         run: |
+          # Delete stale Cargo.lock files (version 4 = requires nightly Rust)
+          rm -f Cargo.lock
+          rm -f programs/hub-evidence-anchor/Cargo.lock
           cd programs/hub-evidence-anchor
-          rm -f ../Cargo.lock Cargo.lock
-          cargo sbf build 2>&1 | tail -30
+          anchor build 2>&1 | tail -20
           ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
           grep declare_id src/lib.rs
 
