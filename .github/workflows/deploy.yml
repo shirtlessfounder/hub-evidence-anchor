@@ -108,7 +108,18 @@ jobs:
         run: |
           PUBKEY=$(cat /tmp/pubkey.txt)
           echo "Airdropping to: $PUBKEY"
-          /tmp/solana-release/bin/solana airdrop 5 "$PUBKEY" --url devnet || echo "Airdrop may have rate-limited"
+          # Try multiple small airdrops to avoid rate limiting
+          for i in 1 2 3; do
+            echo "Airdrop attempt $i..."
+            if /tmp/solana-release/bin/solana airdrop 2 "$PUBKEY" --url devnet 2>&1 | grep -q "Success"; then
+              echo "Airdrop $i succeeded"
+              break
+            fi
+            echo "Airdrop $i failed or rate-limited, waiting 2s..."
+            sleep 2
+          done
+          echo "Final balance:"
+          /tmp/solana-release/bin/solana balance "$PUBKEY" --url devnet
 
       - name: Deploy pre-built .so
         run: |
@@ -116,7 +127,7 @@ jobs:
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair /tmp/keypair.json \
             --url devnet \
-            --commitment finalized
+            --commitment confirmed
 
       - name: Verify deployment
         run: |
