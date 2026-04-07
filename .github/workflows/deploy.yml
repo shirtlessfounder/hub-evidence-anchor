@@ -24,13 +24,15 @@ jobs:
         run: |
           npm install -g @coral-xyz/anchor-cli@0.30.0
           # Verify it's the right version
-          /usr/local/bin/anchor --version
+          # Verify anchor works: anchor --version
 
       - name: Build program
         run: |
           # Use explicit path to npm anchor to avoid AVM interception
-          # Anchor will put .so at target/deploy/hub_evidence_anchor.so
-          /usr/local/bin/anchor build
+          # Anchor will put .so at programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
+          export PATH="$(npm root -g):$PATH"
+          which anchor
+          anchor build
 
       - name: Decode program wallet
         env:
@@ -88,7 +90,7 @@ jobs:
         run: |
           # Deploy .so at workspace root target/deploy/ to spJAH8
           solana program deploy \
-            target/deploy/hub_evidence_anchor.so \
+            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
             --program-id $PROGRAM_ID \
             --url devnet
