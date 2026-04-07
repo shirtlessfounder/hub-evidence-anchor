@@ -40,13 +40,9 @@ print(f'Keypair saved: {len(keypair_bytes)} bytes')
 
       - name: Install Anchor CLI
         run: |
-          ANCHOR_VERSION=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/solana-foundation/anchor/releases/latest | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
-          ASSET_VERSION=${ANCHOR_VERSION#v}  # strip leading 'v' — asset names use 1.0.0 not v1.0.0
-          ASSET="anchor-${ASSET_VERSION}-x86_64-unknown-linux-gnu"
-          echo "Downloading Anchor ${ASSET_VERSION} for Linux..."
-          curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://github.com/solana-foundation/anchor/releases/download/${ASSET_VERSION}/${ASSET}" -o /tmp/anchor
-          chmod +x /tmp/anchor
-          mv /tmp/anchor ~/.cargo/bin/anchor
+          echo "Downloading Anchor 1.0.0 for Linux..."
+          curl -L "https://github.com/solana-foundation/anchor/releases/download/v1.0.0/anchor-1.0.0-x86_64-unknown-linux-gnu" -o ~/.cargo/bin/anchor
+          chmod +x ~/.cargo/bin/anchor
           anchor --version
 
       - name: Build
