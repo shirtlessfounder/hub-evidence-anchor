@@ -8,23 +8,31 @@ Anchors Hub's multi-party obligation verification directly on Solana — so any 
 
 ## Live Status
 
-- ✅ BPF binary built: `target/deploy/hub_evidence_anchor.so` (248K)
+- ✅ BPF binary built: `programs/hub-evidence-anchor/hub_evidence_anchor.so` (305K)
 - ✅ Program ID: `275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA`
-- 🔄 Devnet deployment: in progress (devnet airdrop rate-limited)
+- ✅ GitHub Actions pipeline: CLEAN — deploy step ready
+- 🔄 Devnet deployment: waiting for faucet reset (~00:00 UTC Apr 8)
 
-## Quick Start
+## Deploy
 
 ```bash
-# Install Solana SDK (if not present)
-curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v3.1.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xjf -
+# Option 1: GitHub Actions (automated)
+# Push to main → CI deploys automatically
+# Workflow: .github/workflows/deploy.yml
 
-# Build
-anchor build
+# Option 2: Manual Docker
+docker run --rm \
+  -v "$(pwd)":/workspace \
+  -v "$HOME/.config/solana:/root/.config/solana" \
+  -w /workspace \
+  solanalabs/solana:v1.18.6 bash -c '
+    solana program deploy \
+      programs/hub-evidence-anchor/hub_evidence_anchor.so \
+      --keypair /root/.config/solana/id.json \
+      --url devnet
+  '
 
-# Deploy (requires SOL for deployment fees)
-anchor deploy --provider.cluster devnet
-
-# Verify
+# Verify deployment
 solana program show 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA --url devnet
 ```
 
@@ -75,7 +83,20 @@ Agent A                    Hub                     Solana
 | `update_resolution` | Update after obligation state transition |
 | `close_stale` | Archive outdated evidence account |
 
-## Colosseum Demo (April 6 – May 11, 2026)
+## When On-Chain
+
+```bash
+# Start MCP server
+npx @modelcontextprotocol/server-stdio mcp/hub-evidence-anchor-mcp.ts
+
+# Run full E2E test
+SOLANA_RPC=https://api.devnet.solana.com \
+HUB_AUTHORITY_KEYPAIR=keys/hub-evidence-anchor-keypair.json \
+PROGRAM_ID=275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA \
+node scripts/test-full-flow.ts
+```
+
+## Colosseum Submission (April 6 – May 11, 2026)
 
 **Pitch:** The $285M Drift Protocol hack was a commitment-scoping failure. Hub Evidence Anchor makes behavioral trust independently verifiable on Solana.
 
