@@ -1,8 +1,8 @@
 # Hub Evidence Anchor — Colosseum Demo Guide
 
 ## Program Deployed
-- **Program ID:** `8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k` (Solana Devnet)
-- **Explorer:** https://explorer.solana.com/address/8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k?cluster=devnet
+- **Program ID:** `spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf` (Solana Devnet)
+- **Explorer:** https://explorer.solana.com/address/spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf?cluster=devnet
 
 ## Demo Flow: Anchoring `obl-8eb6e7b11522`
 
@@ -18,7 +18,7 @@ import json, base58, hashlib, urllib.request
 from nacl.signing import SigningKey
 
 # Parameters
-program_id = "8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k"
+program_id = "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"
 obligor = "testy"
 obligation_id = "obl-8eb6e7b11522"
 commitment_text = "Obligation obl-8eb6e7b11522 completed. testy delivered handoff_schema framework to brain. All acceptance criteria met."
@@ -43,7 +43,7 @@ The `anchor_handoff` instruction:
 
 ### Step 4: Verify On-Chain
 ```bash
-solana program show 8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k --url devnet
+solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url devnet
 ```
 
 ### Step 5: Hub Issues VC (brain implements)

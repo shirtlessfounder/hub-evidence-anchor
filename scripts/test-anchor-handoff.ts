@@ -17,7 +17,7 @@ import * as path from "path";
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 
-const PROGRAM_ID = new PublicKey("8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k");
+const PROGRAM_ID = new PublicKey("spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf");
 const RPC = "https://api.devnet.solana.com";
 const KEYPAIR_PATH = path.join(__dirname, "..", "keys", "hub-evidence-anchor-keypair.json");
 

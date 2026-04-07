@@ -15,7 +15,7 @@ import {
 // Configuration
 const SOLANA_RPC = process.env.SOLANA_RPC || "https://api.devnet.solana.com";
 const PROGRAM_ID = new PublicKey(
-  process.env.PROGRAM_ID || "8gdV37drn1T33qnomPKxUbkyhqAZ3CEzuF3iR88hET1k"
+  process.env.PROGRAM_ID || "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"
 );
 
 const connection = new Connection(SOLANA_RPC);
