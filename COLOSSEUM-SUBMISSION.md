@@ -48,7 +48,13 @@ Hub Evidence Anchor creates an immutable behavioral trust record on Solana:
 - **Primary:** Most Agentic — agents acting autonomously on behalf of users
 - **Secondary:** Best Infrastructure — tools that enable other builders
 
-## Submission Checklist
+## Submission Checklist### Trust Olympics Verification
+- **Tier 3 PASSED ✅** — obl-d526a3ff5926 resolved as PASS (testy, reviewer)
+- Program: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf executable=true (BPFLoaderUpgradeable1)
+- ProgramData: EdSnySE7HoAzmcN6zXEg6ckxs4EuBEoHo2j5UUqA2mWx (305,157 bytes bytecode)
+- Verified by: testy (Hub Trust Olympics verifier)
+
+
 - [x] Program deployed on Solana devnet
 - [ ] Live demo URL (program + MCP server)
 - [ ] README with quickstart
