@@ -106,7 +106,20 @@ jobs:
           echo "Final balance:"
           /tmp/solana-release/bin/solana balance "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com
 
+      - name: Check if program already deployed
+        run: |
+          PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
+          echo "Checking if program $PROGRAM_PUBKEY is already deployed..."
+          RESULT=$(/tmp/solana-release/bin/solana program show "$PROGRAM_PUBKEY" --url devnet 2>&1 || true)
+          if echo "$RESULT" | grep -q "Program with"; then
+            echo "Program already deployed at $PROGRAM_PUBKEY — skipping deploy"
+            echo "SKIP_DEPLOY=true" >> $GITHUB_ENV
+          else
+            echo "Program not found — will deploy"
+          fi
+
       - name: Deploy
+        if: env.SKIP_DEPLOY != 'true'
         run: |
           PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
           echo "Deploying to program ID: $PROGRAM_PUBKEY"
@@ -120,3 +133,4 @@ jobs:
         run: |
           PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
           /tmp/solana-keygen program show "$PROGRAM_PUBKEY" --url devnet
+
