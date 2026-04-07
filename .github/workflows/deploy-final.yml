@@ -18,7 +18,7 @@ jobs:
           ANCHOR_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
           python3 -c "
-import os, sys
+import os
 ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 def b58decode(s):
     n = 0
@@ -31,7 +31,12 @@ kb = b58decode(secret)
 open('/tmp/deploy-keypair.json', 'wb').write(kb)
 print(f'Keypair: {len(kb)} bytes')
 "
-          ls -la /tmp/deploy-keypair.json
+
+      - name: Setup program keypair for anchor build
+        run: |
+          mkdir -p target/deploy
+          cp /tmp/deploy-keypair.json target/deploy/hub_evidence_anchor-keypair.json
+          echo "Program keypair: $(cat target/deploy/hub_evidence_anchor-keypair.json | python3 -c 'import sys,json,base64; print(base64.b64encode(json.load(sys.stdin)).decode())')"
 
       - name: Install Solana CLI
         run: |
@@ -39,9 +44,19 @@ print(f'Keypair: {len(kb)} bytes')
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
 
+      - name: Install Anchor CLI
+        run: |
+          curl -L "https://github.com/solana-foundation/anchor/releases/download/v1.0.0/anchor-1.0.0-x86_64-unknown-linux-gnu" -o /tmp/anchor
+          chmod +x /tmp/anchor && mv /tmp/anchor ~/.cargo/bin/anchor
+          anchor --version
+
+      - name: Build
+        run: anchor build
+
       - name: Deploy
         run: |
-          /tmp/solana-release/bin/solana program deploy programs/hub-evidence-anchor/hub_evidence_anchor.so --keypair /tmp/deploy-keypair.json --url devnet
+          /tmp/solana-release/bin/solana airdrop 2 --url devnet --keypair /tmp/deploy-keypair.json || true
+          /tmp/solana-release/bin/solana program deploy target/deploy/hub_evidence_anchor.so --keypair /tmp/deploy-keypair.json --url devnet
 
       - name: Verify
         run: /tmp/solana-release/bin/solana program show $PROGRAM_ID --url devnet
