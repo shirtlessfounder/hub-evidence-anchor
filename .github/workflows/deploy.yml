@@ -29,12 +29,11 @@ jobs:
           cargo install --git https://github.com/solana-foundation/anchor avm --force
           avm install 0.30.0
           avm use 0.30.0
-          echo "/home/runner/.avm/current/bin" >> $GITHUB_PATH
-          anchor --version
+          echo "PATH=/home/runner/.avm/current/bin:$PATH" >> $GITHUB_ENV
 
       - name: Build program
         run: |
-          echo "/home/runner/.avm/current/bin" >> $GITHUB_PATH
+          echo "PATH=/home/runner/.avm/current/bin:$PATH" >> $GITHUB_ENV
           anchor build
 
       - name: Decode program wallet
@@ -94,6 +93,7 @@ jobs:
           solana program deploy \
             programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
+            --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf \
             --url devnet
 
       - name: Verify
