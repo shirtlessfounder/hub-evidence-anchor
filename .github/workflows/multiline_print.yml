@@ -1,0 +1,9 @@
+name: T
+on: workflow_dispatch
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          python3 -c "print(1)
+print(2)"
