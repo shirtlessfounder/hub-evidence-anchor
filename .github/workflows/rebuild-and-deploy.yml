@@ -88,10 +88,15 @@ jobs:
           rm -f Cargo.lock
           rm -f programs/hub-evidence-anchor/Cargo.lock
           cd programs/hub-evidence-anchor
-          # Also delete workspace root's Cargo.lock (anchor build reads from workspace root)
           rm -f ../Cargo.lock
+          # Find where anchor build puts the .so
           anchor build 2>&1 | tail -30
-          ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
+          echo "=== Finding .so files ==="
+          find . -name "*.so" 2>/dev/null
+          echo "=== Checking standard locations ==="
+          ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null || echo "NOT at target/deploy/"
+          ls -la ../../target/deploy/hub_evidence_anchor.so 2>/dev/null || echo "NOT at ../../target/deploy/"
+          ls -la target/deploy/ 2>/dev/null || echo "target/deploy/ does not exist"
           grep declare_id src/lib.rs
 
       - name: Deploy
