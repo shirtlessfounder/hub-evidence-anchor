@@ -32,7 +32,7 @@ print(f'Keypair: {len(kb)} bytes')
       - name: Deploy pre-built binary
         run: |
           /tmp/solana-release/bin/solana program deploy \
-            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
+            programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair /tmp/deploy-keypair.json \
             --url devnet
 
