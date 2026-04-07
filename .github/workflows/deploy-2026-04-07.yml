@@ -17,7 +17,7 @@ jobs:
           ANCHOR_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
           echo "$ANCHOR_WALLET_JSON" | base64 -d > /tmp/wallet.bin
-          python3 -c "data=open('/tmp/wallet.bin','rb').read(); open('/tmp/wallet.json','w').write(json.dumps(list(data))); print(len(data))"
+          python3 -c "import json; data=open('/tmp/wallet.bin','rb').read(); open('/tmp/wallet.json','w').write(json.dumps(list(data))); print(len(data))"
       - name: Install Solana CLI
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" -o /tmp/solana.tar.bz2
