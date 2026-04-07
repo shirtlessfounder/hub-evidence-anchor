@@ -11,65 +11,70 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Solana CLI
-        run: |
-          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
-          echo "/tmp/solana-release/bin" >> $GITHUB_ENV
-          /tmp/solana-release/bin/solana --version
-
-      - name: Decode wallet and airdrop
+      - name: Decode wallet
         env:
           WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
-          set -e
-          python3 -c "
+          python3 << PYEOF
 import os, json, base64
-
-ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-secret = os.environ.get('WALLET_JSON', '').strip()
-print('Secret len:', len(secret), 'start:', secret[:10])
-
-# Try formats in order
-# Format: bs58(raw 64-byte keypair) -> big-endian decode
+ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+secret = os.environ.get("WALLET_JSON", "").strip()
+print("Secret len:", len(secret), "start:", secret[:10])
+raw = None
 try:
     n = 0
     for c in secret:
         n = n * 58 + ALPHABET.index(c)
-    raw = n.to_bytes(64, 'big')
-    with open('/tmp/keypair.json', 'w') as f: f.write(json.dumps(list(raw)))
-    print('Decoded bs58 -> 64 bytes OK')
-    pubkey_bytes = raw[32:]
-    npub = int.from_bytes(pubkey_bytes, 'big')
-    addr = ''
-    while npub > 0:
-        npub, rem = divmod(npub, 58)
-        addr = ALPHABET[rem] + addr
-    open('/tmp/pubkey.txt', 'w').write(addr)
-    print('Pubkey:', addr)
-except Exception as e:
-    print('Error:', e)
+    raw = n.to_bytes(64, "big")
+    print("Format: bs58 -> 64 bytes")
+except:
+    pass
+if raw is None:
+    try:
+        raw = base64.b64decode(secret)
+        if len(raw) == 64:
+            print("Format: base64 -> 64 bytes")
+    except:
+        pass
+if raw is None:
+    print("ERROR: cannot decode")
     exit(1)
-"
+with open("/tmp/keypair.txt", "w") as f:
+    f.write(json.dumps(list(raw))
+print("Keypair saved")
+pubkey_bytes = raw[32:]
+n2 = int.from_bytes(pubkey_bytes, "big")
+addr = ""
+while n2 > 0:
+    n2, rem = divmod(n2, 58)
+    addr = ALPHABET[rem] + addr
+with open("/tmp/pubkey.txt", "w") as f:
+    f.write(addr)
+print("Pubkey:", addr)
+PYEOF
+
+      - name: Install Solana CLI
+        run: |
+          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
+          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
+          /tmp/solana-release/bin/solana --version
+
+      - name: Airdrop SOL
+        run: |
           PUBKEY=$(cat /tmp/pubkey.txt)
-          echo "Airdropping 10 SOL to: $PUBKEY"
           /tmp/solana-release/bin/solana airdrop 10 "$PUBKEY" --url devnet || echo "Airdrop may have rate-limited"
 
-      - name: Deploy pre-built .so
+      - name: Deploy
         run: |
-          echo "Files:"
-          ls -la /tmp/keypair* /tmp/pubkey* 2>/dev/null || echo "No files found"
-          echo "Keypair first 3 bytes (hex): $(od -An -tx1 -N3 /tmp/keypair.json 2>/dev/null || echo 'cannot read')"
           /tmp/solana-release/bin/solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
-            --keypair /tmp/keypair.json \
+            --keypair /tmp/keypair.txt \
             --url devnet \
-            --commitment finalized
+            --max-sign-attempts 5
 
-      - name: Verify deployment
+      - name: Verify
         run: |
           /tmp/solana-release/bin/solana program show $PROGRAM_ID --url devnet
