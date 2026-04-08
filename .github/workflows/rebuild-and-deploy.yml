@@ -67,8 +67,11 @@ jobs:
           export SOLANA_SBF_MIXED_REBUILD=1
           
           # Delete ALL Cargo.lock files to force fresh resolution
-          rm -f Cargo.lock
-          find . -name "Cargo.lock" -delete 2>/dev/null || true
+          # Explicitly remove root workspace lockfile (find -mindepth skips it)
+          REPO_ROOT="$(pwd)"
+          rm -f "${REPO_ROOT}/Cargo.lock" Cargo.lock ./Cargo.lock
+          find "${REPO_ROOT}" -mindepth 2 -name "Cargo.lock" -delete 2>/dev/null || true
+          echo "Cargo.lock remaining: $(find "${REPO_ROOT}" -name 'Cargo.lock' -not -path '*/target/*' | tr '\n' ' ')"
           
           echo "=== Building with cargo-build-sbf ==="
           echo "SBF_TOOLCHAIN=$SBF_SOLANA_TOOLCHAIN_PATH"
