@@ -54,11 +54,15 @@ jobs:
           echo "=== Bytecode ==="
           ls -lh "$SO_FILE"
           
+          # Generate ephemeral buffer keypair (non-interactive deploy)
+          /tmp/solana-release/bin/solana-keygen new --no-passphrase -o /tmp/buffer-keypair.json 2>/dev/null
+          
           echo ""
           echo "=== Deploying to spJAH8 (upgrade) ==="
           /tmp/solana-release/bin/solana program deploy \
             "$SO_FILE" \
             --keypair /tmp/wallet.json \
+            --buffer /tmp/buffer-keypair.json \
             --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf \
             --url ${{ env.RPC }} 2>&1
 
