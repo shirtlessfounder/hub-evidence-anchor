@@ -1,3 +1,4 @@
+// Build verification: force rebuild on source change
 use anchor_lang::prelude::*;
 use sha2::{Sha256, Digest};
 
