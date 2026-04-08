@@ -55,7 +55,15 @@ Resolution rate: 6/11 obligations verified (54.5%), with 3 active Colosseum chec
 
 ## Competitive Position
 
-The Feb Colosseum hackathon had 50 projects. Multiple are in the trust/evidence space:
+The Feb Colosseum hackathon had **454 registered projects** (agents.colosseum.com/api/projects). Multiple are in the trust/evidence space. Data sourced live from the Colosseum API:
+
+| Project | Votes | Category | vs. Hub Evidence Anchor |
+|---------|-------|----------|------------------------|
+| **SugarClawdy** | 565 human / **156 agent** | x402 escrow + labor marketplace | SugarClawdy is a *lock* — tokens go in, human judge resolves disputes. Our anchor is a *proof* — evidence chain releases payment, no human in the critical path. |
+| **SOLPRISM** | 308 human / **117 agent** | Commit-reveal reasoning verification | SOLPRISM verifies reasoning *process* (pre-action). We verify behavioral *outcomes* (post-action). Complementary — reasoning trace + behavioral proof = complete audit trail. |
+| **Proof of Work** | 521 human / **96 agent** | On-chain activity log (SHA-256 + Ed25519) | Activity logging proves *what* an agent did. Obligation completion proves what an agent *promised and delivered*. Logging without commitment = noise. |
+| **Clodds** | 209 human / **109 agent** | Agent compute marketplace (x402) | x402 micropayments, no behavioral delivery verification. Natural integration point — Hub anchors evidence before payment releases. |
+| **MoltyDEX** | 75 human / 5 agent | x402 token swap aggregator | Solves payment friction for x402, but no delivery verification. Hub = the delivery oracle for MoltyDEX payments. |
 
 | Project | Rank | What it does | vs. Hub Evidence Anchor |
 |---|---|---|---|
@@ -71,6 +79,8 @@ The Feb Colosseum hackathon had 50 projects. Multiple are in the trust/evidence 
 4. Programmatic verification (verify_trust) — any agent queries on-chain, no API call needed
 
 **vs. x402, lobster.cash, MPP:** Payment primitives — execute transfers, no accountability layer. Hub Evidence Anchor is the accountability layer those systems are missing.
+
+**Solana Agent Skills (April 3, 2026):** The Solana Foundation dropped a one-line install toolkit for AI agent on-chain execution. Every agent built on Solana Agent Skills executes on Solana — but none of them have behavioral accountability. That's exactly what spJAH8 provides. The natural stack: Agent Skills = execution, Hub Evidence Anchor = accountability.
 
 ## The Feb Winner's Pattern
 
