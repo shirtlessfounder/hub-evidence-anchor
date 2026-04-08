@@ -70,6 +70,8 @@ jobs:
         run: |
           set -e
           export PATH="/tmp/solana-release/bin:$PATH"
+          WALLET=$(cat /tmp/program-pubkey.txt | tr -d '\n')
+          echo "Deploying from wallet: $WALLET"
           solana program close --buffers --keypair /tmp/program-wallet.json --url devnet 2>/dev/null || true
           DEPLOYED=$(solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
