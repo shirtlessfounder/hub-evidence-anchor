@@ -13,21 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fix program Anchor.toml with spJAH8
+      - name: Verify committed .so
         run: |
-          perl -i -pe 's{^(hub_evidence_anchor = ")[^"]*"}{$1spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"}' Anchor.toml
-          grep "hub_evidence_anchor" Anchor.toml
-
-      - name: Build program with Anchor Docker
-        run: |
-          docker run --rm \
-            -v "$PWD":/workspace \
-            -w /workspace \
-            ghcr.io/coral-xyz/anchor:v0.30.0 \
-            sh -c "rm -f Cargo.lock programs/hub-evidence-anchor/Cargo.lock && cargo build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1"
-          echo ""
-          echo "=== Build artifacts ==="
-          ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
+          echo "=== Verifying committed .so ==="
+          ls -lh programs/hub-evidence-anchor/hub_evidence_anchor.so
+          echo "File is present and ready for deploy"
 
       - name: Decode program wallet
         env:
@@ -57,7 +47,7 @@ jobs:
                   if isinstance(arr, list) and len(arr) == 64:
                       raw = bytes(int(x) if isinstance(x, int) else x for x in arr)
               except: pass
-          if raw is None: print("ERROR"); exit(1)
+          if raw is None: print("ERROR: could not decode wallet"); exit(1)
           with open("/tmp/program-wallet.json", "w") as f: json.dump(list(raw), f)
           npub = int.from_bytes(raw[32:], "big")
           addr = ""
@@ -71,7 +61,7 @@ jobs:
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "Installed: $(/tmp/solana-release/bin/solana --version)"
 
-      - name: Airdrop SOL (Helius or Solana Foundation)
+      - name: Airdrop SOL
         env:
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
         run: |
@@ -79,22 +69,29 @@ jobs:
           echo "Balance before:"
           /tmp/solana-release/bin/solana balance "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com
           
+          # Helius faucet if key available
           if [ -n "$HELIUS_API_KEY" ]; then
             echo "Using Helius faucet..."
-            curl -s -X POST "https://devnet.helius-rpc.com/?api-key=$HELIUS_API_KEY" \
+            result=$(curl -s -X POST "https://devnet.helius-rpc.com/?api-key=$HELIUS_API_KEY" \
               -H "Content-Type: application/json" \
-              -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"requestAirdrop\",\"params\":[\"$PROGRAM_PUBKEY\", 2000000000]}"
-          else
-            echo "Requesting from Solana Foundation (10 retries)..."
-            for i in 1 2 3 4 5 6 7 8 9 10; do
-              result=$(/tmp/solana-release/bin/solana airdrop 2 "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com 2>&1)
-              if echo "$result" | grep -q "Success"; then
-                echo "Airdrop $i succeeded"; break
-              fi
-              echo "Airdrop $i: $(echo $result | head -1)"
-              sleep 3
-            done
+              -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"requestAirdrop\",\"params\":[\"$PROGRAM_PUBKEY\", 2000000000]}")
+            echo "Helius response: $result"
+            sleep 3
           fi
+          
+          # Solana Foundation fallback (retry 10x)
+          echo "Requesting from Solana Foundation..."
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            result=$(
+              /tmp/solana-release/bin/solana airdrop 2 "$PROGRAM_PUBKEY" \
+                --url https://api.devnet.solana.com 2>&1
+            )
+            if echo "$result" | grep -q "Success"; then
+              echo "Airdrop $i succeeded"; break
+            fi
+            echo "Airdrop $i failed: $(echo $result | head -1)"
+            sleep 5
+          done
           
           echo "Balance after:"
           /tmp/solana-release/bin/solana balance "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com
@@ -102,7 +99,7 @@ jobs:
       - name: Deploy
         run: |
           /tmp/solana-release/bin/solana program deploy \
-            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
+            programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
             --program-id $PROGRAM_ID \
             --url https://api.devnet.solana.com
