@@ -35,25 +35,16 @@ jobs:
           cargo install --git https://github.com/coral-xyz/anchor avm --force
           echo "PATH=$HOME/.cargo/bin:/tmp/solana-release/bin:\$PATH" >> $GITHUB_ENV
           avm install 0.30.0
-          avm use 0.30.0
-          # Get the actual binary path that AVM symlinks to
-          AVM_ANCHOR_BIN="$HOME/.avm/current/bin/anchor"
-          if [ ! -f "$AVM_ANCHOR_BIN" ]; then
-            # Fallback: try versions dir directly
-            AVM_ANCHOR_BIN="$HOME/.avm/versions/0.30.0/bin/anchor"
-          fi
-          echo "AVM_ANCHOR_BIN=$AVM_ANCHOR_BIN" >> $GITHUB_ENV
-          $AVM_ANCHOR_BIN --version
+          # AVM 1.x installs to .avm/tmp/bin/ — add to PATH so 'anchor' resolves correctly
+          echo "PATH=$HOME/.avm/tmp/bin:\$PATH" >> $GITHUB_ENV
 
       - name: Build program
         run: |
           export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:/usr/bin:/bin:$PATH"
-          # Use the recorded AVM anchor binary — bare 'anchor' resolves to AVM shim (installs v1.0.0)
-          echo "Using anchor binary: $AVM_ANCHOR_BIN"
-          $AVM_ANCHOR_BIN --version
-          # rustup target is required for cargo-build-sbf 1.x
+          echo "anchor binary: $(which anchor)"
+          anchor --version
           rustup target add bpfel-unknown-unknown --toolchain stable 2>/dev/null || true
-          $AVM_ANCHOR_BIN build --skip-lint
+          anchor build --skip-lint --skip-lint
 
       - name: Decode program wallet
         env:
