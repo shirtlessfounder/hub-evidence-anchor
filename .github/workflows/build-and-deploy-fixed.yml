@@ -64,6 +64,9 @@ jobs:
           # Add Solana CLI and Rust to PATH
           export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           
+          # Remove Cargo.lock if it exists (npm install may generate incompatible format)
+          rm -f Cargo.lock
+          
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           
