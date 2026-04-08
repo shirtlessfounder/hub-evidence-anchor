@@ -3,12 +3,7 @@
   "version": "0.1.0",
   "description": "On-chain behavioral trust oracle for Solana agents",
   "scripts": {
-    "build": "anchor build",
-    "test": "anchor test",
-    "deploy:devnet": "anchor deploy --provider.cluster devnet",
-    "deploy:mainnet": "anchor deploy --provider.cluster mainnet-beta",
-    "upgrade:devnet": "anchor upgrade $(anchor build) --provider.cluster devnet",
-    "upgrade:mainnet": "anchor upgrade $(anchor build) --provider.cluster mainnet-beta"
+    "test": "anchor test"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.30.0",
