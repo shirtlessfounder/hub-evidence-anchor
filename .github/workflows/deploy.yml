@@ -62,14 +62,18 @@ jobs:
           set -e
           export PATH="/tmp/solana-release/bin:$PATH"
           RECIPIENT=$(cat /tmp/program-pubkey.txt | tr -d '\n')
-          echo "Airdropping to: $RECIPIENT"
-          for i in 1 2 3 4 5; do
-            if solana airdrop 5 "$RECIPIENT" --url devnet 2>&1 | grep -q "Success"; then
+          echo "Current balance:"
+          solana balance "$RECIPIENT" --url devnet
+          echo "Airdropping 10 SOL to cover deploy fees..."
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            OUT=$(solana airdrop 10 "$RECIPIENT" --url devnet 2>&1)
+            echo "$OUT"
+            if echo "$OUT" | grep -q "Success"; then
               echo "Airdrop $i succeeded"
               break
             fi
-            echo "Airdrop $i failed, retrying in 10s..."
-            sleep 10
+            echo "Airdrop $i failed, retrying in 5s..."
+            sleep 5
           done
           solana balance "$RECIPIENT" --url devnet
 
@@ -79,12 +83,19 @@ jobs:
           export PATH="/tmp/solana-release/bin:$PATH"
           WALLET=$(cat /tmp/program-pubkey.txt | tr -d '\n')
           echo "Deploying from wallet: $WALLET"
+          echo "Program ID: $PROGRAM_ID"
           solana program close --buffers --keypair /tmp/program-wallet.json --url devnet 2>/dev/null || true
           solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
             --program-id $PROGRAM_ID \
-            --url devnet
+            --max-sign-attempts 100 \
+            --url devnet > /tmp/deploy-output.txt 2>&1 || true
+          echo "=== Deploy output ==="
+          cat /tmp/deploy-output.txt
+          if grep -q "Error\|error" /tmp/deploy-output.txt; then
+            echo "Deploy had errors - check above"
+          fi
 
       - name: Verify
         run: |
