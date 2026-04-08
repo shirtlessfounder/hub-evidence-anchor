@@ -36,7 +36,8 @@ jobs:
 
       - name: Install Anchor CLI
         run: |
-          export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:$PATH"
+          export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:/usr/bin:$PATH"
+          which cc || (echo "cc not found, installing..." && apt-get update && apt-get install -y gcc && which cc)
           cargo install anchor-cli@0.30.0
 
       - name: Build program
