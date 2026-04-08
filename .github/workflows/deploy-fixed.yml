@@ -34,7 +34,7 @@ jobs:
           PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -name "rustc" -path "*/platform-tools/*/rust/bin/rustc" 2>/dev/null | head -1 | xargs dirname | xargs dirname)
           echo "Found platform-tools rust: $PLATFORM_TOOLS_RUST"
           rustup toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || true
-          rustup toolchain list
+          rustup toolchain list || true
           cargo +solana --version 2>/dev/null || echo "solana toolchain link may have failed"
 
       - name: Decode wallet
