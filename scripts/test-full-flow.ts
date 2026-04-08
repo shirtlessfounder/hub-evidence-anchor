@@ -34,7 +34,12 @@ const PROGRAM_ID = new PublicKey(
   process.env.PROGRAM_ID || "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"
 );
 const SOLANA_RPC = process.env.SOLANA_RPC || "https://api.devnet.solana.com";
-const KEYPAIR_PATH = process.env.HUB_AUTHORITY_KEYPAIR || "./keypair.json";
+const KEYPAIR_PATH = process.env.HUB_AUTHORITY_KEYPAIR || 
+  (process.env.HUB_AUTHORITY_KEYPAIR || 
+    (fs.existsSync("./keys/hub-evidence-anchor-keypair.json") ? "./keys/hub-evidence-anchor-keypair.json" : 
+      fs.existsSync("/home/openclaw/.openclaw/workspace/hub-evidence-anchor/keys/hub-evidence-anchor-keypair.json") 
+        ? "/home/openclaw/.openclaw/workspace/hub-evidence-anchor/keys/hub-evidence-anchor-keypair.json"
+        : "./keys/hub-evidence-anchor-keypair.json"));
 
 const connection = new Connection(SOLANA_RPC, "confirmed");
 
@@ -79,14 +84,15 @@ function buildAnchorEvidenceIx(
   const data = Buffer.alloc(512);
   let offset = 0;
 
-  // Discriminator (4 bytes): anchor_evidence = 1
-  data.writeUInt32LE(1, offset);
-  offset += 4;
+  // Discriminator (8 bytes): anchor_evidence = 11944261126840415351 (uint64 LE)
+  // bytes: [119, 116, 212, 33, 54, 138, 194, 165]
+  data.writeBigUInt64LE(BigInt(11944261126840415351), offset);
+  offset += 8;
 
   // agent_id: String
   data.writeUInt32LE(agentBytes.length, offset);
   offset += 4;
-  agentBytes.copy(data, offset);
+  Buffer.from(agentBytes).copy(data, offset);
   offset += agentBytes.length;
 
   // obligation_count: u32
@@ -104,7 +110,7 @@ function buildAnchorEvidenceIx(
   // evidence_hash: String
   data.writeUInt32LE(hashBytes.length, offset);
   offset += 4;
-  hashBytes.copy(data, offset);
+  Buffer.from(hashBytes).copy(data, offset);
   offset += hashBytes.length;
 
   const keys = [
@@ -138,26 +144,27 @@ function buildAnchorHandoffIx(
   const data = Buffer.alloc(1024);
   let offset = 0;
 
-  // Discriminator (4 bytes): anchor_handoff = 2
-  data.writeUInt32LE(2, offset);
-  offset += 4;
+  // Discriminator (8 bytes): anchor_handoff = 1154360311916136265 (uint64 LE)
+  // bytes: [73, 7, 146, 110, 150, 28, 5, 16]
+  data.writeBigUInt64LE(BigInt(1154360311916136265), offset);
+  offset += 8;
 
   // obligor: String
   data.writeUInt32LE(obligorBytes.length, offset);
   offset += 4;
-  obligorBytes.copy(data, offset);
+  Buffer.from(obligorBytes).copy(data, offset);
   offset += obligorBytes.length;
 
   // obligation_id: String
   data.writeUInt32LE(oblIdBytes.length, offset);
   offset += 4;
-  oblIdBytes.copy(data, offset);
+  Buffer.from(oblIdBytes).copy(data, offset);
   offset += oblIdBytes.length;
 
   // commitment_text: String
   data.writeUInt32LE(commitBytes.length, offset);
   offset += 4;
-  commitBytes.copy(data, offset);
+  Buffer.from(commitBytes).copy(data, offset);
   offset += commitBytes.length;
 
   // obligor_signature: [u8; 64]
@@ -167,13 +174,13 @@ function buildAnchorHandoffIx(
   // completion_proof: String
   data.writeUInt32LE(proofBytes.length, offset);
   offset += 4;
-  proofBytes.copy(data, offset);
+  Buffer.from(proofBytes).copy(data, offset);
   offset += proofBytes.length;
 
   // resolution: String
   data.writeUInt32LE(resBytes.length, offset);
   offset += 4;
-  resBytes.copy(data, offset);
+  Buffer.from(resBytes).copy(data, offset);
   offset += resBytes.length;
 
   const pda = deriveHandoffPDA(obligor, obligationId);
@@ -221,22 +228,32 @@ async function getAccountData(connection: Connection, pubkey: PublicKey): Promis
 }
 
 function parseHubEvidence(data: Buffer) {
-  let offset = 8; // Anchor discriminator
+  let offset = 8; // Anchor 8-byte discriminator
   const agentIdLen = data.readUInt32LE(offset);
   offset += 4;
   const agentId = data.subarray(offset, offset + agentIdLen).toString("utf8");
   offset += agentIdLen;
-  offset += 128; // hub_endpoint
+  // hub_endpoint: String (4-byte len + bytes) — but account allocates 128 bytes
+  const endpointLen = data.readUInt32LE(offset);
+  offset += 4;
+  offset += endpointLen; // actual bytes used
+  offset += 128 - (4 + endpointLen); // pad to 128-byte boundary
   const obligationCount = data.readUInt32LE(offset);
   offset += 4;
   const resolvedCount = data.readUInt32LE(offset);
   offset += 4;
   const failedCount = data.readUInt32LE(offset);
   offset += 4;
-  offset += 128; // evidence_hash
-  const resolutionRate = data.readFloat64LE(offset);
+  // evidence_hash: String (4-byte len + bytes) — 128 bytes allocated
+  const hashLen = data.readUInt32LE(offset);
+  offset += 4;
+  offset += hashLen;
+  offset += 128 - (4 + hashLen); // pad to 128-byte boundary
+  const resolutionRate = data.readDoubleLE(offset);
   offset += 8;
   const lastUpdated = Number(data.readBigInt64LE(offset));
+  offset += 8;
+  offset += 32; // authority (Pubkey)
   return { agentId, obligationCount, resolvedCount, failedCount, resolutionRate, lastUpdated };
 }
 

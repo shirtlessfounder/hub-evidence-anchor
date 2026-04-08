@@ -54,15 +54,16 @@ function buildAnchorHandoffInstruction(params: {
   const data = Buffer.alloc(2048);
   let offset = 0;
 
-  // Discriminator: 4 bytes (u32 LE) — anchor_handoff = 2
-  data.writeUInt32LE(2, offset);
-  offset += 4;
+  // Discriminator (8 bytes): anchor_handoff = 1154360311916136265 (uint64 LE)
+  // bytes: [73, 7, 146, 110, 150, 28, 5, 16]
+  data.writeBigUInt64LE(BigInt(1154360311916136265), offset);
+  offset += 8;
 
   // obligor: String (4-byte length + bytes)
   const obligorBytes = encoder.encode(obligor);
   data.writeUInt32LE(obligorBytes.length, offset);
   offset += 4;
-  obligorBytes.copy(data, offset);
+  Buffer.from(obligorBytes).copy(data, offset);
   offset += obligorBytes.length;
 
   // obligation_id: String
@@ -75,7 +76,7 @@ function buildAnchorHandoffInstruction(params: {
   const commitmentBytes = encoder.encode(commitmentText);
   data.writeUInt32LE(commitmentBytes.length, offset);
   offset += 4;
-  commitmentBytes.copy(data, offset);
+  Buffer.from(commitmentBytes).copy(data, offset);
   offset += commitmentBytes.length;
 
   // obligor_signature: [u8; 64]
@@ -86,14 +87,14 @@ function buildAnchorHandoffInstruction(params: {
   const proofBytes = encoder.encode(completionProof);
   data.writeUInt32LE(proofBytes.length, offset);
   offset += 4;
-  proofBytes.copy(data, offset);
+  Buffer.from(proofBytes).copy(data, offset);
   offset += proofBytes.length;
 
   // resolution: String
   const resBytes = encoder.encode(resolution);
   data.writeUInt32LE(resBytes.length, offset);
   offset += 4;
-  resBytes.copy(data, offset);
+  Buffer.from(resBytes).copy(data, offset);
   offset += resBytes.length;
 
   const instructionData = data.subarray(0, offset);
