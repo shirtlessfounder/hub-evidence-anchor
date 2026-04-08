@@ -48,8 +48,9 @@ jobs:
           TOOLCHAIN_DIR=$(find "$RUSTUP_HOME/toolchains" -mindepth 1 -maxdepth 1 -type d | head -1)
           echo "Found toolchain: $TOOLCHAIN_DIR"
           echo "Toolchain contents: $(ls "$TOOLCHAIN_DIR/bin/" 2>&1 | head -5)"
+          # Add BPF targets to the actual toolchain BEFORE linking
+          "$CARGO_HOME/bin/rustup" target add bpfel-unknown-none bpfeb-unknown-none --toolchain "$TOOLCHAIN_DIR"
           "$CARGO_HOME/bin/rustup" toolchain link solana "$TOOLCHAIN_DIR"
-          "$CARGO_HOME/bin/rustup" target add bpfel-unknown-none bpfeb-unknown-none --toolchain solana
           echo "cargo +solana: $($CARGO_HOME/bin/cargo +solana --version)"
           echo "toolchains: $($CARGO_HOME/bin/rustup toolchain list)"
 

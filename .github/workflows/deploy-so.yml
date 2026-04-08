@@ -23,8 +23,9 @@ jobs:
         env:
           DEPLOY_KEYPAIR: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
-          echo "$DEPLOY_KEYPAIR" > /tmp/wallet.json
+          echo "$DEPLOY_KEYPAIR" | base64 -d > /tmp/wallet.json
           chmod 600 /tmp/wallet.json
+          /tmp/solana-release/bin/solana-keygen pubkey /tmp/wallet.json
 
       - name: Deploy pre-built .so
         run: |
