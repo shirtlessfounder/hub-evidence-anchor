@@ -9,15 +9,55 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify committed .so
+      - name: Install Rust 1.75 + link solana toolchain
         run: |
-          echo "=== Verifying committed .so ==="
-          ls -lh programs/hub-evidence-anchor/hub_evidence_anchor.so
-          echo "File is present and ready for deploy"
+          # Install Rust 1.75 (generates Cargo.lock v3, compatible with SBF toolchain)
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.75.0
+          source "$HOME/.cargo/env"
+          
+          # Link 1.75 as the 'solana' toolchain so cargo-build-sbf finds it
+          rustup toolchain link solana "$HOME/.rustup/toolchains/rust-1.75.0-x86_64-unknown-linux-gnu"
+          
+          # Add BPF targets for the solana toolchain
+          rustup target add bpfel-unknown-none bpfeb-unknown-none --toolchain solana
+          
+          # Verify
+          echo "=== toolchain ==="
+          cargo +solana --version
+          rustc +solana --version
+
+      - name: Install Solana CLI + SBF tools
+        run: |
+          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
+          echo "Solana: $(/tmp/solana-release/bin/solana --version)"
+          echo "cargo-build-sbf: $(/tmp/solana-release/bin/cargo-build-sbf --version 2>/dev/null || echo 'ok')"
+
+      - name: Fix program Anchor.toml with spJAH8
+        run: |
+          perl -i -pe 's{^(hub_evidence_anchor = ")[^"]*"}{$1spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"}' Anchor.toml
+          grep "hub_evidence_anchor" Anchor.toml
+
+      - name: Build program
+        run: |
+          source "$HOME/.cargo/env"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          
+          # Delete ALL Cargo.lock files to force fresh resolution
+          rm -f Cargo.lock
+          find . -name "Cargo.lock" -delete 2>/dev/null || true
+          
+          echo "=== Building with cargo-build-sbf ==="
+          /tmp/solana-release/bin/cargo-build-sbf \
+            --manifest-path programs/hub-evidence-anchor/Cargo.toml \
+            2>&1 | tail -30
+          
+          echo ""
+          echo "=== Build artifacts ==="
+          ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
 
       - name: Decode program wallet
         env:
@@ -56,12 +96,7 @@ jobs:
           print(f"Wallet: {addr}")
           PYEOF
 
-      - name: Install Solana CLI
-        run: |
-          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
-          echo "Installed: $(/tmp/solana-release/bin/solana --version)"
-
-      - name: Airdrop SOL
+      - name: Airdrop SOL (Helius or Solana Foundation)
         env:
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
         run: |
@@ -69,29 +104,23 @@ jobs:
           echo "Balance before:"
           /tmp/solana-release/bin/solana balance "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com
           
-          # Helius faucet if key available
           if [ -n "$HELIUS_API_KEY" ]; then
             echo "Using Helius faucet..."
             result=$(curl -s -X POST "https://devnet.helius-rpc.com/?api-key=$HELIUS_API_KEY" \
               -H "Content-Type: application/json" \
               -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"requestAirdrop\",\"params\":[\"$PROGRAM_PUBKEY\", 2000000000]}")
             echo "Helius response: $result"
-            sleep 3
+          else
+            echo "Requesting from Solana Foundation (10 retries)..."
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              result=$(/tmp/solana-release/bin/solana airdrop 2 "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com 2>&1)
+              if echo "$result" | grep -q "Success"; then
+                echo "Airdrop $i succeeded"; break
+              fi
+              echo "Airdrop $i: $(echo $result | head -1)"
+              sleep 5
+            done
           fi
-          
-          # Solana Foundation fallback (retry 10x)
-          echo "Requesting from Solana Foundation..."
-          for i in 1 2 3 4 5 6 7 8 9 10; do
-            result=$(
-              /tmp/solana-release/bin/solana airdrop 2 "$PROGRAM_PUBKEY" \
-                --url https://api.devnet.solana.com 2>&1
-            )
-            if echo "$result" | grep -q "Success"; then
-              echo "Airdrop $i succeeded"; break
-            fi
-            echo "Airdrop $i failed: $(echo $result | head -1)"
-            sleep 5
-          done
           
           echo "Balance after:"
           /tmp/solana-release/bin/solana balance "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com
@@ -99,7 +128,7 @@ jobs:
       - name: Deploy
         run: |
           /tmp/solana-release/bin/solana program deploy \
-            programs/hub-evidence-anchor/hub_evidence_anchor.so \
+            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
             --program-id $PROGRAM_ID \
             --url https://api.devnet.solana.com
