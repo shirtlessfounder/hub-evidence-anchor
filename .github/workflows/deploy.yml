@@ -12,7 +12,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -59,23 +59,23 @@ jobs:
 
       - name: Airdrop SOL
         run: |
-          set -e
           export PATH="/tmp/solana-release/bin:$PATH"
           RECIPIENT=$(cat /tmp/program-pubkey.txt | tr -d '\n')
           echo "Current balance:"
           solana balance "$RECIPIENT" --url devnet
-          echo "Airdropping 10 SOL to cover deploy fees..."
-          for i in 1 2 3 4 5 6 7 8 9 10; do
-            OUT=$(solana airdrop 10 "$RECIPIENT" --url devnet 2>&1)
+          echo "Airdropping 2 SOL..."
+          for i in 1 2 3 4 5 6 7 8; do
+            OUT=$(solana airdrop 2 "$RECIPIENT" --url devnet 2>&1)
             echo "$OUT"
             if echo "$OUT" | grep -q "Success"; then
               echo "Airdrop $i succeeded"
               break
             fi
-            echo "Airdrop $i failed, retrying in 5s..."
-            sleep 5
+            echo "Airdrop $i failed, retrying in 3s..."
+            sleep 3
           done
           solana balance "$RECIPIENT" --url devnet
+          echo "Balance after airdrop attempts — proceeding to deploy (upgrade cost ~0.01 SOL)"
 
       - name: Deploy program
         id: deploy
