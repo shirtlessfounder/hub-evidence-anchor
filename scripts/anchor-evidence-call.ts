@@ -34,7 +34,8 @@ const idl = {
       name: "anchor_evidence",
       accounts: [
         { name: "hub_evidence", writable: true, signer: false },
-        { name: "authority", writable: true, signer: true },
+        { name: "hub_endpoint", writable: true, signer: false },
+        { name: "authority", writable: false, signer: true },
         { name: "system_program", writable: false, signer: false },
       ],
       args: [
@@ -129,6 +130,7 @@ async function main() {
       )
       .accounts({
         hub_evidence: hubEvidencePDA,
+        hub_endpoint: hubEndpointPDA,
         authority: wallet.publicKey,
         system_program: anchor.web3.SystemProgram.programId,
       })
