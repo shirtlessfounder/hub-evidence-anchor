@@ -49,7 +49,7 @@ jobs:
           echo "=== Priming platform-tools (dummy build) ==="
           mkdir -p /tmp/dummy-build
           cd /tmp/dummy-build
-          /tmp/solana-release/bin/cargo-build-sbf --version 2>&1 | head -2
+          /tmp/solana-release/bin/cargo-build-sbf --version 2>&1 || true
           rm -rf /tmp/dummy-build
           cd "$ORIGINAL_DIR"
           # Now find the cached platform-tools rust
