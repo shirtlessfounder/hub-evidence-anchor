@@ -22,10 +22,10 @@ jobs:
           export PATH="$CARGO_HOME/bin:$PATH"
           export RUSTUP_INIT_SKIP_RECOMMENDATIONS=1
           
-          # Install Rust 1.75
+          # Install Rust 1.82 (needed to parse lockfile v4 generated locally)
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
-            sh -s -- -y --default-toolchain 1.75.0
+            sh -s -- -y --default-toolchain 1.82.0
           
           source "$CARGO_HOME/env"
           
@@ -63,7 +63,7 @@ jobs:
         run: |
           source "$HOME/.cargo/env"
           export PATH="$HOME/.cargo/bin:$PATH"
-          export SBF_SOLANA_TOOLCHAIN_PATH="/opt/rustup/toolchains/1.75.0-x86_64-unknown-linux-gnu"
+          export SBF_SOLANA_TOOLCHAIN_PATH="/opt/rustup/toolchains/1.82.0-x86_64-unknown-linux-gnu"
           export SOLANA_SBF_MIXED_REBUILD=1
           
           # Delete ALL Cargo.lock files to force fresh resolution
