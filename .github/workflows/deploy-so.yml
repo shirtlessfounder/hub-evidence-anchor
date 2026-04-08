@@ -29,7 +29,7 @@ jobs:
       - name: Deploy pre-built .so
         run: |
           /tmp/solana-release/bin/solana program deploy \
-            programs/hub-evidence-anchor/hub_evidence_anchor.so \
+            programs/hub-evidence-anchor/hub-evidence_anchor.so \
             --keypair /tmp/wallet.json \
             --program-id $PROGRAM_ID \
             --url $RPC 2>&1
