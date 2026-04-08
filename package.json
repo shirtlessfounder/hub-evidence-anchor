@@ -11,7 +11,7 @@
     "upgrade:mainnet": "anchor upgrade $(anchor build) --provider.cluster mainnet-beta"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.32.1",
+    "@coral-xyz/anchor": "0.30.0",
     "@solana/web3.js": "^1.98.4",
     "@types/node": "^25.5.2",
     "ts-node": "^10.9.2"
