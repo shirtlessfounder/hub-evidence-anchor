@@ -44,13 +44,14 @@ jobs:
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
           export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+          ORIGINAL_DIR="$(pwd)"
           # cargo-build-sbf downloads platform-tools on first actual build; do a dummy build here to prime the cache
           echo "=== Priming platform-tools (dummy build) ==="
           mkdir -p /tmp/dummy-build
           cd /tmp/dummy-build
           /tmp/solana-release/bin/cargo-build-sbf --version 2>&1 | head -2
           rm -rf /tmp/dummy-build
-          cd -
+          cd "$ORIGINAL_DIR"
           # Now find the cached platform-tools rust
           PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -name "rustc" -path "*/platform-tools/*/rust/bin/rustc" 2>/dev/null | head -1 | xargs dirname 2>/dev/null | xargs dirname 2>/dev/null)
           echo "Found platform-tools rust: $PLATFORM_TOOLS_RUST"
@@ -59,7 +60,7 @@ jobs:
           else
             echo "WARNING: No platform-tools rust found — cargo-build-sbf may use embedded rust"
           fi
-          rustup toolchain list
+          rustup toolchain list || true
           cargo +solana --version 2>/dev/null || echo "solana toolchain not available via rustup"
 
       - name: Decode wallet keypair (base64)
