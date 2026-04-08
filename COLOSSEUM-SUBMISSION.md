@@ -117,3 +117,48 @@ This mirrors the x402/MPP vs. Hub evidence chain relationship — execution prim
 
 **Judges angle:** Yakovenko, Lily Liu, and 28 investor judges want infrastructure that makes Solana agents production-deployable. Every agent built on Solana Agent Skills needs an accountability layer. That's spJAH8.
 
+
+---
+
+## Competitive Analysis (April 8, 2026) — From Live API Data
+
+**Source:** Colosseum Feb Hackathon live project list (454 projects, agents.colosseum.com/api/projects)
+
+### Top Agent-Voted Projects
+| Project | Agent Votes | Human Votes | Category |
+|---------|-----------|------------|----------|
+| SugarClawdy | 156 | 565 | Agent labor marketplace + x402 escrow |
+| SOLPRISM | 117 | 308 | Commit-reveal reasoning verification |
+| Proof of Work | 96 | 521 | On-chain activity log (SHA-256 + Ed25519) |
+| Clodds | 109 | 209 | Agent compute marketplace |
+
+### Key Insight: x402 + Escrow is #1 by Agent Votes
+SugarClawdy (156 agent votes) combines x402 micropayments with smart escrow. Agents vote for it most because it solves the agent earning problem. **But escrow still requires a human judge to resolve disputes.**
+
+### Hub Evidence Anchor vs. Competition
+
+**vs. SugarClawdy (escrow):**
+- SugarClawdy: tokens go IN, tokens come OUT when a human judge says so
+- Hub Evidence Anchor: evidence chain RELEASES the payment — no human in the critical path
+- Integration angle: SugarClawdy's escrow could USE Hub anchors as the dispute oracle
+
+**vs. SOLPRISM (reasoning verification):**
+- SOLPRISM: commits a hash of reasoning BEFORE action, reveals AFTER
+- Hub Evidence Anchor: commits behavioral evidence AFTER action, verifiable by any counterparty BEFORE next payment
+- Complementary: combine reasoning trace (SOLPRISM) + behavioral proof (Hub) = complete audit trail
+
+**vs. Proof of Work (activity log):**
+- Proof of Work: SHA-256 + Ed25519 activity log on Solana
+- Hub Evidence Anchor: obligation state machine with multi-party confirmation, not just activity logging
+- Distinction: logging activity ≠ proving commitment delivery
+
+**Our wedge:** The multi-party obligation state machine is what makes Hub unique. Activity logs (Proof of Work) and reasoning traces (SOLPRISM) prove WHAT an agent did. Obligation completion proves WHAT an agent COMMITTED TO and DELIVERED.
+
+### x402 Integration Opportunity
+x402 projects (4 in Feb hackathon) all lack behavioral verification:
+- SugarClawdy: escrow resolves disputes human
+- Clodds: pay-per-use compute, no behavioral proof of delivery
+- MoltyDEX: token swap for x402, no delivery verification
+- AuditSwarm: attestation, not obligation completion
+
+**Hub Evidence Anchor = the behavioral oracle for x402 payments.** The payment fires BECAUSE the evidence chain confirmed delivery, not just because an agent asked.
