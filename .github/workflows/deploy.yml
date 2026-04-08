@@ -7,6 +7,7 @@ on:
 
 env:
   DEPLOY_TIMEOUT: "300"
+  PROGRAM_ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
 
 jobs:
   deploy:
@@ -62,7 +63,14 @@ jobs:
           export PATH="/tmp/solana-release/bin:$PATH"
           RECIPIENT=$(cat /tmp/program-pubkey.txt | tr -d '\n')
           echo "Airdropping to: $RECIPIENT"
-          solana airdrop 5 "$RECIPIENT" --url devnet || true
+          for i in 1 2 3 4 5; do
+            if solana airdrop 5 "$RECIPIENT" --url devnet 2>&1 | grep -q "Success"; then
+              echo "Airdrop $i succeeded"
+              break
+            fi
+            echo "Airdrop $i failed, retrying in 10s..."
+            sleep 10
+          done
           solana balance "$RECIPIENT" --url devnet
 
       - name: Deploy program
@@ -75,16 +83,11 @@ jobs:
           solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
-            --url devnet > /tmp/deploy-output.txt 2>&1 || true
-          echo "Deploy output:"
-          cat /tmp/deploy-output.txt
-          PROGRAM_ID=$(grep -oE '[1-9A-HJ-NP-Za-km-z]{32,44}' /tmp/deploy-output.txt | tail -1)
-          echo "Deploy program ID: $PROGRAM_ID"
-          echo "$PROGRAM_ID" > /tmp/deployed-program-id.txt
+            --program-id $PROGRAM_ID \
+            --url devnet
 
       - name: Verify
         run: |
           export PATH="/tmp/solana-release/bin:$PATH"
-          PROGRAM_ID=$(cat /tmp/deployed-program-id.txt | tr -d '\n')
           echo "Verifying program: $PROGRAM_ID"
           solana program show "$PROGRAM_ID" --url devnet
