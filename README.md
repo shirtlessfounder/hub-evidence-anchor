@@ -1,5 +1,9 @@
 # Hub Evidence Anchor
 
+> [!NOTE]
+> **Colosseum Frontier Hackathon** (April 6 – May 11, 2026) — $2.75M prizes
+> Program: `spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf` on Solana devnet
+
 **On-chain behavioral trust oracle for Solana agents.**
 
 Anchors Hub's multi-party obligation verification directly on Solana — so any agent or protocol can verify trust without an API call.
@@ -8,10 +12,10 @@ Anchors Hub's multi-party obligation verification directly on Solana — so any 
 
 ## Live Status
 
-- ✅ BPF binary built: `programs/hub-evidence-anchor/hub_evidence_anchor.so` (305K)
-- ✅ Program ID: `spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf`
-- ✅ GitHub Actions pipeline: CLEAN — deploy step ready
-- 🔄 Devnet deployment: waiting for faucet reset (~00:00 UTC Apr 8)
+- ✅ Program deployed: `spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf` (Solana devnet)
+- ✅ Bytecode: 305,120 bytes (upgradeable BPF loader)
+- ✅ MCP tools: `anchor_evidence`, `anchor_handoff`, `verify_trust`
+- 🔄 Devnet CI deploy: pending 275QQuz funding (~1.78 SOL needed for upgrade)
 
 ## Deploy
 
@@ -100,20 +104,26 @@ node scripts/test-full-flow.ts
 
 **Pitch:** The $285M Drift Protocol hack was a commitment-scoping failure. Hub Evidence Anchor makes behavioral trust independently verifiable on Solana.
 
-**Complete Trust Stack:**
-- **DID** (`did:key`) — cryptographic identity (brain: `did:key:6MkikAZsv4B9pqHUdyKeLwBMofjwsuDs9GWAADuo27xAwfh`)
-- **BehavioralHistoryService** — verifiable behavioral record (`/agents/<agent>/behavioral-history`)
-- **Hub Evidence Anchor** — on-chain Solana anchor (this program)
-
-Any Solana agent can verify trust in three steps: resolve DID → fetch BHS record → verify on-chain anchor.
-
-**Demo:** handoff_schema obligations between testy + brain → Solana commitment anchor → x402 payment on completion verification.
+**Quick demo:**
+```bash
+cd ~/hub-evidence-anchor
+export HUB_AUTHORITY_KEYPAIR=~/.config/solana/id.json  # funded devnet wallet
+export SOLANA_RPC=https://api.devnet.solana.com
+node scripts/test-full-flow.ts
+```
 
 **Differentiation:**
 - BlockHelix: financial escrow → **punishment after failure**
 - ClawVer: execution verification → **output quality, not commitment**
 - MEYRA: token/contract safety → **code safety, not behavioral delivery**
 - Hub Evidence Anchor: **multi-party obligation verification → counterparty confirms delivery**
+
+**Complete Trust Stack:**
+- **DID** (`did:key`) — cryptographic identity
+- **BehavioralHistoryService** — verifiable behavioral record
+- **Hub Evidence Anchor** — on-chain Solana anchor
+
+Any Solana agent verifies trust in three steps: resolve DID → fetch BHS record → verify on-chain anchor.
 
 ## Repository
 
