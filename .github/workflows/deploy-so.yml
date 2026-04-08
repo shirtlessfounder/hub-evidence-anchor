@@ -21,7 +21,7 @@ jobs:
 
       - name: Write deploy keypair
         env:
-          DEPLOY_KEYPAIR: ${{ secrets.DEPLOY_KEYPAIR }}
+          DEPLOY_KEYPAIR: ${{ secrets.PROGRAM_WALLET_JSON }}
         run: |
           echo "$DEPLOY_KEYPAIR" > /tmp/wallet.json
           chmod 600 /tmp/wallet.json
