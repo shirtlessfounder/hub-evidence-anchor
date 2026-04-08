@@ -1,18 +1,9 @@
-[toolchain]
-anchor_version = "1.0.0"
-
-[features]
-resolution = true
-skip-lint = false
-
 [programs.devnet]
 hub_evidence_anchor = "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"
 
 [provider]
-cluster = "devnet"
+cluster = Devnet
 wallet = "/tmp/deploy-wallet.json"
 
 [scripts]
 test = "yarn run mocha -t 300000 --timeout 600000 tests/"
-
-[hooks]
