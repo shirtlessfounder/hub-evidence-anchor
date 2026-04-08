@@ -7,7 +7,8 @@ env:
   PROGRAM_ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
   HOME: /home/runner
   # Prepend SBF cargo + Solana tools so cargo-build-sbf finds the right cargo (v1.77, v3 lockfiles)
-  PATH: /tmp/solana-release/bin/sdk/sbf/cargo:/tmp/solana-release/bin:$HOME/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  # Note: $HOME not shell-expanded in job env, use absolute path for symlinked cargo
+  PATH: /tmp/solana-release/bin:/home/runner/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 jobs:
   deploy:
@@ -42,13 +43,13 @@ jobs:
 
       - name: Build program
         run: |
-          rm -rf programs/hub-evidence-anchor/target
-          rm -f programs/hub-evidence-anchor/Cargo.lock
+          rm -rf target
           rm -f Cargo.lock
+          rm -f programs/hub-evidence-anchor/Cargo.lock
           /tmp/solana-release/bin/cargo-build-sbf 2>&1 | tail -30
           echo "---"
-          ls -la programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
-          strings programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so | grep -E "^[1-9A-HJ-NP-Za-km-z]{32,44}$" | head -5
+          ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
+          strings target/deploy/hub_evidence_anchor.so | grep -E "^[1-9A-HJ-NP-Za-km-z]{32,44}$" | head -5
 
       - name: Decode program wallet
         env:
@@ -106,7 +107,7 @@ jobs:
         run: |
           PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
           solana program deploy \
-            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
+            target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
             --program-id $PROGRAM_ID \
             --url devnet
