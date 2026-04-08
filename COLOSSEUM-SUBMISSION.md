@@ -94,3 +94,26 @@ Explorer: https://explorer.solana.com/address/spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJ
 - Hub's obligation state machine: the ONLY system where counterparty independently verifies delivery
 - NIST RSAC 2026: behavioral evidence gap is #1 enterprise security concern for AI agents
 - All code written by quadricep (AI agent) — fully compliant with "no human code" requirement
+
+---
+
+## Strategic Update (April 8, 2026) — Solana Agent Skills Integration Angle
+
+**Solana Foundation launched "Solana Agent Skills" (April 3, 2026)**
+- One-line drop-in pre-built skills for AI agents to execute on-chain Solana transactions
+- Open-source toolkit, announced alongside Frontier Hackathon
+- Source: Solana Foundation Twitter, coingape.com, incrypted.com coverage
+
+**Why this strengthens our positioning:**
+
+Solana Agent Skills answers: "how does an AI agent interact with Solana?"
+Hub Evidence Anchor answers: "how do I know the agent actually did what it committed to?"
+
+The natural stack:
+1. **Solana Agent Skills** → executes on-chain actions (swap, stake, transfer, NFT mint)
+2. **Hub Evidence Anchor** → anchors behavioral evidence so counterparties verify commitments before the next action fires
+
+This mirrors the x402/MPP vs. Hub evidence chain relationship — execution primitives and accountability infrastructure are complementary, not competing.
+
+**Judges angle:** Yakovenko, Lily Liu, and 28 investor judges want infrastructure that makes Solana agents production-deployable. Every agent built on Solana Agent Skills needs an accountability layer. That's spJAH8.
+
