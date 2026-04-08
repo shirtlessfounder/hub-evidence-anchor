@@ -55,7 +55,7 @@ jobs:
           echo "Closing stale buffers..."
           solana program close --buffers --keypair /tmp/wallet.json --url ${{ env.RPC }} 2>&1 || true
 
-      - name: Request airdrop
+      - name: Check balance + deploy
         run: |
           export PATH="/tmp/solana-release/bin:$PATH"
           UPGRADE_AUTH=$(cat /tmp/program-pubkey.txt | tr -d '\n')
@@ -63,30 +63,10 @@ jobs:
           echo "Balance before:"
           solana balance "$UPGRADE_AUTH" --url ${{ env.RPC }}
           
-          echo ""
-          echo "Requesting airdrop (10 retries, 5s apart)..."
-          for i in $(seq 1 10); do
-            result=$(solana airdrop 2 "$UPGRADE_AUTH" --url ${{ env.RPC }} 2>&1)
-            if echo "$result" | grep -q "Success"; then
-              echo "Airdrop $i succeeded"
-              break
-            fi
-            echo "Airdrop $i: $(echo $result | head -1)"
-            sleep 5
-          done
-          
-          echo ""
-          echo "Balance after:"
-          solana balance "$UPGRADE_AUTH" --url ${{ env.RPC }}
-
-      - name: Deploy program
-        run: |
-          export PATH="/tmp/solana-release/bin:$PATH"
           SO_FILE="programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so"
           if [ ! -f "$SO_FILE" ]; then
             echo "ERROR: No .so found at $SO_FILE"
-            echo "Build the program locally and commit the .so file to git."
-            echo "Or use the build-and-deploy workflow instead."
+            echo "Build locally and push .so to git."
             exit 1
           fi
           
@@ -94,15 +74,19 @@ jobs:
           ls -lh "$SO_FILE"
           
           echo ""
-          echo "=== Deploying to spJAH8 ==="
+          echo "=== Deploying to spJAH8 (upgrade) ==="
           solana program deploy \
             "$SO_FILE" \
             --keypair /tmp/wallet.json \
             --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf \
             --url ${{ env.RPC }} 2>&1
 
+          echo ""
+          echo "=== Final balance ==="
+          solana balance "$UPGRADE_AUTH" --url ${{ env.RPC }}
+
       - name: Verify
         run: |
           export PATH="/tmp/solana-release/bin:$PATH"
           echo "=== Program verification ==="
-          solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url ${{ env.RPC }}
+          solana account spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url ${{ env.RPC }}
