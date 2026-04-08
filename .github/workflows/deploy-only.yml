@@ -5,7 +5,8 @@ on:
 
 env:
   SOLANA_CLI_VERSION: v1.18.6
-  RPC: https://api.devnet.solana.com
+  # Use Helius RPC if HELIUS_API_KEY is set, otherwise fallback to Solana Foundation
+  RPC: ${{ vars.HELIUS_RPC_URL || 'https://api.devnet.solana.com' }}
 
 jobs:
   deploy:
