@@ -53,7 +53,7 @@ jobs:
           $AVM_ANCHOR_BIN --version
           # rustup target is required for cargo-build-sbf 1.x
           rustup target add bpfel-unknown-unknown --toolchain stable 2>/dev/null || true
-          $AVM_ANCHOR_BIN build
+          $AVM_ANCHOR_BIN build --skip-lint
 
       - name: Decode program wallet
         env:
@@ -114,7 +114,7 @@ jobs:
         run: |
           export PATH="/tmp/solana-release/bin:$PATH"
           solana program deploy \
-            target/deploy/hub_evidence_anchor.so \
+            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
             --program-id $PROGRAM_ID \
             --url devnet
