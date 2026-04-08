@@ -40,7 +40,9 @@ jobs:
 
       - name: Build program
         run: |
-          export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:/usr/bin:/bin:$PATH"
+          # Use AVM-managed anchor (in .avm/tmp/bin), NOT the AVM shim (in .cargo/bin)
+          # The AVM shim intercepts and reinstalls v1.0.0 — we must use the installed binary directly
+          export PATH="$HOME/.avm/tmp/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:/usr/bin:/bin:$PATH"
           echo "anchor binary: $(which anchor)"
           anchor --version
           rustup target add bpfel-unknown-unknown --toolchain stable 2>/dev/null || true
