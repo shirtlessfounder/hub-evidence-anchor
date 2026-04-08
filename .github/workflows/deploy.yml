@@ -32,20 +32,14 @@ jobs:
       - name: Install Anchor CLI
         run: |
           export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:/usr/bin:/bin:$PATH"
-          # Install AVM, use it to install and activate anchor 0.30.0
-          cargo install --git https://github.com/coral-xyz/anchor avm --force
-          avm install 0.30.0
-          avm use 0.30.0 || true
-          # Use the installed anchor binary directly (avm installs to .avm/tmp/bin/)
-          ANCHOR_BIN="$HOME/.avm/tmp/bin/anchor"
-          echo "ANCHOR_BIN=$ANCHOR_BIN" >> $GITHUB_ENV
-          $ANCHOR_BIN --version
+          cargo install --git https://github.com/solana-foundation/anchor --tag v0.30.0 anchor-cli --locked
+          anchor --version
 
       - name: Build program
         run: |
           export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:$PATH"
           rustup target add bpfel-unknown-unknown --toolchain stable 2>/dev/null || true
-          $ANCHOR_BIN build --skip-lint
+          anchor build --skip-lint
 
       - name: Decode program wallet
         env:
