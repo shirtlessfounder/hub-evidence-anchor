@@ -1,70 +1,131 @@
 #!/bin/bash
-# Colosseum Frontier Hackathon Submission Script
-# Run AFTER Dylan registers at arena.colosseum.org/signup
-# Requires: Colosseum account + cklive_ API key
+# Colosseum Frontier Hackathon Submission Script v2
+# API reference: https://colosseum.com/skill.md (colosseum-agent-hackathon v1.8.0)
+# 
+# BEFORE FIRST RUN:
+#   1. Dylan registers at arena.colosseum.org/signup
+#   2. Dylan gives you the cklive_ API key
+#   3. Set: export COLOSSEUM_API_KEY="cklive_..."
+#
+# Registration (if not yet registered as Colosseum agent):
+#   curl -X POST https://agents.colosseum.com/api/agents \
+#     -H "Content-Type: application/json" \
+#     -d '{"name": "quadricep"}'
+#   Save the apiKey — shown exactly once.
 
 set -e
 
 API_KEY="${COLOSSEUM_API_KEY:-}"
-HACKATHON_API="https://agents.colosseum.com/api"
+BASE="https://agents.colosseum.com/api"
+
+if [ -z "$API_KEY" ]; then
+    echo "ERROR: COLOSSEUM_API_KEY not set."
+    echo "Get your key from the Colosseum dashboard after registering at arena.colosseum.org/signup"
+    exit 1
+fi
+
+AUTH_HEADER="Authorization: Bearer $API_KEY"
 
 echo "=== Colosseum Frontier Submission ==="
 
-# Step 1: Check if Frontier is in the API yet
-echo "[1/5] Checking hackathons in API..."
-HACKATHON_RESPONSE=$(curl -s "${HACKATHON_API}/hackathons")
-FRONTIER_ID=$(echo "$HACKATHON_RESPONSE" | python3 -c "import sys,json; data=json.load(sys.stdin); h=[x for x in data.get('hackathons',[]) if 'frontier' in x.get('slug','').lower()]; print(h[0]['id'] if h else 'NOT_FOUND')" 2>/dev/null || echo "PARSE_ERROR")
+# Step 1: Check agent status
+echo "[1/6] Agent status..."
+STATUS=$(curl -s "${BASE}/agents/status")
+echo "$STATUS" | python3 -m json.tool 2>/dev/null | head -20
+CLAIM_URL=$(echo "$STATUS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('claimUrl',''))" 2>/dev/null)
+if [ -n "$CLAIM_URL" ]; then
+    echo "Claim URL (send to Dylan): $CLAIM_URL"
+fi
+
+# Step 2: Check if Frontier is in the API yet
+echo ""
+echo "[2/6] Checking hackathons in API..."
+HACKS=$(curl -s "${BASE}/hackathons")
+FRONTIER_ID=$(echo "$HACKS" | python3 -c "import sys,json; data=json.load(sys.stdin); h=[x for x in data.get('hackathons',[]) if 'frontier' in x.get('slug','').lower()]; print(h[0]['id'] if h else 'NOT_FOUND')" 2>/dev/null || echo "PARSE_ERROR")
 
 if [ "$FRONTIER_ID" = "NOT_FOUND" ]; then
     echo "ERROR: Frontier hackathon not in API yet."
-    echo "Action needed: Dylan must register at arena.colosseum.org/signup first"
+    echo "Action: Dylan must register at arena.colosseum.org/signup to trigger it."
     echo "Current hackathons:"
-    echo "$HACKATHON_RESPONSE"
+    echo "$HACKS" | python3 -m json.tool 2>/dev/null
     exit 1
 fi
 
 echo "Found Frontier hackathon ID: $FRONTIER_ID"
 
-# Step 2: Get submission requirements
-echo "[2/5] Fetching hackathon details..."
-curl -s "${HACKATHON_API}/hackathons/${FRONTIER_ID}" | python3 -m json.tool 2>/dev/null || echo "$HACKATHON_RESPONSE"
-
-# Step 3: Submit project
-echo "[3/5] Project submission endpoint..."
-echo "POST ${HACKATHON_API}/hackathons/${FRONTIER_ID}/submissions"
-echo "Expected fields: project_name, description, repo_url, demo_url, submission_data"
-echo "API key needed: cklive_..."
+# Step 3: Get current project or create new
 echo ""
-echo "Submission payload (fill in cklive_ key to run):"
-cat << 'EOF'
-{
-  "project_name": "Hub Evidence Anchor",
-  "description": "On-chain behavioral trust oracle for Solana agents. spJAH8 anchors x402 payment commitments with cryptographic evidence chains verified by Hub's obligation state machine.",
-  "repo_url": "https://github.com/shirtlessfounder/hub-evidence-anchor",
-  "demo_url": "https://explorer.solana.com/address/spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf?cluster=devnet",
-  "submission_data": {
-    "program_id": "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf",
-    "network": "solana-devnet",
-    "trust_olympics_tier1": "docs verified",
-    "trust_olympics_tier2": "mcp integration verified", 
-    "trust_olympics_tier3": "program deployed and executable",
-    "hub_trust_profile": "https://admin.slate.ceo/oc/brain/trust/quadricep",
-    "mcp_server": "https://github.com/shirtlessfounder/hub-evidence-anchor/tree/main/mcp"
-  }
-}
-EOF
+echo "[3/6] Checking existing project..."
+PROJECT=$(curl -s "${BASE}/my-project" -H "$AUTH_HEADER")
+PROJECT_ID=$(echo "$PROJECT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null)
 
-# Step 4: Verify submission
+if [ -z "$PROJECT_ID" ]; then
+    echo "No project found. Creating new project..."
+    CREATE_RESP=$(curl -s -X POST "${BASE}/my-project" \
+        -H "$AUTH_HEADER" \
+        -H "Content-Type: application/json" \
+        -d '{
+            "name": "Hub Evidence Anchor",
+            "description": "On-chain behavioral trust oracle for Solana agents. spJAH8 anchors x402 payment commitments with cryptographic evidence chains verified by Hub obligation state machine.",
+            "repoLink": "https://github.com/shirtlessfounder/hub-evidence-anchor",
+            "solanaIntegration": "BPF program on Solana devnet (spJAH8) using Anchor; x402 micropayment integration; Hub obligation state machine for behavioral trust verification",
+            "tags": ["infrastructure", "ai-agents", "solana", "trust", "x402"]
+        }')
+    echo "$CREATE_RESP" | python3 -m json.tool 2>/dev/null
+    PROJECT_ID=$(echo "$CREATE_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null)
+    echo "Created project ID: $PROJECT_ID"
+else
+    echo "Existing project ID: $PROJECT_ID"
+fi
+
+# Step 4: Update with full submission fields (Feb-style — Frontier likely same schema)
 echo ""
-echo "[4/5] To verify submission:"
-echo "curl -H 'Authorization: Bearer ${COLOSSEUM_API_KEY}' ${HACKATHON_API}/hackathons/${FRONTIER_ID}/submissions"
+echo "[4/6] Updating project with full submission fields..."
+UPDATE_RESP=$(curl -s -X PUT "${BASE}/my-project" \
+    -H "$AUTH_HEADER" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "name": "Hub Evidence Anchor",
+        "description": "On-chain behavioral trust oracle for Solana agents. spJAH8 is an upgradeable BPF program that anchors x402 payment commitments with cryptographic evidence chains — verified by Hub obligation state machine before payment fires. No multisig, no timelock, no admin key. The economics are the enforcement.",
+        "repoLink": "https://github.com/shirtlessfounder/hub-evidence-anchor",
+        "solanaIntegration": "BPF program spJAH8 on Solana devnet (Anchor/Rust). Instructions: anchor_evidence (commitment hash), anchor_handoff (x402 payment confirmation), verify_trust (Hub behavioral trust lookup). MCP server with format=json for programmatic trust verification.",
+        "problemStatement": "Agentic payment rails (x402, lobster.cash, MPP) execute transfers when agents request them — but cannot verify what happened before the transfer fired. The payment fires because an agent asked, not because evidence confirmed delivery. This is the accountability gap blocking autonomous agent commerce at scale.",
+        "technicalApproach": "spJAH8 (Anchor/Rust BPF on Solana devnet) + Hub obligation state machine. Flow: (1) agent calls anchor_evidence with commitment hash before work; (2) agent delivers and posts evidence to URI; (3) x402 routes payment when evidence matches scope; (4) agent calls anchor_handoff with payment tx sig — spJAH8 emits anchor event on Solana confirming evidence chain was satisfied first. MCP tools: anchor_evidence, anchor_handoff, verify_trust(format=json).",
+        "targetAudience": "Autonomous AI agents running on Solana that need verifiable proof of delivery for x402 payment dispatch. Also valuable for: protocols integrating agentic payment flows, agent marketplace builders (task delegation with evidence requirements), and anyone building on x402 who needs an accountability layer.",
+        "businessModel": "Hub Evidence Anchor is open infrastructure. Revenue model: (1) MCP tool integration into agent workflows — agents pay tiny per-call fees in HUB tokens for verify_trust lookups; (2) premium trust verification tiers for enterprise agent deployments; (3) integration licensing for protocols building payment primitives on Solana.",
+        "competitiveLandscape": "x402 Foundation (payment protocol, no accountability), lobster.cash Crossmint (supervised virtual cards, human in loop), MPP Stripe+Tempo (authorization not accountability), Solana Agent Registry (wallet tenure not behavioral evidence). SugarClawdy (Colosseum Feb): escrow with human dispute resolution. Hub Evidence Anchor is the only system where counterparty independently verifies delivery before payment — and records it permanently on Solana.",
+        "futureVision": "Every x402 payment on Solana goes through a Hub Evidence Anchor first. Agents that want to participate in agentic commerce must have a verifiable behavioral trust profile on Hub — spJAH8 is the on-chain proof that the profile is honest. Next: cross-chain evidence anchoring, trust-weighted routing for agent marketplaces, integration with ERC-8004 agents on Ethereum for cross-platform behavioral accountability."
+    }')
 
-# Step 5: Wait for judging
-echo "[5/5] Submission complete. Judging begins after May 11, 2026."
+if echo "$UPDATE_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print('ok' if d.get('id') else 'error')" 2>/dev/null | grep -q ok; then
+    echo "Project updated successfully ✅"
+else
+    echo "Update response:"
+    echo "$UPDATE_RESP" | python3 -m json.tool 2>/dev/null || echo "$UPDATE_RESP"
+fi
+
+# Step 5: Submit project (mark as complete)
+echo ""
+echo "[5/6] Submitting project..."
+SUBMIT_RESP=$(curl -s -X PUT "${BASE}/my-project" \
+    -H "$AUTH_HEADER" \
+    -H "Content-Type: application/json" \
+    -d '{"status": "submitted"}')
+
+if echo "$SUBMIT_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print('submitted' if d.get('status')=='submitted' else 'not_submitted')" 2>/dev/null | grep -q submitted; then
+    echo "Project SUBMITTED ✅"
+else
+    echo "Submit response:"
+    echo "$SUBMIT_RESP" | python3 -m json.tool 2>/dev/null || echo "$SUBMIT_RESP"
+fi
+
+# Step 6: Verify
+echo ""
+echo "[6/6] Final project state:"
+curl -s "${BASE}/my-project" -H "$AUTH_HEADER" | python3 -m json.tool 2>/dev/null
 
 echo ""
-echo "=== Required Actions Before Running ==="
-echo "1. Dylan: arena.colosseum.org/signup (triggers Frontier in API)"
-echo "2. Get cklive_ API key from Colosseum dashboard"
-echo "3. Set COLOSSEUM_API_KEY env var"
-echo "4. Re-run this script"
+echo "=== Submission Complete ==="
+echo "Judging begins after May 11, 2026."
+echo "Live program: https://explorer.solana.com/address/spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf?cluster=devnet"
+echo "Hub trust profile: https://admin.slate.ceo/oc/brain/trust/quadricep"
