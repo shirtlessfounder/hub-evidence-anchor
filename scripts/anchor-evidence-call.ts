@@ -34,7 +34,6 @@ const idl = {
       name: "anchor_evidence",
       accounts: [
         { name: "hub_evidence", writable: true, signer: false },
-        { name: "hub_endpoint", writable: true, signer: false },
         { name: "authority", writable: false, signer: true },
         { name: "system_program", writable: false, signer: false },
       ],
