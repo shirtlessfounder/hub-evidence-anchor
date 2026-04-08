@@ -15,20 +15,28 @@ jobs:
 
       - name: Install Rust 1.75 + link solana toolchain
         run: |
-          # Install Rust 1.75 (generates Cargo.lock v3, compatible with SBF toolchain)
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.75.0
-          source "$HOME/.cargo/env"
+          # Fresh rustup install with explicit CARGO_HOME to avoid settings conflicts
+          export CARGO_HOME="$HOME/.cargo"
+          export RUSTUP_HOME="$HOME/.rustup"
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+            --default-toolchain 1.75.0 \
+            --cargo-home "$CARGO_HOME" \
+            --rustup-home "$RUSTUP_HOME"
+          source "$CARGO_HOME/env"
           
-          # Link 1.75 as the 'solana' toolchain so cargo-build-sbf finds it
-          rustup toolchain link solana "$HOME/.rustup/toolchains/rust-1.75.0-x86_64-unknown-linux-gnu"
+          echo "=== Toolchains installed ==="
+          ls "$RUSTUP_HOME/toolchains/" 2>/dev/null || echo "No toolchains dir"
+          rustup show
           
-          # Add BPF targets for the solana toolchain
+          # Find the 1.75 toolchain
+          TOOLCHAIN=$(find "$RUSTUP_HOME/toolchains" -name "*1.75*" -type d 2>/dev/null | head -1)
+          echo "Found: $TOOLCHAIN"
+          
+          rustup toolchain link solana "$TOOLCHAIN"
           rustup target add bpfel-unknown-none bpfeb-unknown-none --toolchain solana
           
-          # Verify
-          echo "=== toolchain ==="
+          echo "=== Verifying ==="
           cargo +solana --version
-          rustc +solana --version
 
       - name: Install Solana CLI + SBF tools
         run: |
