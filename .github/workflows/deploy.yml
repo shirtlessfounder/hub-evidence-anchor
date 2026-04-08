@@ -44,7 +44,7 @@ jobs:
           echo "anchor binary: $(which anchor)"
           anchor --version
           rustup target add bpfel-unknown-unknown --toolchain stable 2>/dev/null || true
-          anchor build --skip-lint --skip-lint
+          anchor build --skip-lint
 
       - name: Decode program wallet
         env:
