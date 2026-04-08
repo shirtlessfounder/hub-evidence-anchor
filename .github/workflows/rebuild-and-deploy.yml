@@ -24,7 +24,6 @@ jobs:
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
-          /tmp/solana-release/bin/solana --version
 
       - name: Link Solana SBF Rust as cargo
         run: |
@@ -34,10 +33,8 @@ jobs:
           ln -sf /tmp/solana-release/bin/sdk/sbf/cargo/rustc $HOME/.cargo/bin/rustup 2>/dev/null || true
           echo "cargo version: $($HOME/.cargo/bin/cargo --version)"
 
-      - name: Fix program Anchor.toml
+      - name: Fix program Anchor.toml with spJAH8
         run: |
-          # programs/hub-evidence-anchor/Anchor.toml must have spJAH8 as address
-          # so cargo-build-sbf embeds spJAH8 in the .so bytecode
           sed -i 's|^address = ".*"|address = "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"|' programs/hub-evidence-anchor/Anchor.toml
           grep "address" programs/hub-evidence-anchor/Anchor.toml
 
@@ -48,9 +45,7 @@ jobs:
           rm -f Cargo.lock
           HOME=$HOME /tmp/solana-release/bin/cargo-build-sbf 2>&1 | tail -30
           echo "---"
-          echo "Build output:"
           ls -la programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
-          echo "Program IDs in .so:"
           strings programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so | grep -E "^[1-9A-HJ-NP-Za-km-z]{32,44}$" | head -5
 
       - name: Decode program wallet
