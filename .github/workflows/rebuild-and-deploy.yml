@@ -6,51 +6,53 @@ on:
 env:
   PROGRAM_ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
   HOME: /home/runner
-  # Prepend SBF cargo + Solana tools so cargo-build-sbf finds the right cargo (v1.77, v3 lockfiles)
-  # Note: $HOME not shell-expanded in job env, use absolute path for symlinked cargo
-  PATH: /tmp/solana-release/bin:/home/runner/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  PATH: /tmp/solana-release/bin:$HOME/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup directories for cargo-build-sbf
+      - name: Setup directories
         run: |
           mkdir -p $HOME/.cargo/bin
-          mkdir -p $HOME/.rustup
-          mkdir -p $HOME/.sdk
+          mkdir -p $HOME/.rustup/toolchains
 
-      - name: Install Solana CLI + SBF toolchain
+      - name: Install Solana CLI + SBF SDK
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
+          echo "Installed: $(/tmp/solana-release/bin/solana --version)"
 
       - name: Install Rust + Solana SBF toolchain
         run: |
-          # Install Rust if not present
-          if ! command -v cargo &>/dev/null; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.77.0
+          # Install rustup if not present
+          if ! command -v rustup &>/dev/null; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           fi
-          source "$HOME/.cargo/env" 2>/dev/null || true
-          # Install Solana rustup toolchain for SBF support
-          # This provides the correct sysroot and BPF target
-          rustup toolchain install solana 2>&1 | tail -3
-          rustup default solana 2>/dev/null || true
-          echo "cargo version: $(cargo --version)"
-          echo "rustc version: $(rustc --version)"
-          rustup show 2>/dev/null | head -5
+          . "$HOME/.cargo/env"
+          echo "rustup version: $(rustup --version)"
+
+          # Download platform-tools (includes Rust 1.72 SBF toolchain) and link as 'solana'
+          # cargo-build-sbf calls 'cargo +solana', which needs this toolchain
+          mkdir -p /tmp/platform-tools
+          curl -sSfL "https://github.com/solana-labs/platform-tools/releases/download/v1.39/platform-tools-linux-x86_64.tar.bz2" | tar xj -C /tmp/platform-tools --strip-components=1
+          rustup toolchain link solana /tmp/platform-tools/rust
+          rustup default solana
+          echo "cargo +solana: $(cargo +solana --version)"
+          echo "rustc +solana: $(rustc +solana --version)"
 
       - name: Fix program Anchor.toml with spJAH8
         run: |
+          . "$HOME/.cargo/env"
           perl -i -pe 's{^(hub_evidence_anchor = ")[^"]*"}{$1spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"}' Anchor.toml
           grep "hub_evidence_anchor" Anchor.toml
 
       - name: Build program
         run: |
-          source "$HOME/.cargo/env" 2>/dev/null || true
+          . "$HOME/.cargo/env"
           rm -rf target
           rm -f Cargo.lock
           rm -f programs/hub-evidence-anchor/Cargo.lock
