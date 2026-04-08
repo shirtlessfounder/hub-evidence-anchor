@@ -3,7 +3,7 @@
 set -e
 
 echo "=== Hub Evidence Anchor — Devnet Deployment ==="
-echo "Program ID: 6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek"
+echo "Program ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"
 echo ""
 
 # Build
@@ -33,9 +33,9 @@ echo ""
 
 # Verify
 echo "Verifying deployment..."
-anchor idl init $(anchor keys sync 2>/dev/null || echo "6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek") --provider.cluster devnet
+anchor idl init $(anchor keys sync 2>/dev/null || echo "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf") --provider.cluster devnet
 echo ""
 
 echo "✅ Devnet deployment complete!"
-echo "Program ID: $(anchor keys sync 2>/dev/null || echo '6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek')"
-echo "Explorer: https://explorer.solana.com/address/$(anchor keys sync 2>/dev/null || echo '6dap1barBURnSHW3qYMg7JK6iZGFUWWWMLSx4Qynbqek')?cluster=devnet"
+echo "Program ID: $(anchor keys sync 2>/dev/null || echo 'spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf')"
+echo "Explorer: https://explorer.solana.com/address/$(anchor keys sync 2>/dev/null || echo 'spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf')?cluster=devnet"
