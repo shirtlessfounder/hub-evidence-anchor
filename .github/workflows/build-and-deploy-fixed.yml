@@ -6,8 +6,9 @@ on:
     branches: [main]
 
 env:
-  SOLANA_CLI_VERSION: "v1.18.6"
-  ANCHOR_CLI_VERSION: "0.32.1"
+  SOLANA_CLI_VERSION: v1.18.6
+  # Add Solana CLI to PATH for all steps
+  PATH: /tmp/solana-release/bin:$PATH
 
 jobs:
   build-and-deploy:
@@ -16,27 +17,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Install Solana CLI
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/${{ env.SOLANA_CLI_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
-          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
-          solana --version
+          echo "Installed Solana CLI $(solana --version)"
 
       - name: Install npm dependencies
-        run: npm install
-
-      - name: Install Rust toolchain (2024 edition support)
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.85.0
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          rustc --version
-          cargo --version
-          cargo build-sbf --version 2>&1 | head -2 || echo "sbf-tools available"
+        run: npm install --ignore-scripts
 
       - name: Decode wallet
         env:
@@ -69,33 +56,38 @@ jobs:
 
       - name: Build program
         run: |
-          echo "=== Program ID in source ==="
+          echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
+          
           echo ""
           echo "=== Building with cargo-build-sbf ==="
-          cargo-build-sbf --program-type=lib --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
+          cargo-build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
+          
+          echo ""
           echo "=== Build artifacts ==="
           if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then
             echo "BUILD SUCCESS"
             ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
           else
             echo "BUILD FAILED: No .so found"
-            ls -la programs/hub-evidence-anchor/target/deploy/ 2>/dev/null || echo "No deploy dir"
+            ls -la programs/hub-evidence-anchor/target/ 2>/dev/null || echo "No target dir"
             exit 1
           fi
 
-      - name: Airdrop SOL to upgrade authority
+      - name: Airdrop SOL
         run: |
           UPGRADE_AUTH=$(cat /tmp/program-pubkey.txt | tr -d '\n')
           echo "Upgrade authority: $UPGRADE_AUTH"
           solana balance "$UPGRADE_AUTH" --url devnet
           
           echo "Requesting airdrop..."
-          for i in 1 2 3 4 5; do
-            if solana airdrop 2 "$UPGRADE_AUTH" --url devnet 2>&1 | grep -q "Success"; then
+          for i in $(seq 1 5); do
+            result=$(solana airdrop 2 "$UPGRADE_AUTH" --url devnet 2>&1)
+            if echo "$result" | grep -q "Success"; then
               echo "Airdrop $i succeeded"
               break
             fi
+            echo "Airdrop $i: $result"
             sleep 2
           done
           
