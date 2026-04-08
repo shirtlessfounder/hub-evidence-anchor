@@ -19,6 +19,13 @@ jobs:
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "Installed: $(/tmp/solana-release/bin/solana --version)"
 
+      - name: Write deploy keypair
+        env:
+          DEPLOY_KEYPAIR: ${{ secrets.DEPLOY_KEYPAIR }}
+        run: |
+          echo "$DEPLOY_KEYPAIR" > /tmp/wallet.json
+          chmod 600 /tmp/wallet.json
+
       - name: Deploy pre-built .so
         run: |
           /tmp/solana-release/bin/solana program deploy \
