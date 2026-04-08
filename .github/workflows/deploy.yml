@@ -25,7 +25,7 @@ jobs:
       - name: Install Anchor CLI
         run: |
           set -e
-          npm install -g @coral-xyz/anchor-cli@0.30.0
+          npm install -g @coral-xyz/anchor-cli@0.32.1
           echo "$(npm root -g)" >> $GITHUB_PATH
 
       - name: Decode program wallet
@@ -74,7 +74,7 @@ jobs:
           echo "Deploying from wallet: $WALLET"
           echo "Program ID: $PROGRAM_ID"
           solana program deploy \
-            programs/hub-evidence-anchor/hub_evidence_anchor.so \
+            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
             --program-id $PROGRAM_ID \
             --url devnet > /tmp/deploy-output.txt 2>&1 || true

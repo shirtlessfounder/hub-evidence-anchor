@@ -1,6 +1,9 @@
 [programs.devnet]
 hub_evidence_anchor = "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"
 
+[toolchain]
+anchor_version = "0.32.1"
+
 [provider]
 cluster = "devnet"
 wallet = "/tmp/deploy-wallet.json"

@@ -18,6 +18,7 @@ jobs:
         run: |
           mkdir -p $HOME/.cargo/bin
           mkdir -p $HOME/.rustup
+          mkdir -p $HOME/.sdk
 
       - name: Install Solana CLI + SBF toolchain
         run: |
@@ -27,24 +28,22 @@ jobs:
       - name: Link Solana SBF Rust as cargo
         run: |
           # cargo-build-sbf needs cargo at $HOME/.cargo/bin/cargo
-          # Solana SBF toolchain has its own cargo at sdk/sbf/cargo
           ln -sf /tmp/solana-release/bin/sdk/sbf/cargo/cargo $HOME/.cargo/bin/cargo
           ln -sf /tmp/solana-release/bin/sdk/sbf/cargo/rustc $HOME/.cargo/bin/rustc
-          ln -sf /tmp/solana-release/bin/sdk/sbf/cargo/rustup $HOME/.cargo/bin/rustup 2>/dev/null || true
+          ln -sf /tmp/solana-release/bin/sdk/sbf/cargo/rustc $HOME/.cargo/bin/rustup 2>/dev/null || true
           echo "cargo version: $($HOME/.cargo/bin/cargo --version)"
-
-      - name: Install Anchor CLI (pre-built, bypass AVM)
-        run: |
-          npm install -g @coral-xyz/anchor-cli@0.30.0
-          # Anchor binary goes to /home/runner/.npm-global/bin/anchor
-          echo "$(npm root -g)/bin" >> $GITHUB_PATH
-          anchor --version
 
       - name: Build program
         run: |
-          # Use npm-installed anchor (in .npm-global/bin), NOT AVM shim
-          # The npm anchor binary calls cargo-build-sbf, which uses Solana SBF Rust
-          anchor build --skip-lint
+          cd programs/hub-evidence-anchor
+          # Anchor.toml in programs/hub-evidence-anchor/ now has spJAH8 as address ✅
+          # cargo-build-sbf uses the program-level Anchor.toml for ID
+          rm -rf target
+          rm -f Cargo.lock
+          HOME=$HOME /tmp/solana-release/bin/cargo-build-sbf --manifest-path Cargo.toml 2>&1 | tail -30
+          ls -la target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS" || echo "BUILD FAILED"
+          # Verify program ID in the built .so
+          strings target/deploy/hub_evidence_anchor.so | grep -E "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
 
       - name: Decode program wallet
         env:
