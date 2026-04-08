@@ -8,7 +8,7 @@ on:
 env:
   SOLANA_CLI_VERSION: v1.18.6
   # Add Solana CLI to PATH for all steps
-  PATH: /tmp/solana-release/bin:$PATH
+  PATH: /tmp/solana-release/bin:/usr/local/bin:/usr/bin:/bin
 
 jobs:
   build-and-deploy:
