@@ -58,13 +58,24 @@ jobs:
           PYEOF
 
       - name: Check balance and close buffers
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
         run: |
           export PATH="/tmp/solana-release/bin:$PATH"
           RECIPIENT=$(cat /tmp/program-pubkey.txt 2>/dev/null | tr -d '\n' || echo "")
           echo "Wallet: $RECIPIENT"
           solana balance "$RECIPIENT" --url devnet
           solana program close --buffers --keypair /tmp/program-wallet.json --url devnet || true
-          echo "Ready to deploy (existing balance covers bytecode upload)"
+          # Try Helius faucet if key available
+          if [ -n "$HELIUS_API_KEY" ]; then
+            echo "Using Helius faucet..."
+            curl -s -X POST "https://devnet.helius-rpc.com/?api-key=$HELIUS_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"requestAirdrop\",\"params\":[\"$RECIPIENT\", 2000000000]}" | grep -q "result" && echo "Airdrop succeeded" || echo "Airdrop failed"
+          fi
+          echo "Balance:"
+          solana balance "$RECIPIENT" --url devnet
+          echo "Ready to deploy"
 
       - name: Deploy program
         id: deploy
@@ -73,9 +84,12 @@ jobs:
           WALLET=$(cat /tmp/program-pubkey.txt | tr -d '\n')
           echo "Deploying from wallet: $WALLET"
           echo "Program ID: $PROGRAM_ID"
+          # Generate ephemeral buffer keypair (non-interactive deploy)
+          solana-keygen new --no-passphrase -o /tmp/buffer-keypair.json 2>/dev/null
           solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
+            --buffer /tmp/buffer-keypair.json \
             --program-id $PROGRAM_ID \
             --url devnet > /tmp/deploy-output.txt 2>&1 || true
           echo "=== Deploy output ==="
