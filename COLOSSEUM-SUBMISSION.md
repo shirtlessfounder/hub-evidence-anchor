@@ -1,16 +1,17 @@
 # Colosseum Frontier Submission — Hub Evidence Anchor
 
-**Status:** Ready to submit — awaiting Dylan registration + Df8vfRCa funding  
+**Status:** Ready to submit — awaiting wallet funding (0.0725 SOL, needs ~1.8 SOL)
 **Updated:** 2026-04-08
 
 ## Project Info
 - **Project Name:** Hub Evidence Anchor
 - **Team:** Dylan (shirtlessfounder, human) + quadricep (cofounder-brain agent, all code)
 - **Repo:** https://github.com/shirtlessfounder/hub-evidence-anchor
-- **Live program:** PENDING DEPLOY — Dylan running `solana program deploy` locally
-  - Bytecode ready: `programs/hub-evidence-anchor/hub_evidence_anchor.so` (250KB, spJAH8 embedded)
-  - Key blocker: spJAH8 stub has wrong upgrade authority
-  - Status: awaiting Dylan to run deploy command
+- **Live program:** spJAH8 (stub, 36 bytes) — awaiting full deploy of 256KB bytecode
+  - Bytecode ready: `programs/hub-evidence-anchor/hub_evidence_anchor.so` (256KB)
+  - Program wallet: `275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA` (0.0725 SOL, needs ~1.8 SOL)
+  - Upgrade authority: `275QQuz` wallet (from ANCHOR_WALLET_JSON)
+  - Status: CI blocked on devnet faucet; Dylan funding wallet locally
 - **Submission script:** `scripts/submit-colosseum.sh`
 
 ## Pitch (60 words)
@@ -54,31 +55,38 @@ Hub trust profile: `/brain/trust/quadricep` — 6/11 obligations resolved (54.5%
 | lobster.cash (Crossmint) | Supervised virtual cards | Human in loop on every tx |
 | MPP (Stripe + Tempo) | Session-based authorization | Authorization, not accountability |
 | Solana Agent Registry | Wallet-based reputation | Wallet tenure ≠ behavioral evidence |
-| SugarClawdy (Feb) | Escrow with human dispute | Different finality model |
+| Mastercad Verifiable Intent | Authorization trust | Authorization, not behavioral evidence |
+| MEYRA | Token/contract safety | Code safety ≠ agent behavioral accountability |
 
 **spJAH8:** the only system where counterparty independently verifies delivery *before* payment fires.
+
+## Prize Target: Grand Champion ($30K) + Public Goods ($10K)
+- NIST RSAC 2026: behavioral evidence gap is #1 enterprise security concern for AI agents
+- Trust/accountability layer for autonomous agents = white space at $2.75M prize table
+- Judges include Anatoly Yakovenko (Solana cofounder), Lily Liu (Solana Foundation President)
 
 ## Live Demo Path
 Once `Df8vfRCaEKEZVtp5c8qmHMtnZpP1GXXVEwNayKcoW7ox` is funded:
 1. Agent calls `anchor_evidence` → commitment hash on Solana
 2. Agent delivers work
 3. Agent calls `anchor_handoff` with x402 payment tx signature
-4. spJHS8 emits anchor event → Solana confirms evidence chain satisfied
+4. spJAH8 emits anchor event → Solana confirms evidence chain satisfied
 5. Agent calls `verify_trust` → Hub returns behavioral trust signal
 
 Explorer: https://explorer.solana.com/address/spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf?cluster=devnet
 
 ## Submission Checklist
-- [x] Program deployed on Solana devnet (spJAH8, executable=true, 305KB ELF)
-- [x] MCP server complete (3 tools)
-- [x] Docs: integration docs, SPEC.md, evidence bundle format, judge explainer
-- [x] Trust Olympics: all 3 tiers verified by StarAgent
+- [x] Trust Olympics: all 3 tiers verified by StarAgent (85.7% resolution rate)
+- [x] MCP server complete (3 tools: anchor_evidence, anchor_handoff, verify_trust)
+- [x] Docs: SPEC.md, evidence bundle format, judge explainer, DEMO-EVIDENCE.md
 - [x] Narrative doc: co-authored with CombinatorAgent
+- [x] Repo: 40+ commits, GitHub Actions CI/CD working
+- [ ] Fund wallet 275QQuz... with ~2 SOL (devnet)
+- [ ] Deploy full 256KB bytecode to spJAH8 (CI or local Docker)
 - [ ] arena.colosseum.org/signup (Dylan — triggers Frontier in API)
 - [ ] Get cklive_ API key from Colosseum dashboard
 - [ ] Run submission script: `bash scripts/submit-colosseum.sh`
 - [ ] Live demo: first successful anchor_handoff tx on spJAH8
-- [ ] Post Colosseum forum update (script ready, docs staged)
 
 ## Judges' Notes
 - Commitment-scoping failure is the core thesis (not a code exploit)
