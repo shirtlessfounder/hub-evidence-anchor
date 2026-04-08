@@ -1,19 +1,11 @@
-# Colosseum Frontier Hackathon Submission Draft
-**For:** Hub x quadricep joint submission
-**Status:** Draft — ready to execute once Dylan has Colosseum API key
+# Colosseum Frontier Hackathon Submission — Hub Evidence Anchor
 
----
+**Status:** Ready to execute | **Blocker:** Dylan arena.colosseum.org/signup + cklive_ API key
 
-## Registration Steps
-1. Dylan registers at https://agents.colosseum.com/auth/register
-2. Dylan gives me the API key (starts with `cklive_`)
-3. I register as agent and create project
-4. Dylan claims agent via claimUrl
-5. I submit project
+## Submission Script
+Run: `bash scripts/submit-colosseum.sh` (after setting `COLOSSEUM_API_KEY=cklive_...`)
 
----
-
-## Project Submission Fields
+## API Fields (from scripts/submit-colosseum.sh)
 
 ### name
 ```
@@ -22,7 +14,7 @@ Hub Evidence Anchor
 
 ### description
 ```
-On-chain behavioral trust oracle for Solana agents. Hub's obligation state machine achieves 85.7% resolution rate (6/7 obligations resolved) with cryptographic evidence bundles — so any agent or protocol can verify trust without an API call. x402 Foundation (Linux Foundation, April 2 2026) + Solana Foundation: automated trust-gated micropayments are the emerging standard.
+On-chain behavioral trust oracle for Solana agents. spJAH8 is an upgradeable BPF program that anchors x402 payment commitments with cryptographic evidence chains — verified by Hub obligation state machine before payment fires. No multisig, no timelock, no admin key. The economics are the enforcement.
 ```
 
 ### repoLink
@@ -30,60 +22,80 @@ On-chain behavioral trust oracle for Solana agents. Hub's obligation state machi
 https://github.com/shirtlessfounder/hub-evidence-anchor
 ```
 
-### solanaIntegration (max 1000 chars)
+### solanaIntegration
 ```
-Hub Evidence Anchor program (Anchor/Rust) anchors behavioral trust data on Solana via CPI (Cross-Program Invocation). The program exposes 4 instructions: anchor_evidence (writes trust ratio + obligation count + evidence hash to Solana PDA), update_resolution (updates resolution data after new obligations resolve), verify_trust (returns trust ratio to any caller via CPI), close_stale (archives outdated accounts). Integrates with Hub's existing /trust/{id} endpoint — the Solana program is a verifiable cache of Hub's behavioral evidence chain. Optional MEYRA integration: on-chain ratings feed into threshold decisions. AgentWallet for signing.
-```
-
-### problemStatement (max 1200 chars)
-```
-April 1, 2026: Drift Protocol lost $285M to a durable nonce exploit. Solana Foundation President: "Smart contracts held up. The real targets now are humans: social engineering and opsec weaknesses more than code exploits." — the agentic economy's trust crisis is not theoretical. x402 tx volume down 95%+ from peak. Agents can't hire agents reliably because there's no behavioral evidence chain. Every trust signal (wallet tenure, identity, code audits) measures WHO — not WHAT the agent committed to and delivered. The agentic economy is stalling because trust infrastructure is missing.
+BPF program spJAH8 on Solana devnet (Anchor/Rust). Instructions: anchor_evidence (commitment hash), anchor_handoff (x402 payment confirmation), verify_trust (Hub behavioral trust lookup). MCP server with format=json for programmatic trust verification.
 ```
 
-### technicalApproach (max 1200 chars)
+### problemStatement
 ```
-Solana Anchor program with 4 instructions anchored to Hub's live obligation state machine. Trust data (resolution_rate, obligation_count, evidence_hash) written to PDA via anchor_evidence. Any Solana agent or protocol calls verify_trust via CPI — gets trust_ratio without a Hub API call. Data sourced from Hub's obligation state machine (85.7% resolution rate, 6/7 obligations resolved with cryptographic bundle exports). Rust + Anchor 1.0 for on-chain program; Hub API for data feed; AgentWallet for signing. First live implementation of multi-party behavioral evidence on Solana. Stack: x402 (micropayments) + Solana (rail) + Hub (trust oracle) + Hub Evidence Anchor (on-chain bridge).
-```
-
-### targetAudience (max 1000 chars)
-```
-Solana agents that hire, delegate to, or coordinate with other agents — particularly in DeFi (trading agents, yield optimizers), payments (x402 micropayment flows), and marketplace contexts (agent-to-agent task delegation). First user: ClawRouter (agent-native LLM router with x402 payments) integrating Hub trust signals as pre-transaction gate. Secondary: hackathon teams building autonomous agents who need verifiable trust without centralized oracle dependency.
+Agentic payment rails (x402, lobster.cash, MPP) execute transfers when agents request them — but cannot verify what happened before the transfer fired. The payment fires because an agent asked, not because evidence confirmed delivery. This is the accountability gap blocking autonomous agent commerce at scale.
 ```
 
-### businessModel (max 1000 chars)
+### technicalApproach
 ```
-Hub Evidence Anchor as open-source trust infrastructure (MIT license). Revenue: (1) premium Hub subscription for aggregated trust analytics + historical evidence bundles; (2) institutional API access for compliance reporting (Colorado AI Act June 2026 "reasonable care" standard); (3) integration licensing for Solana protocols wanting trust-gated features. Grants: Solana Foundation ecosystem funding for trust infrastructure. Long-term: behavioral trust data as essential middleware for the agentic economy — every agent transaction above a threshold queries the anchor.
-```
-
-### competitiveLandscape (max 1000 chars)
-```
-April 1 2026: Drift Protocol lost $285M via durable nonces + social engineering. Solana Foundation President: "Smart contracts held up. Real targets are humans." The market just validated the trust problem exists. BlockHelix ($15K, Feb): financial escrow + bond slashing — solves trust AFTER failure. We prevent failure with behavioral evidence. TOWEL: relationship-graph trust via git repos — requires bilateral relationship; doesn't scale. ClawVer: execution verification (output schema) — verifies output quality, not commitment fulfillment. MEYRA: token/contract safety. SATI/ERC-8004: wallet tenure. None prevent the Drift scenario: pre-signed durable nonce transactions executed outside committed operational scope. Hub is the ONLY system where counterparty independently verifies delivery. The $285M hack was a commitment-scoping failure, not a code exploit.
+spJAH8 (Anchor/Rust BPF on Solana devnet) + Hub obligation state machine. Flow: (1) agent calls anchor_evidence with commitment hash before work; (2) agent delivers and posts evidence to URI; (3) x402 routes payment when evidence matches scope; (4) agent calls anchor_handoff with payment tx sig — spJAH8 emits anchor event on Solana confirming evidence chain was satisfied first. MCP tools: anchor_evidence, anchor_handoff, verify_trust(format=json).
 ```
 
-### futureVision (max 1000 chars)
+### targetAudience
 ```
-Behavioral trust as composable Solana infrastructure. V1 (hackathon): anchor program + two-agent demo. V2: threshold-gated routing (micro-payments ≥0.5, escrow ≥0.75, high-value ≥0.9) — the Drift hack proves this is needed NOW. V3: Solana Foundation President Lily Liu: "Smart contracts held up. Real targets are humans." We agree — but we also need agents that can independently verify counterparty behavior. Long-term: every Solana protocol queries Hub Evidence Anchor before granting admin powers to off-chain agents. The $285M Drift hack becomes structurally impossible when every admin action requires a verified behavioral trust score.
+Autonomous AI agents running on Solana that need verifiable proof of delivery for x402 payment dispatch. Also valuable for: protocols integrating agentic payment flows, agent marketplace builders (task delegation with evidence requirements), and anyone building on x402 who needs an accountability layer.
+```
+
+### businessModel
+```
+Hub Evidence Anchor is open infrastructure. Revenue model: (1) MCP tool integration into agent workflows — agents pay tiny per-call fees in HUB tokens for verify_trust lookups; (2) premium trust verification tiers for enterprise agent deployments; (3) integration licensing for protocols building payment primitives on Solana.
+```
+
+### competitiveLandscape
+```
+x402 Foundation (payment protocol, no accountability), lobster.cash Crossmint (supervised virtual cards, human in loop), MPP Stripe+Tempo (authorization not accountability), Solana Agent Registry (wallet tenure not behavioral evidence). SugarClawdy (Colosseum Feb): escrow with human dispute resolution. Hub Evidence Anchor is the only system where counterparty independently verifies delivery before payment — and records it permanently on Solana.
+```
+
+### futureVision
+```
+Every x402 payment on Solana goes through a Hub Evidence Anchor first. Agents that want to participate in agentic commerce must have a verifiable behavioral trust profile on Hub — spJAH8 is the on-chain proof that the profile is honest. Next: cross-chain evidence anchoring, trust-weighted routing for agent marketplaces, integration with ERC-8004 agents on Ethereum for cross-platform behavioral accountability.
 ```
 
 ### tags
 ```
-["trust", "infrastructure", "solana", "agents", "payments"]
+["infrastructure", "ai-agents", "solana", "trust", "x402"]
 ```
 
-### liveAppLink
+### status
 ```
-https://admin.slate.ceo/oc/quadricep/solana-evidence-anchor-spec.html
-```
-
-### presentationLink
-```
-https://admin.slate.ceo/oc/quadricep/
+submitted
 ```
 
----
+## Submission Flow
 
-## Notes for Dylan
-- I need your Colosseum API key (cklive_...) to register and submit
-- Dylan must CLAIM the agent via the claimUrl (required for prizes)
-- Forum engagement: TOWEL, BlockHelix, and ClawVer already posted. We should engage.
-- Prize categories: Most Agentic ($5K) is our best shot — proving agents did what they committed to IS the most agentic thing possible
+### Step 1: Dylan registers
+arena.colosseum.org/signup → gets Colosseum account + API key (cklive_...)
+
+### Step 2: Share API key
+Save to `~/.openclaw/credentials/colosseum-pat.txt` or set `COLOSSEUM_API_KEY` env var
+
+### Step 3: Run submission
+```bash
+export COLOSSEUM_API_KEY="cklive_..."
+cd ~/hub-evidence-anchor
+bash scripts/submit-colosseum.sh
+```
+
+### Step 4: Dylan claims agent
+The script outputs a `claimUrl` — Dylan visits it to claim the agent (required for prize eligibility)
+
+## Live Demo Link (update after correct .so deploys)
+```
+https://explorer.solana.com/address/spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf?cluster=devnet
+```
+Update liveAppLink in script after demo tx confirmed.
+
+## Prize Targets
+1. **Most Agentic ($5K)** — behavioral trust oracle IS the most agentic thing
+2. **Best Infrastructure ($5K)** — composable trust primitive for Solana agents
+
+## Current Blocker
+- Dylan: arena.colosseum.org/signup
+- Dylan: share cklive_ API key
+- Dylan: fund 275QQuz wallet + run CI deploy (correct .so with spJAH8)
