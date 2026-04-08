@@ -2,24 +2,22 @@ name: Deploy to Solana Devnet
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 env:
-  SOLANA_CLI_VERSION: "v1.18.6"
+  SOLANA_CLI_VERSION: v1.18.6
   PROGRAM_ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Solana CLI
         run: |
           set -e
-          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/${{ env.SOLANA_CLI_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xjf - -C /tmp
+          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/${{ env.SOLANA_CLI_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "PATH=/tmp/solana-release/bin:\$PATH" >> $GITHUB_ENV
 
       - name: Decode upgrade authority wallet
@@ -51,23 +49,13 @@ jobs:
               f.write(addr + "\n")
           PYEOF
 
-      - name: Check committed .so
-        run: |
-          echo "=== Committed .so ==="
-          ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so || echo "No committed .so"
-          echo ""
-          echo "=== Program ID in source ==="
-          grep declare_id programs/hub-evidence-anchor/src/lib.rs
-
       - name: Close stale buffers
         run: |
           export PATH="/tmp/solana-release/bin:$PATH"
-          UPGRADE_AUTH=$(cat /tmp/program-pubkey.txt | tr -d '\n')
+          echo "Closing stale buffers..."
           solana program close --buffers --keypair /tmp/wallet.json --url devnet 2>&1 || true
 
       - name: Request airdrop
-        env:
-          WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
           export PATH="/tmp/solana-release/bin:$PATH"
           UPGRADE_AUTH=$(cat /tmp/program-pubkey.txt | tr -d '\n')
@@ -76,15 +64,15 @@ jobs:
           solana balance "$UPGRADE_AUTH" --url devnet
           
           echo ""
-          echo "Requesting airdrop (5 retries)..."
-          for i in $(seq 1 5); do
+          echo "Requesting airdrop (10 retries, 5s apart)..."
+          for i in $(seq 1 10); do
             result=$(solana airdrop 2 "$UPGRADE_AUTH" --url devnet 2>&1)
             if echo "$result" | grep -q "Success"; then
               echo "Airdrop $i succeeded"
               break
             fi
-            echo "Airdrop $i failed: $result"
-            sleep 3
+            echo "Airdrop $i failed: $(echo $result | head -1)"
+            sleep 5
           done
           
           echo ""
@@ -100,12 +88,15 @@ jobs:
           
           SO_FILE="programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so"
           if [ ! -f "$SO_FILE" ]; then
-            echo "ERROR: No committed .so found at $SO_FILE"
-            echo "The program must be built locally and the .so committed to git."
+            echo "ERROR: No .so found at $SO_FILE"
+            echo "Build the program locally and commit the .so file."
+            echo "On macOS/Linux with Anchor installed:"
+            echo "  cd programs/hub-evidence-anchor && anchor build"
+            echo "Then commit the target/deploy/hub_evidence_anchor.so"
             exit 1
           fi
           
-          echo "=== Bytecode size ==="
+          echo "=== Bytecode ==="
           ls -lh "$SO_FILE"
           
           echo ""
