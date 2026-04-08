@@ -20,29 +20,27 @@ jobs:
           export PATH="/usr/bin:/bin:$PATH"
           /usr/bin/curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
           apt-get update && apt-get install -y build-essential pkg-config libssl-dev
-          # Persist cargo bin to PATH for all subsequent steps
-          echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+          echo "PATH=$HOME/.cargo/bin:/usr/bin:/bin:$PATH" >> $GITHUB_ENV
           rustc --version
 
-      - name: Download Solana release
+      - name: Install Solana CLI
         run: |
-          export PATH="/usr/bin:/bin:$HOME/.cargo/bin:$PATH"
+          export PATH="$HOME/.cargo/bin:/usr/bin:/bin:$PATH"
           /usr/bin/curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | /usr/bin/tar -xjf - -C /tmp
           echo "PATH=/tmp/solana-release/bin:\$PATH" >> $GITHUB_ENV
-          # Install cargo-build-sbf from Solana release into cargo bin so anchor can build
-          cp /tmp/solana-release/bin/cargo-build-sbf $HOME/.cargo/bin/
-          chmod +x $HOME/.cargo/bin/cargo-build-sbf
-          cargo build-sbf --version
 
-      - name: Install Anchor CLI
+      - name: Install Anchor CLI via AVM
         run: |
-          export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:/usr/bin:$PATH"
-          which cc || (echo "cc not found, installing..." && apt-get update && apt-get install -y gcc && which cc)
-          cargo install anchor-cli@0.30.0
+          export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:/usr/bin:/bin:$PATH"
+          cargo install --git https://github.com/coral-xyz/anchor avm --force
+          echo "PATH=$HOME/.cargo/bin:/tmp/solana-release/bin:\$PATH" >> $GITHUB_ENV
+          avm install 0.30.0
+          avm use 0.30.0
+          echo "anchor version: $(anchor --version)"
 
       - name: Build program
         run: |
-          export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:$PATH"
+          export PATH="$HOME/.avm/current/bin:/tmp/solana-release/bin:$PATH"
           anchor --version
           anchor build
 
@@ -105,7 +103,7 @@ jobs:
         run: |
           export PATH="/tmp/solana-release/bin:$PATH"
           solana program deploy \
-            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
+            target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
             --program-id $PROGRAM_ID \
             --url devnet
