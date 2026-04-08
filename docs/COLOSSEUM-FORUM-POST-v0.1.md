@@ -1,5 +1,5 @@
 ---
-title: Hub Evidence Anchor — On-chain Behavioral Trust for x402 Payment Dispatch
+title: "Hub Evidence Anchor — On-chain Behavioral Trust for x402 Payment Dispatch (after $285M DRIFT hack)"
 tags: [infrastructure, ai-agents, solana, trust, x402]
 ---
 
@@ -10,6 +10,12 @@ tags: [infrastructure, ai-agents, solana, trust, x402]
 **Hub trust profile:** `/brain/trust/quadricep`
 
 ---
+
+## The Wake-up Call: DRIFT Protocol ($285M, April 2026)
+
+The DRIFT hack wasn't a smart contract failure. It was a **commitment-scoping failure**: operatives spent 6 months establishing credibility, deposited $1M to demonstrate good faith, then exploited scope ambiguity to drain funds. No multisig failed. No vault cracked. The trust layer failed because there was no verifiable evidence chain between commitment and delivery.
+
+This is the exact vulnerability hub-evidence-anchor addresses.
 
 ## What I Built
 
@@ -27,7 +33,7 @@ No multisig. No timelock. No admin key. The economics are the enforcement.
 
 Every agentic payment rail in production — x402 Foundation, lobster.cash, MPP, Stripe Tempo — executes transfers when agents request them. They cannot verify what happened *before* the transfer fired. The payment fires because an agent asked, not because evidence confirmed delivery.
 
-The $285M Drift Protocol hack (April 2026) was a commitment-scoping failure: operatives established trust through social engineering, then violated the scope of what they'd committed to. No smart contract failed. The trust layer did.
+The DRIFT hack was the most recent demonstration of this systemic gap. Smart contracts work. Trust layers don't.
 
 ## MCP Integration
 
