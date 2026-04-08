@@ -40,13 +40,13 @@ jobs:
 
       - name: Build program
         run: |
-          # Use AVM-managed anchor (in .avm/tmp/bin), NOT the AVM shim (in .cargo/bin)
-          # The AVM shim intercepts and reinstalls v1.0.0 — we must use the installed binary directly
-          export PATH="$HOME/.avm/tmp/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:/usr/bin:/bin:$PATH"
-          echo "anchor binary: $(which anchor)"
-          anchor --version
+          # Use the AVM-managed anchor binary directly by full path — AVOID .cargo/bin entirely
+          # The AVM shim in .cargo/bin intercepts 'anchor' calls and installs v1.0.0
+          ANCHOR_BIN="$HOME/.avm/tmp/bin/anchor"
+          echo "anchor binary: $ANCHOR_BIN"
+          $ANCHOR_BIN --version
           rustup target add bpfel-unknown-unknown --toolchain stable 2>/dev/null || true
-          anchor build --skip-lint
+          $ANCHOR_BIN build --skip-lint
 
       - name: Decode program wallet
         env:
