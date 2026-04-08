@@ -94,6 +94,18 @@ If verify_trust returns stats that do not match the original anchor_evidence cal
 
 ---
 
+## Execution Script
+
+```bash
+# Run from hub-evidence-anchor directory:
+cd ~/hub-evidence-anchor
+ANCHOR_WALLET_JSON=~/.config/solana/id.json \
+SOLANA_RPC=https://api.devnet.solana.com \
+npx tsx scripts/anchor-evidence-call.ts
+```
+
+Script: `scripts/anchor-evidence-call.ts` (TypeScript/Anchor SDK, runs with `npx tsx`)
+
 ## Evidence Artifacts
 
 - anchor_evidence tx: [PENDING EXECUTION — first ever call on spJAH8]
