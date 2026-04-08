@@ -56,11 +56,21 @@ jobs:
 
       - name: Build program
         run: |
+          # Install Rust if cargo is not available
+          if ! command -v cargo &> /dev/null; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+          fi
+          
+          # Add Solana CLI and Rust to PATH
+          export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
+          
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           
           echo ""
           echo "=== Building with cargo-build-sbf ==="
+          echo "cargo: $(which cargo) ($(cargo --version))"
+          echo "rustc: $(which rustc) ($(rustc --version))"
           cargo-build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
           
           echo ""
@@ -76,6 +86,7 @@ jobs:
 
       - name: Airdrop SOL
         run: |
+          export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           UPGRADE_AUTH=$(cat /tmp/program-pubkey.txt | tr -d '\n')
           echo "Upgrade authority: $UPGRADE_AUTH"
           solana balance "$UPGRADE_AUTH" --url devnet
@@ -95,6 +106,7 @@ jobs:
 
       - name: Deploy program
         run: |
+          export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           solana program deploy \
             programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/wallet.json \
@@ -103,4 +115,5 @@ jobs:
 
       - name: Verify
         run: |
+          export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url devnet
