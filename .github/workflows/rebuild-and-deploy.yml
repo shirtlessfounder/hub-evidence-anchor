@@ -37,7 +37,7 @@ jobs:
 
       - name: Fix program Anchor.toml with spJAH8
         run: |
-          sed -i 's|^address = ".*"|address = "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"|' programs/hub-evidence-anchor/Anchor.toml
+          perl -i -pe 's{address = "[^"]*"}{address = "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"}' programs/hub-evidence-anchor/Anchor.toml
           grep "address" programs/hub-evidence-anchor/Anchor.toml
 
       - name: Build program
