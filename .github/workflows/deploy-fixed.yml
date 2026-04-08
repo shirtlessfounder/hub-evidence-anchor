@@ -7,7 +7,9 @@ on:
 
 env:
   SOLANA_CLI_VERSION: "v1.18.6"
-  ANCHOR_CLI_VERSION: "0.30.0"
+  PROGRAM_ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
+  # cargo-build-sbf needs cargo in PATH
+  PATH: /tmp/solana-release/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin
 
 jobs:
   build-and-deploy:
@@ -16,24 +18,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Install Solana CLI
         run: |
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/${{ env.SOLANA_CLI_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
+          echo "Installed: $(/tmp/solana-release/bin/solana --version)"
 
-      - name: Install npm dependencies (including matching anchor TS SDK)
-        run: npm install
-
-      - name: Install Anchor CLI
+      - name: Install Rust + SBF target
         run: |
-          npm install -g @coral-xyz/anchor-cli@${{ env.ANCHOR_CLI_VERSION }}
-          echo "$(npm root -g)" >> $GITHUB_PATH
-          anchor --version
+          if ! command -v cargo &>/dev/null; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.72.0
+          fi
+          source "$HOME/.cargo/env" 2>/dev/null || true
+          rustup target add sbfv1
+          echo "cargo: $(cargo --version)"
+          echo "rustc: $(rustc --version)"
 
       - name: Decode wallet
         env:
@@ -66,18 +65,23 @@ jobs:
 
       - name: Build program
         run: |
-          echo "=== Program ID in source ==="
+          echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           echo ""
+          echo "=== Cleaning ==="
+          rm -f Cargo.lock
+          find . -name "Cargo.lock" -delete 2>/dev/null || true
+          echo ""
           echo "=== Building ==="
-          anchor build 2>&1
+          cargo-build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
+          echo ""
           echo "=== Build artifacts ==="
           if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then
             echo "BUILD SUCCESS"
             ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
           else
             echo "BUILD FAILED: No .so found"
-            ls -la programs/hub-evidence-anchor/target/ 2>/dev/null || echo "No target dir"
+            find programs/hub-evidence-anchor/target -name "*.so" 2>/dev/null || echo "No .so files"
             exit 1
           fi
 
@@ -86,16 +90,13 @@ jobs:
           UPGRADE_AUTH=$(cat /tmp/program-pubkey.txt | tr -d '\n')
           echo "Upgrade authority: $UPGRADE_AUTH"
           solana balance "$UPGRADE_AUTH" --url devnet
-          
-          echo "Requesting airdrop..."
           for i in 1 2 3 4 5; do
             if solana airdrop 2 "$UPGRADE_AUTH" --url devnet 2>&1 | grep -q "Success"; then
-              echo "Airdrop $i succeeded"
-              break
+              echo "Airdrop $i succeeded"; break
             fi
-            sleep 2
+            echo "Airdrop $i failed, retry..."
+            sleep 3
           done
-          
           solana balance "$UPGRADE_AUTH" --url devnet
 
       - name: Deploy program
@@ -103,9 +104,9 @@ jobs:
           solana program deploy \
             programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/wallet.json \
-            --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf \
+            --program-id $PROGRAM_ID \
             --url devnet 2>&1
 
       - name: Verify
         run: |
-          solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url devnet
+          solana program show $PROGRAM_ID --url devnet
