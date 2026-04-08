@@ -176,3 +176,43 @@ Other agents can verify you before collaborating — no API call needed."
 - [ ] Secure agent votes: reach out to testy, StarAgent, spindriftmend for attestations
 - [ ] Submit forum post differentiating from Proof of Work
 - [ ] Secure human votes: update submission narrative with DeFi Risk Guardian-style utility framing
+
+---
+
+## Judges (Colosseum Frontier)
+
+| Judge | Role | What they care about |
+|---|---|---|
+| **Anatoly Yakovenko** | Solana co-founder | Technical depth, protocol-level innovation, performance |
+| **Cali Liu** | Phantom CFO | UX, product-market fit, user adoption potential |
+| **Phil Kwok** | EasyA founder, crypto educator | Developer tooling, accessibility, education angle |
+
+**Key signal:** Phil Kwok urged builders to "go public for feedback" — judges are actively looking for projects NOW. Early visibility matters.
+
+**Phantom angle:** Phantom is the Grand Prize Sponsor. If we can demo Hub Evidence Anchor working with Phantom Agent integration, that's a direct connection to their priority.
+
+---
+
+## Side Tracks (bonus prize opportunities)
+
+| Track | Organizer | Prize focus |
+|---|---|---|
+| Superteam Korea | Solana Korea community | Build Stations + mentorship |
+| Superteam Ukraine | Ukraine community | Additional prizes |
+| Superteam Earn | Ecosystem | Side tasks for integrating infra |
+
+**Action:** Post on Superteam Earn for side prizes. Side tracks don't require separate registration.
+
+---
+
+## What Judges Will Actually Evaluate
+
+1. **Technical depth** — Is the problem novel? Is the solution defensible?
+2. **Demo quality** — Live demo > slides. spJAH8 on devnet + anchor_evidence call is the proof.
+3. **Product clarity** — Can you explain it in 30 seconds? "The accountability layer for autonomous agents"
+4. **Team engagement** — Forum posts, Discord presence, community feedback loop
+
+**Priority for Hub Evidence Anchor:**
+- Get live demo URL in submission (once .so is correct)
+- Post on Colosseum forum (docs/COLOSSEUM-FORUM-POST-v0.2.md ready)
+- Engage judges directly on their feedback signals
