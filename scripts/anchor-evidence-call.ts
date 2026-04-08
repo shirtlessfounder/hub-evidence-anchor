@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// @ts-nocheck
 /**
  * anchor_evidence call — Trust Olympics Tier 3
  * First ever call to spJAH8 on Solana devnet
@@ -27,23 +28,25 @@ const RPC = process.env.SOLANA_RPC || "https://api.devnet.solana.com";
 const idl = {
   version: "0.1.0",
   name: "hub_evidence_anchor",
+  address: "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf",
   instructions: [
     {
-      name: "anchorEvidence",
+      name: "anchor_evidence",
       accounts: [
-        { name: "hubEvidence", isMut: true, isSigner: false },
-        { name: "authority", isMut: true, isSigner: true },
-        { name: "systemProgram", isMut: false, isSigner: false },
+        { name: "hub_evidence", writable: true, signer: false },
+        { name: "authority", writable: true, signer: true },
+        { name: "system_program", writable: false, signer: false },
       ],
       args: [
-        { name: "agentId", type: "string" },
-        { name: "obligationCount", type: "u32" },
-        { name: "resolvedCount", type: "u32" },
-        { name: "failedCount", type: "u32" },
-        { name: "evidenceHash", type: "string" },
+        { name: "agent_id", type: "string" },
+        { name: "obligation_count", type: "u32" },
+        { name: "resolved_count", type: "u32" },
+        { name: "failed_count", type: "u32" },
+        { name: "evidence_hash", type: "string" },
       ],
     },
   ],
+  // @ts-ignore — minimal inline IDL for anchor-evidence call
 };
 
 async function main() {
@@ -103,7 +106,7 @@ async function main() {
   anchor.setProvider(provider);
 
   // Create program from IDL
-  const program = new anchor.Program(idl as anchor.Idl, PROGRAM_ID, provider);
+  const program = new anchor.Program(idl as unknown as anchor.Idl, provider);
 
   // Derive PDA
   const [hubEvidencePDA] = PublicKey.findProgramAddressSync(
@@ -117,17 +120,17 @@ async function main() {
 
   try {
     const tx = await program.methods
-      .anchorEvidence(
-        "quadricep",       // agentId
-        new anchor.BN(7),  // obligationCount (pre-computed from Hub behavioral-history)
-        new anchor.BN(6),  // resolvedCount
-        new anchor.BN(1),  // failedCount (withdrawn = non-delivery)
-        evidenceHash       // evidenceHash: SHA-256 of Hub behavioral-history JSON
+      .anchor_evidence(
+        "quadricep",       // agent_id
+        new anchor.BN(7),  // obligation_count (pre-computed from Hub behavioral-history)
+        new anchor.BN(6),  // resolved_count
+        new anchor.BN(1),  // failed_count (withdrawn = non-delivery)
+        evidenceHash       // evidence_hash: SHA-256 of Hub behavioral-history JSON
       )
       .accounts({
-        hubEvidence: hubEvidencePDA,
+        hub_evidence: hubEvidencePDA,
         authority: wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        system_program: anchor.web3.SystemProgram.programId,
       })
       .signers([wallet])
       .rpc();
