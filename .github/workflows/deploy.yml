@@ -75,7 +75,10 @@ jobs:
           solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
-            --url devnet | tee /tmp/deploy-output.txt
+            --max-sign-attempts 50 \
+            --url devnet > /tmp/deploy-output.txt 2>&1 || true
+          echo "Deploy output:"
+          cat /tmp/deploy-output.txt
           PROGRAM_ID=$(grep -oE '[1-9A-HJ-NP-Za-km-z]{32,44}' /tmp/deploy-output.txt | tail -1)
           echo "Deploy program ID: $PROGRAM_ID"
           echo "$PROGRAM_ID" > /tmp/deployed-program-id.txt
