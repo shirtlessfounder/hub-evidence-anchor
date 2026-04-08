@@ -2,7 +2,7 @@
 hub_evidence_anchor = "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"
 
 [provider]
-cluster = Devnet
+cluster = "devnet"
 wallet = "/tmp/deploy-wallet.json"
 
 [scripts]

@@ -3,7 +3,7 @@ name: Deploy to Solana Devnet
 on:
   push:
     branches: [main]
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 env:
   PROGRAM_ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
@@ -11,97 +11,60 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust + build tools
-        run: |
-          export PATH="/usr/bin:/bin:$PATH"
-          /usr/bin/curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.88.0
-          apt-get update && apt-get install -y build-essential pkg-config libssl-dev
-          echo "PATH=$HOME/.cargo/bin:/usr/bin:/bin:$PATH" >> $GITHUB_ENV
-          rustc --version
-
       - name: Install Solana CLI
         run: |
-          export PATH="$HOME/.cargo/bin:/usr/bin:/bin:$PATH"
-          /usr/bin/curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | /usr/bin/tar -xjf - -C /tmp
-          echo "PATH=/tmp/solana-release/bin:\$PATH" >> $GITHUB_ENV
+          set -e
+          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xjf - -C /tmp
+          echo "PATH=/tmp/solana-release/bin:$PATH" >> $GITHUB_ENV
 
       - name: Install Anchor CLI
         run: |
-          export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:/usr/bin:/bin:$PATH"
-          rustup default 1.88.0
-          cargo install --git https://github.com/solana-foundation/anchor --tag v0.30.0 anchor-cli
-          anchor --version
-
-      - name: Build program
-        run: |
-          export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:$PATH"
-          rustup target add bpfel-unknown-unknown --toolchain stable 2>/dev/null || true
-          anchor build --skip-lint
+          set -e
+          npm install -g @coral-xyz/anchor-cli@0.30.0
+          echo "$(npm root -g)" >> $GITHUB_PATH
 
       - name: Decode program wallet
         env:
           PROGRAM_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
           python3 << 'PYEOF'
-          import os, json, base64
-          ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+          import os, base64, json
           secret = os.environ.get("PROGRAM_WALLET_JSON", "").strip()
-          raw = None
           if len(secret) == 88:
-              try:
-                  n = 0
-                  for c in secret:
-                      n = n * 58 + ALPHABET.index(c)
-                  raw = n.to_bytes(64, "big")
-              except ValueError:
-                  raw = None
-          if raw is None:
-              try:
-                  raw = base64.b64decode(secret)
-                  if len(raw) != 64: raw = None
-              except: raw = None
-          if raw is None:
-              try:
-                  arr = json.loads(secret)
-                  if isinstance(arr, list) and len(arr) == 64:
-                      raw = bytes(int(x) if isinstance(x, int) else x for x in arr)
-              except: pass
-          if raw is None: print("ERROR"); exit(1)
-          with open("/tmp/program-wallet.json", "w") as f: json.dump(list(raw), f)
-          npub = int.from_bytes(raw[32:], "big")
-          addr = ""
-          while npub > 0: npub, rem = divmod(npub, 58); addr = ALPHABET[rem] + addr
-          with open("/tmp/program-pubkey.txt", "w") as f: f.write(addr)
+              raw = base64.b64decode(secret)
+          elif secret.startswith('['):
+              raw = json.loads(secret)
+          else:
+              raw = base64.b64decode(secret)
+          with open("/tmp/program-wallet.json", "w") as f:
+              json.dump(list(raw), f)
+          ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+          arr = bytes(raw)
+          pub = arr[32:]
+          n = int.from_bytes(pub, 'big')
+          addr = ''
+          while n > 0: n, rem = divmod(n, 58); addr = ALPHABET[rem] + addr
           print(f"Wallet: {addr}")
           PYEOF
 
       - name: Airdrop SOL
         run: |
+          set -e
           export PATH="/tmp/solana-release/bin:$PATH"
-          PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
-          echo "Funding: $PROGRAM_PUBKEY"
-          for i in 1 2 3 4; do
-            if solana airdrop 5 "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com 2>&1 | grep -q "Success"; then
-              echo "Airdrop $i succeeded"; break
-            fi
-            sleep 3
-          done
-          solana balance "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com
-
-      - name: Recover stale buffer
-        run: |
-          export PATH="/tmp/solana-release/bin:$PATH"
-          solana program close --buffers --keypair /tmp/program-wallet.json --url devnet 2>&1 || true
+          solana airdrop 5 /tmp/program-wallet.json --url devnet || true
+          solana balance /tmp/program-wallet.json --url devnet
 
       - name: Deploy program
         run: |
+          set -e
           export PATH="/tmp/solana-release/bin:$PATH"
+          solana program close --buffers --keypair /tmp/program-wallet.json --url devnet 2>/dev/null || true
           solana program deploy \
-            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
+            programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
             --program-id $PROGRAM_ID \
             --url devnet
