@@ -39,6 +39,22 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq clang-14 llvm
 
+      - name: Setup Solana BPF toolchain
+        run: |
+          export CARGO_HOME="/opt/cargo"
+          export RUSTUP_HOME="/opt/rustup"
+          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+          # cargo-build-sbf downloads platform-tools on first run; trigger it here
+          # so we can then link the toolchain for use by cargo-build-sbf's internal calls
+          /tmp/solana-release/bin/cargo-build-sbf --version 2>&1 | head -3
+          # Find the cached platform-tools rust directory
+          PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -name "rustc" -path "*/platform-tools/*/rust/bin/rustc" 2>/dev/null | head -1 | xargs dirname | xargs dirname)
+          echo "Found platform-tools rust: $PLATFORM_TOOLS_RUST"
+          # rustup toolchain link (BPF targets are already in platform-tools Rust — don't need rustup target add)
+          rustup toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || true
+          rustup toolchain list
+          cargo +solana --version
+
       - name: Decode wallet keypair (base64)
         env:
           WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
