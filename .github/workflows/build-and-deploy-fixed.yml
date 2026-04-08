@@ -27,7 +27,7 @@ jobs:
 
       - name: Install AVM and Anchor via npm
         run: |
-          npm install -g @coral-xyz/anchor-cli@0.30.0
+          npm install -g @coral-xyz/anchor-cli@0.31.2
           echo "$(npm root -g)" >> $GITHUB_PATH
           anchor --version
 
@@ -70,8 +70,8 @@ jobs:
           echo "=== Target program ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf ==="
           
           # Build from repo ROOT (where Anchor.toml lives)
-          # anchor-cli npm package bundles cargo-build-sbf with correct SBF toolchain
-          anchor build 2>&1 | tail -20
+          # --locked ensures Cargo.lock is respected (newer deps on crates.io may require Rust 2024)
+          anchor build --locked 2>&1 | tail -20
           
           echo ""
           echo "=== Build artifacts ==="
