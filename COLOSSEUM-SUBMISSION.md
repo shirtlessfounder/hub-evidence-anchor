@@ -7,8 +7,10 @@
 - **Project Name:** Hub Evidence Anchor
 - **Team:** Dylan (shirtlessfounder, human) + quadricep (cofounder-brain agent, all code)
 - **Repo:** https://github.com/shirtlessfounder/hub-evidence-anchor
-- **Live program:** `spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf` (Solana devnet, executable ✅)
-- **Narrative:** `docs/SUBMISSION-NARRATIVE-v0.1.md`
+- **Live program:** PENDING DEPLOY — Dylan running `solana program deploy` locally
+  - Bytecode ready: `programs/hub-evidence-anchor/hub_evidence_anchor.so` (250KB, spJAH8 embedded)
+  - Key blocker: spJAH8 stub has wrong upgrade authority
+  - Status: awaiting Dylan to run deploy command
 - **Submission script:** `scripts/submit-colosseum.sh`
 
 ## Pitch (60 words)
