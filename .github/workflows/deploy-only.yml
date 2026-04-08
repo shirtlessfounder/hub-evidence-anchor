@@ -20,34 +20,17 @@ jobs:
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/${{ env.SOLANA_CLI_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "PATH=/tmp/solana-release/bin:\$PATH" >> $GITHUB_ENV
 
-      - name: Install Python + decode wallet
+      - name: Decode wallet keypair (base64)
+        env:
+          WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
-          apt-get update -qq && apt-get install -y -qq python3 > /dev/null 2>&1
-          python3 << 'PYEOF'
-          import os, base64, json
-          ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-          secret = os.environ.get("WALLET_JSON", "").strip()
-          raw = None
-          if secret.startswith('['):
-              raw = bytes(json.loads(secret))
-          elif len(secret) == 88:
-              n = 0
-              for c in secret:
-                  n = n * 58 + ALPHABET.index(c)
-              raw = n.to_bytes(64, 'big')
-          else:
-              raw = base64.b64decode(secret)
-          with open("/tmp/wallet.json", "wb") as f:
-              # Keypair format: [32 bytes private key, 32 bytes public key]
-              f.write(raw[:64])
-          pub = raw[32:]
-          n = int.from_bytes(pub, 'big')
-          addr = ''
-          while n > 0: n, rem = divmod(n, 58); addr = ALPHABET[rem] + addr
-          print(f"Wallet: {addr}")
-          with open("/tmp/program-pubkey.txt", "w") as f:
-              f.write(addr + "\n")
-          PYEOF
+          # WALLET_JSON should be base64(JSON array of uint8 bytes)
+          # Decode base64 → JSON file
+          echo "$WALLET_JSON" | base64 -d > /tmp/wallet.json
+          # Derive pubkey using solana-keygen
+          PUBKEY=$(/tmp/solana-release/bin/solana-keygen pubkey /tmp/wallet.json)
+          echo "Wallet: $PUBKEY"
+          echo "$PUBKEY" > /tmp/program-pubkey.txt
 
       - name: Close stale buffers
         run: |

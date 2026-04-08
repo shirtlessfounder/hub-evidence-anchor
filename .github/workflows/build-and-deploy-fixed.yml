@@ -37,17 +37,13 @@ jobs:
           echo "cargo: $(cargo +solana --version 2>/dev/null || cargo --version)"
           echo "rustc: $(rustc +solana --version 2>/dev/null || rustc --version)"
 
-      - name: Decode wallet
+      - name: Decode wallet keypair (base64)
         env:
           WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
-          python3 << 'PYEOF'
-          import os, base64, json
-          ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-          secret = os.environ.get("WALLET_JSON", "").strip()
-          raw = None
-          if len(secret) == 88:
-              n = 0
+          echo "$WALLET_JSON" | base64 -d > /tmp/wallet.json
+          PUBKEY=$(/tmp/solana-release/bin/solana-keygen pubkey /tmp/wallet.json)
+          echo "Wallet: $PUBKEY"
               for c in secret:
                   n = n * 58 + ALPHABET.index(c)
               raw = n.to_bytes(64, 'big')
