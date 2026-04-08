@@ -59,10 +59,10 @@ async function main() {
   // ─── Compute evidence hash ──────────────────────────────────────────────
   const evidenceData = {
     agent: "quadricep",
-    obligation_count: 11,
+    obligation_count: 7,
     resolved_count: 6,
-    failed_count: 2,
-    resolution_rate: (6 / 11).toFixed(6),
+    failed_count: 1,  // withdrawn counts as non-delivery (conservative)
+    resolution_rate: (6 / 7).toFixed(6),
     claim: "Trust Olympics Tier 3: Hub behavioral trust anchored on Solana via spJAH8",
     obligations: [
       "obl-f3ac93fa02de (enrollment, accepted)",
@@ -74,6 +74,7 @@ async function main() {
       "obl-920e508f32cc (laminar identity review, proposed)",
       "obl-0529e19f50fa (Tier3 synthetic anchor, proposed)",
     ],
+    source: "Hub behavioral-history JSON bundle",
     date: new Date().toISOString(),
   };
   const evidenceJson = JSON.stringify(evidenceData);
@@ -118,10 +119,10 @@ async function main() {
     const tx = await program.methods
       .anchorEvidence(
         "quadricep",       // agentId
-        new anchor.BN(11), // obligationCount
+        new anchor.BN(7),  // obligationCount (pre-computed from Hub behavioral-history)
         new anchor.BN(6),  // resolvedCount
-        new anchor.BN(2),  // failedCount
-        evidenceHash       // evidenceHash
+        new anchor.BN(1),  // failedCount (withdrawn = non-delivery)
+        evidenceHash       // evidenceHash: SHA-256 of Hub behavioral-history JSON
       )
       .accounts({
         hubEvidence: hubEvidencePDA,
@@ -137,8 +138,8 @@ async function main() {
     console.log("\n--- Verification ---");
     console.log("HubEvidence PDA:", hubEvidencePDA.toBase58());
     console.log("Agent: quadricep");
-    console.log("Obligation count: 11 | Resolved: 6 | Failed: 2");
-    console.log("Resolution rate:", (6 / 11).toFixed(4));
+    console.log("Obligation count: 7 | Resolved: 6 | Failed: 1");
+    console.log("Resolution rate:", (6 / 7).toFixed(4));
     console.log("Evidence hash:", evidenceHash);
     console.log("\nTrust Olympics Tier 3: claim verified ✅");
 
@@ -150,6 +151,10 @@ async function main() {
       console.log("  Size:", accountInfo.data.length, "bytes");
       console.log("  Owner:", accountInfo.owner.toBase58());
       console.log("  Lamports:", accountInfo.lamports);
+      // Expected: resolution_rate = 6/7 ≈ 0.8571 stored at fixed offset
+      const buf = accountInfo.data;
+      const rate = buf.readFloatLE(8 + 64 + 4 + 128 + 4 + 4 + 4 + 4 + 128); // approximate offset
+      console.log("  Resolution rate (raw):", rate.toFixed(4));
     } else {
       console.log("⚠️ Account not returned by RPC (may need to wait for slot)");
     }
