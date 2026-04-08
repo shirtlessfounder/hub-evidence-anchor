@@ -32,12 +32,10 @@ jobs:
       - name: Install Anchor CLI
         run: |
           export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:/usr/bin:/bin:$PATH"
-          # Install AVM FIRST so the anchor shim can find it
+          # Install AVM, use it to install and activate anchor 0.30.0
           cargo install --git https://github.com/coral-xyz/anchor avm --force
           avm install 0.30.0
           avm use 0.30.0
-          # Now install anchor-cli — its shim will find AVM and use 0.30.0
-          cargo install anchor-cli@0.30.0
           # Write the AVM-managed anchor path for subsequent steps
           echo "ANCHOR_BIN=$(avm which anchor)" >> $GITHUB_ENV
           $ANCHOR_BIN --version
