@@ -57,25 +57,14 @@ jobs:
               f.write(addr + "\n")
           PYEOF
 
-      - name: Airdrop SOL
+      - name: Check balance and close buffers
         run: |
           export PATH="/tmp/solana-release/bin:$PATH"
-          RECIPIENT=$(cat /tmp/program-pubkey.txt | tr -d '\n')
-          echo "Current balance:"
+          RECIPIENT=$(cat /tmp/program-pubkey.txt 2>/dev/null | tr -d '\n' || echo "")
+          echo "Wallet: $RECIPIENT"
           solana balance "$RECIPIENT" --url devnet
-          echo "Airdropping 2 SOL..."
-          for i in 1 2 3 4 5 6 7 8; do
-            OUT=$(solana airdrop 2 "$RECIPIENT" --url devnet 2>&1)
-            echo "$OUT"
-            if echo "$OUT" | grep -q "Success"; then
-              echo "Airdrop $i succeeded"
-              break
-            fi
-            echo "Airdrop $i failed, retrying in 3s..."
-            sleep 3
-          done
-          solana balance "$RECIPIENT" --url devnet
-          echo "Balance after airdrop attempts — proceeding to deploy (upgrade cost ~0.01 SOL)"
+          solana program close --buffers --keypair /tmp/program-wallet.json --url devnet || true
+          echo "Ready to deploy (existing balance covers bytecode upload)"
 
       - name: Deploy program
         id: deploy
@@ -84,7 +73,6 @@ jobs:
           WALLET=$(cat /tmp/program-pubkey.txt | tr -d '\n')
           echo "Deploying from wallet: $WALLET"
           echo "Program ID: $PROGRAM_ID"
-          solana program close --buffers --keypair /tmp/program-wallet.json --url devnet 2>/dev/null || true
           solana program deploy \
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
@@ -93,8 +81,9 @@ jobs:
             --url devnet > /tmp/deploy-output.txt 2>&1 || true
           echo "=== Deploy output ==="
           cat /tmp/deploy-output.txt
-          if grep -q "Error\|error" /tmp/deploy-output.txt; then
+          if grep -qi "Error\|error" /tmp/deploy-output.txt; then
             echo "Deploy had errors - check above"
+            exit 1
           fi
 
       - name: Verify
