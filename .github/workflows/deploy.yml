@@ -35,9 +35,10 @@ jobs:
           # Install AVM, use it to install and activate anchor 0.30.0
           cargo install --git https://github.com/coral-xyz/anchor avm --force
           avm install 0.30.0
-          avm use 0.30.0
-          # Write the AVM-managed anchor path for subsequent steps
-          echo "ANCHOR_BIN=$(avm which anchor)" >> $GITHUB_ENV
+          avm use 0.30.0 || true
+          # Use the installed anchor binary directly (avm installs to .avm/tmp/bin/)
+          ANCHOR_BIN="$HOME/.avm/tmp/bin/anchor"
+          echo "ANCHOR_BIN=$ANCHOR_BIN" >> $GITHUB_ENV
           $ANCHOR_BIN --version
 
       - name: Build program
