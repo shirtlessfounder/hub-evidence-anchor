@@ -71,8 +71,11 @@ Expected: found=true, resolution_rate=0.545, obligations={6, 2, 11}
 | Obligation count | 11 | [VALUE] | [YES/NO] |
 | Resolved count | 6 | [VALUE] | [YES/NO] |
 | Failed count | 2 | [VALUE] | [YES/NO] |
-| Evidence hash | [COMPUTED] | [RETURNED] | [YES/NO] |
 | TX confirmed on Solana | Yes | Yes/No | [YES/NO] |
+
+**Known limitation:** MCP `verify_trust` returns `(hash not parsed)` for `evidence_hash` — the parse function skips this field. GitHub issue #2 filed. Continuity test uses resolution_rate and counts.
+
+**anchor_handoff note:** Separate instruction for per-obligation commitment-completion pairs with Ed25519 obligor_signature (verified by Hub app layer before tx). Not included in Tier 3 synthetic test.
 
 ---
 
