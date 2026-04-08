@@ -6,6 +6,8 @@ on:
 env:
   PROGRAM_ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
   HOME: /home/runner
+  # Prepend SBF cargo + Solana tools so cargo-build-sbf finds the right cargo (v1.77, v3 lockfiles)
+  PATH: /tmp/solana-release/bin/sdk/sbf/cargo:/tmp/solana-release/bin:$HOME/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 jobs:
   deploy:
@@ -31,7 +33,7 @@ jobs:
           ln -sf /tmp/solana-release/bin/sdk/sbf/cargo/cargo $HOME/.cargo/bin/cargo
           ln -sf /tmp/solana-release/bin/sdk/sbf/cargo/rustc $HOME/.cargo/bin/rustc
           ln -sf /tmp/solana-release/bin/sdk/sbf/cargo/rustc $HOME/.cargo/bin/rustup 2>/dev/null || true
-          echo "cargo version: $($HOME/.cargo/bin/cargo --version)"
+          echo "cargo version: $(which cargo) ($(cargo --version))"
 
       - name: Fix program Anchor.toml with spJAH8
         run: |
@@ -43,7 +45,7 @@ jobs:
           rm -rf programs/hub-evidence-anchor/target
           rm -f programs/hub-evidence-anchor/Cargo.lock
           rm -f Cargo.lock
-          HOME=$HOME /tmp/solana-release/bin/cargo-build-sbf 2>&1 | tail -30
+          /tmp/solana-release/bin/cargo-build-sbf 2>&1 | tail -30
           echo "---"
           ls -la programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
           strings programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so | grep -E "^[1-9A-HJ-NP-Za-km-z]{32,44}$" | head -5
