@@ -15,31 +15,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust 1.75 + link solana toolchain
+      - name: Install Rust 1.75 + Solana toolchain
         run: |
-          # Install Rust 1.75 to isolated location (installer reads CARGO_HOME/RUSTUP_HOME from env)
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
           export PATH="$CARGO_HOME/bin:$PATH"
+          export RUSTUP_INIT_SKIP_RECOMMENDATIONS=1
+          
+          # Install Rust 1.75
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
             sh -s -- -y --default-toolchain 1.75.0
           
           source "$CARGO_HOME/env"
           
-          echo "=== Toolchains ==="
-          find "$RUSTUP_HOME/toolchains" -mindepth 1 -maxdepth 2 -type d 2>/dev/null | head -5
-          
-          # Find the actual toolchain root
+          # Find the installed toolchain path
           TOOLCHAIN=$(find "$RUSTUP_HOME/toolchains" -mindepth 1 -maxdepth 1 -type d | head -1)
-          echo "Linking solana toolchain to: $TOOLCHAIN"
-          rustup toolchain link solana "$TOOLCHAIN"
+          echo "Found: $TOOLCHAIN"
           
-          echo "=== Adding BPF targets ==="
-          rustup target add bpfel-unknown-none bpfeb-unknown-none --toolchain solana
+          # Create cargo+solana wrapper: uses this rustc with SOLANA_SBF_MIXED_REBUILD=1
+          # cargo-build-sbf uses +solana override by finding cargo-sbf script
+          # Instead: make cargo appear as solana by symlinking
+          ln -sf "$TOOLCHAIN/bin/cargo" "$CARGO_HOME/bin/cargo-solana"
+          ln -sf "$TOOLCHAIN/bin/rustc" "$CARGO_HOME/bin/rustc-solana"
+          ln -sf "$TOOLCHAIN/bin/rustc" "$CARGO_HOME/bin/rustup-toolchain"
+          
+          # Tell cargo-build-sbf to use our toolchain
+          export SOLANA_SBF_MIXED_REBUILD=1
+          export SBF_SOLANA_TOOLCHAIN_PATH="$TOOLCHAIN"
           
           echo "=== Verify ==="
-          cargo +solana --version
+          cargo-solana --version
+          rustc-solana --version
 
       - name: Install Solana CLI + SBF tools
         run: |
@@ -56,12 +63,15 @@ jobs:
         run: |
           source "$HOME/.cargo/env"
           export PATH="$HOME/.cargo/bin:$PATH"
+          export SBF_SOLANA_TOOLCHAIN_PATH="/opt/rustup/toolchains/1.75.0-x86_64-unknown-linux-gnu"
+          export SOLANA_SBF_MIXED_REBUILD=1
           
           # Delete ALL Cargo.lock files to force fresh resolution
           rm -f Cargo.lock
           find . -name "Cargo.lock" -delete 2>/dev/null || true
           
           echo "=== Building with cargo-build-sbf ==="
+          echo "SBF_TOOLCHAIN=$SBF_SOLANA_TOOLCHAIN_PATH"
           /tmp/solana-release/bin/cargo-build-sbf \
             --manifest-path programs/hub-evidence-anchor/Cargo.toml \
             2>&1 | tail -30
