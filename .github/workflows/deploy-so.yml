@@ -23,7 +23,46 @@ jobs:
         env:
           DEPLOY_KEYPAIR: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
-          echo "$DEPLOY_KEYPAIR" | base64 -d > /tmp/wallet.json
+          python3 << 'PYEOF'
+          import os, json, base64
+          ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+          secret = os.environ.get("DEPLOY_KEYPAIR", "").strip()
+          raw = None
+          # Try base58 (88 chars)
+          if len(secret) == 88:
+              try:
+                  n = 0
+                  for c in secret:
+                      n = n * 58 + ALPHABET.index(c)
+                  raw = n.to_bytes(64, "big")
+              except ValueError:
+                  raw = None
+          # Try base64
+          if raw is None:
+              try:
+                  raw = base64.b64decode(secret)
+                  if len(raw) != 64: raw = None
+              except: raw = None
+          # Try JSON array [1,2,3,...]
+          if raw is None:
+              try:
+                  arr = json.loads(secret)
+                  if isinstance(arr, list) and len(arr) == 64:
+                      raw = bytes(int(x) if isinstance(x, int) else x for x in arr)
+              except: pass
+          if raw is None:
+              print(f"ERROR: cannot decode wallet secret (len={len(secret)}, first chars: {secret[:20]})")
+              exit(1)
+          with open("/tmp/wallet.json", "w") as f:
+              json.dump(list(raw), f)
+          pubkey_bytes = raw[32:]
+          n = int.from_bytes(pubkey_bytes, "big")
+          addr = ""
+          while n > 0:
+              n, rem = divmod(n, 58)
+              addr = ALPHABET[rem] + addr
+          print(f"Wallet pubkey: {addr}")
+          PYEOF
           chmod 600 /tmp/wallet.json
           /tmp/solana-release/bin/solana-keygen pubkey /tmp/wallet.json
 
