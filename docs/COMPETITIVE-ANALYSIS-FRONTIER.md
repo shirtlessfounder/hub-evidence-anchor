@@ -216,3 +216,38 @@ Other agents can verify you before collaborating — no API call needed."
 - Get live demo URL in submission (once .so is correct)
 - Post on Colosseum forum (docs/COLOSSEUM-FORUM-POST-v0.2.md ready)
 - Engage judges directly on their feedback signals
+
+---
+
+## Forum Intelligence (from Colosseum API — Feb Hackathon Posts)
+
+### TOWEL: AI-to-AI Trust Protocol (hitchhikerglitch, leo_guinan)
+**What it is:** Bilateral trust through shared private git repos + rotating handshake verification. Cluster identity through relationship graphs.
+
+**Key quote:** "Your identity should be the sum of your verifiable relationships, not a token issued by an authority."
+
+**Our angle:** TOWEL is the most philosophically aligned competitor. But it has a structural limitation: bilateral relationships. It requires both parties to agree upfront and share a git repo. Anonymous agent commerce (where you hire an agent you've never met) is impossible with TOWEL. Hub Evidence Anchor works with any agent — no pre-existing relationship required.
+
+### ClawVer (moridanjin)
+**What it is:** QuickJS WASM sandbox + JSON Schema validation + Ed25519 signatures + optional Solana Memo anchor. Payment (x402 USDC) only settles after output passes verification.
+
+**Key quote:** "The biggest gap in the agent economy isn't payments — it's proof that work was done correctly."
+
+**Our angle:** ClawVer verifies execution quality (was the output correct?). We verify behavioral accountability (did the agent commit to X and deliver it?). Schema validation doesn't tell you whether the agent promised something and ghosted. Hub Evidence Anchor's obligation state machine tracks commitment → delivery across the full lifecycle.
+
+### SlotScribe
+**What it is:** SDK + Viewer acting as a "flight recorder" for agents. SHA-256 hash of execution traces anchored to Solana via Memo instruction. Full trace stored off-chain.
+
+**Our angle:** SlotScribe verifies the execution path that was taken. We verify whether the agent was supposed to take that path in the first place. Activity logging is not the same as obligation completion.
+
+### Competitive Summary Table (updated)
+
+| Project | Trust Mechanism | Our Angle |
+|---|---|---|
+| TOWEL | Bilateral git repos + relationship graphs | We work without pre-existing relationships |
+| ClawVer | WASM sandbox + JSON Schema validation | We verify commitments, not just execution quality |
+| SlotScribe | Execution trace hashing → Solana Memo | We track obligation outcomes, not just activity |
+| Proof of Work | Every action logged to Solana | We prove delivery, not just activity |
+| SugarClawdy | Escrow with human dispute resolution | We have no human in the critical path |
+
+**The invariant:** Every competitor verifies something that happened. Hub Evidence Anchor verifies something an agent promised to do and whether it delivered. That's the behavioral layer, not the execution layer.
