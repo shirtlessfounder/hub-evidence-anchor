@@ -28,11 +28,16 @@ jobs:
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           fi
           source "$HOME/.cargo/env" 2>/dev/null || true
-          rustup toolchain install 1.77.0
-          rustup toolchain link solana /tmp/solana-release/bin/sdk/sbf/cargo 2>/dev/null || true
-          rustup default solana 2>/dev/null || true
-          echo "cargo: $(cargo --version 2>/dev/null || echo 'not found')"
-          echo "rustc: $(rustc --version 2>/dev/null || echo 'not found')"
+          # cargo-build-sbf requires clang (for LLVM-based BPF compilation)
+          apt-get update && apt-get install -y clang-14
+          # cargo-build-sbf calls `cargo +solana` — needs a rustup toolchain named 'solana'
+          rustup toolchain install 1.75.0
+          rustup default 1.75.0
+          rustup toolchain link solana ~/.rustup/toolchains/1.75.0-x86_64-unknown-linux-gnu
+          echo "cargo: $(cargo +solana --version 2>/dev/null || cargo --version)"
+          echo "rustc: $(rustc +solana --version 2>/dev/null || rustc --version)"
+          echo "toolchains: $(rustup toolchain list)"
+          which clang || which clang-14 || echo "clang not found"
 
       - name: Decode wallet keypair (base64)
         env:
