@@ -18,7 +18,7 @@ jobs:
       - name: Install Rust + build tools
         run: |
           export PATH="/usr/bin:/bin:$PATH"
-          /usr/bin/curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.74.0
+          /usr/bin/curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.85.0
           apt-get update && apt-get install -y build-essential pkg-config libssl-dev
           echo "PATH=$HOME/.cargo/bin:/usr/bin:/bin:$PATH" >> $GITHUB_ENV
           rustc --version
@@ -32,7 +32,7 @@ jobs:
       - name: Install Anchor CLI
         run: |
           export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:/usr/bin:/bin:$PATH"
-          rustup default 1.74.0
+          rustup default 1.85.0
           cargo install --git https://github.com/solana-foundation/anchor --tag v0.30.0 anchor-cli
           anchor --version
 
