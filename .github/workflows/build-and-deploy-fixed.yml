@@ -39,21 +39,6 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq clang-14 llvm
 
-      - name: Link solana toolchain + add BPF targets
-        run: |
-          export CARGO_HOME="/opt/cargo"
-          export RUSTUP_HOME="/opt/rustup"
-          export PATH="$CARGO_HOME/bin:$PATH"
-          # Get the installed toolchain name (rustup uses name, not full path)
-          TOOLCHAIN_NAME=$(ls "$RUSTUP_HOME/toolchains" | head -1)
-          echo "Found toolchain: $TOOLCHAIN_NAME"
-          echo "Toolchain contents: $(ls "$RUSTUP_HOME/toolchains/$TOOLCHAIN_NAME/bin/" 2>&1 | head -5)"
-          # Add BPF targets to the actual toolchain (use name, not path)
-          "$CARGO_HOME/bin/rustup" target add bpfel-unknown-none bpfeb-unknown-none --toolchain "$TOOLCHAIN_NAME"
-          "$CARGO_HOME/bin/rustup" toolchain link solana "$RUSTUP_HOME/toolchains/$TOOLCHAIN_NAME"
-          echo "cargo +solana: $($CARGO_HOME/bin/cargo +solana --version)"
-          echo "toolchains: $($CARGO_HOME/bin/rustup toolchain list)"
-
       - name: Decode wallet keypair (base64)
         env:
           WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
