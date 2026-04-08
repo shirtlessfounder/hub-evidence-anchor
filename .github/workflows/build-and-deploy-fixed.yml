@@ -29,10 +29,11 @@ jobs:
       - name: Install npm dependencies
         run: npm install
 
-      - name: Install Anchor CLI
+      - name: Install Anchor CLI via avm
         run: |
-          npm install -g @coral-xyz/anchor-cli@${{ env.ANCHOR_CLI_VERSION }}
-          echo "$(npm root -g)" >> $GITHUB_PATH
+          cargo install avm --locked 2>&1 | tail -3
+          avm install ${{ env.ANCHOR_CLI_VERSION }} 2>&1 | tail -5
+          avm use ${{ env.ANCHOR_CLI_VERSION }}
           anchor --version
 
       - name: Decode wallet
