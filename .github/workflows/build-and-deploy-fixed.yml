@@ -31,6 +31,8 @@ jobs:
           # cargo-build-sbf requires clang (for LLVM-based BPF compilation)
           apt-get update && apt-get install -y clang-14
           # Install Rust 1.75 to an isolated CARGO_HOME so we can link it as 'solana'
+          # IMPORTANT: remove pre-existing rustup settings that override --default-toolchain
+          rm -f ~/.rustup/settings.toml ~/.rustup/settings.json
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
           export PATH="$CARGO_HOME/bin:$PATH"
