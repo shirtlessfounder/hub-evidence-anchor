@@ -33,29 +33,35 @@ jobs:
         run: |
           python3 << 'PYEOF'
           import os, base64, json
+          ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
           secret = os.environ.get("PROGRAM_WALLET_JSON", "").strip()
           if len(secret) == 88:
-              raw = base64.b64decode(secret)
+              # Base58 decode
+              n = 0
+              for c in secret:
+                  n = n * 58 + ALPHABET.index(c)
+              raw = n.to_bytes(64, 'big')
           elif secret.startswith('['):
-              raw = json.loads(secret)
+              raw = bytes(json.loads(secret))
           else:
               raw = base64.b64decode(secret)
           with open("/tmp/program-wallet.json", "w") as f:
               json.dump([int(b) for b in raw], f)
-          ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-          arr = bytes(raw)
-          pub = arr[32:]
+          pub = raw[32:]
           n = int.from_bytes(pub, 'big')
           addr = ''
           while n > 0: n, rem = divmod(n, 58); addr = ALPHABET[rem] + addr
           print(f"Wallet: {addr}")
+          with open("/tmp/program-pubkey.txt", "w") as f:
+              f.write(addr + "\n")
           PYEOF
 
       - name: Airdrop SOL
         run: |
           set -e
           export PATH="/tmp/solana-release/bin:$PATH"
-          RECIPIENT=$(solana-keygen pubkey /tmp/program-wallet.json)
+          RECIPIENT=$(cat /tmp/program-pubkey.txt | tr -d '\n')
+          echo "Airdropping to: $RECIPIENT"
           solana airdrop 5 "$RECIPIENT" --url devnet || true
           solana balance "$RECIPIENT" --url devnet
 
