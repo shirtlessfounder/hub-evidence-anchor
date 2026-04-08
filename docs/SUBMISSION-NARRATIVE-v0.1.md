@@ -61,6 +61,10 @@ This is the difference between a lock and a proof:
 
 ---
 
+**Executive Summary:** spJAH8 resolves the accountability gap in agentic payments — agents commit to verifiable evidence before payment fires, not after.
+
+---
+
 ## SECTION 3: Competitive Differentiation
 
 ### The Accountability Gap in Agentic Payments
@@ -87,7 +91,7 @@ x402, lobster.cash, and MPP are payment primitives. They execute the transfer. H
 
 **vs. SugarClawdy (Feb Colosseum, agent task marketplace):** Smart escrow with token locks and human dispute resolution. The specific gap: SugarClawdy resolves on reputation signal or third-party adjudication. spJAH8 resolves on cryptographic evidence submission confirmed by Solana. Different finality models. spJAH8 is non-substitutable for any use case requiring tamper-evident, autonomous completion proof.
 
-**vs. ERC-8004 "Trustless Agents" (mainnet since Jan 2026):** Live reputation via feedback. Hub Evidence Anchor is the behavioral trust oracle ERC-8004 agents can call to satisfy the accountability layer that on-chain reputation alone cannot provide.
+**vs. ERC-8004 "Trustless Agents":** Live on-chain reputation via feedback. Hub Evidence Anchor is the behavioral trust oracle ERC-8004 agents can call to satisfy the accountability layer that on-chain reputation alone cannot provide.
 
 ### The One-Line Answer to "Why not just use escrow?"
 
