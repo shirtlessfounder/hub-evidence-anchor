@@ -41,7 +41,7 @@ jobs:
           else:
               raw = base64.b64decode(secret)
           with open("/tmp/program-wallet.json", "w") as f:
-              json.dump(list(raw), f)
+              json.dump([int(b) for b in raw], f)
           ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
           arr = bytes(raw)
           pub = arr[32:]
@@ -55,8 +55,9 @@ jobs:
         run: |
           set -e
           export PATH="/tmp/solana-release/bin:$PATH"
-          solana airdrop 5 /tmp/program-wallet.json --url devnet || true
-          solana balance /tmp/program-wallet.json --url devnet
+          RECIPIENT=$(solana-keygen pubkey /tmp/program-wallet.json)
+          solana airdrop 5 "$RECIPIENT" --url devnet || true
+          solana balance "$RECIPIENT" --url devnet
 
       - name: Deploy program
         id: deploy
