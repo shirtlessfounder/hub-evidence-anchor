@@ -30,11 +30,12 @@ jobs:
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           fi
           source "$HOME/.cargo/env" 2>/dev/null || true
-          # cargo-build-sbf uses 'cargo +solana' internally — install the Solana Rust toolchain
-          rustup toolchain install solana
-          rustup default solana
-          echo "cargo: $(cargo --version)"
-          echo "rustc: $(rustc --version)"
+          # cargo-build-sbf uses 'cargo +solana' internally — link to platform-tools rust
+          PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -name "rustc" -path "*/platform-tools/*/rust/bin/rustc" 2>/dev/null | head -1 | xargs dirname | xargs dirname)
+          echo "Found platform-tools rust: $PLATFORM_TOOLS_RUST"
+          rustup toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || true
+          rustup toolchain list
+          cargo +solana --version 2>/dev/null || echo "solana toolchain link may have failed"
 
       - name: Decode wallet
         env:
