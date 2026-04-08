@@ -77,7 +77,6 @@ jobs:
             programs/hub-evidence-anchor/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
             --program-id $PROGRAM_ID \
-            --max-sign-attempts 100 \
             --url devnet > /tmp/deploy-output.txt 2>&1 || true
           echo "=== Deploy output ==="
           cat /tmp/deploy-output.txt
