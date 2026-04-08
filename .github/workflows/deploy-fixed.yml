@@ -24,13 +24,15 @@ jobs:
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           echo "Installed: $(/tmp/solana-release/bin/solana --version)"
 
-      - name: Install Rust + SBF target
+      - name: Install Rust + Solana toolchain
         run: |
           if ! command -v cargo &>/dev/null; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.72.0
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           fi
           source "$HOME/.cargo/env" 2>/dev/null || true
-          rustup target add sbfv1
+          # cargo-build-sbf uses 'cargo +solana' internally — install the Solana Rust toolchain
+          rustup toolchain install solana
+          rustup default solana
           echo "cargo: $(cargo --version)"
           echo "rustc: $(rustc --version)"
 

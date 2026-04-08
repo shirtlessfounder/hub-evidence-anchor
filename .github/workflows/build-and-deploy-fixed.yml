@@ -23,15 +23,19 @@ jobs:
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/${{ env.SOLANA_CLI_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "Installed Solana CLI $(/tmp/solana-release/bin/solana --version)"
 
-      - name: Install Rust + SBF target
+      - name: Install Rust + Solana toolchain
         run: |
           if ! command -v cargo &>/dev/null; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.72.0
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           fi
           source "$HOME/.cargo/env" 2>/dev/null || true
-          rustup target add sbfv1
-          echo "cargo: $(cargo --version)"
-          echo "rustc: $(rustc --version)"
+          # cargo-build-sbf uses 'cargo +solana' — install the Solana rustup toolchain
+          # Channel 1.77 matches what Solana SBF toolchain historically shipped with
+          rustup toolchain install 1.77.0
+          rustup toolchain link solana /tmp/solana-release/bin/sdk/sbf/cargo
+          rustup default solana
+          echo "cargo: $(cargo +solana --version 2>/dev/null || cargo --version)"
+          echo "rustc: $(rustc +solana --version 2>/dev/null || rustc --version)"
 
       - name: Decode wallet
         env:
