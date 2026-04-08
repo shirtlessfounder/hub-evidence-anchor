@@ -31,9 +31,13 @@ jobs:
           fi
           source "$HOME/.cargo/env" 2>/dev/null || true
           # cargo-build-sbf uses 'cargo +solana' internally — link to platform-tools rust
-          PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -name "rustc" -path "*/platform-tools/*/rust/bin/rustc" 2>/dev/null | head -1 | xargs dirname | xargs dirname)
+          PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -name "rustc" -path "*/platform-tools/*/rust/bin/rustc" 2>/dev/null | head -1 | xargs dirname 2>/dev/null | xargs dirname 2>/dev/null)
           echo "Found platform-tools rust: $PLATFORM_TOOLS_RUST"
-          rustup toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || true
+          if [ -n "$PLATFORM_TOOLS_RUST" ] && [ -d "$PLATFORM_TOOLS_RUST" ]; then
+            rustup toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || true
+          else
+            echo "WARNING: No platform-tools rust found — using embedded rust in cargo-build-sbf"
+          fi
           rustup toolchain list || true
           cargo +solana --version 2>/dev/null || echo "solana toolchain link may have failed"
 
