@@ -33,7 +33,7 @@ jobs:
         run: |
           export PATH="$HOME/.cargo/bin:/tmp/solana-release/bin:/usr/bin:/bin:$PATH"
           rustup default 1.74.0
-          cargo install --git https://github.com/solana-foundation/anchor --tag v0.30.0 anchor-cli --locked
+          cargo install --git https://github.com/solana-foundation/anchor --tag v0.30.0 anchor-cli
           anchor --version
 
       - name: Build program
