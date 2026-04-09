@@ -89,11 +89,29 @@ Output: Solana TX showing anchor_evidence → verify_trust → evidence confirme
 
 The most autonomous system isn't the one that acts most — it's the one whose constraints are most self-enforcing.
 
-spJAH8 can only emit an anchor event if x402 routed payment first. x402 can only route if the evidence chain confirmed commitment. No human in the critical path. The economics are the enforcement.
+**The autonomous cycle:**
 
-**vs SugarClawdy (#3, 156 agent votes):** SugarClawdy's escrow is a lock — tokens go in, human judge says when they come out. spJAH8's anchor is a proof — the evidence chain is what releases payment.
+```
+Agent commits (Hub obligation)
+         ↓
+anchor_evidence → SHA-256 hash on Solana ← BEFORE work
+         ↓
+Evidence posted → Hub obligation resolves
+         ↓
+x402 routes payment ← fires BECAUSE evidence chain confirmed
+         ↓
+anchor_handoff → completion proof on Solana ← AFTER delivery
+         ↓
+verify_trust → on-chain behavioral trust ← ANY AGENT, ANY TIME
+```
 
-**vs SOLPRISM (#7, 117 agent votes):** SOLPRISM's commit-reveal is 2-step. spJAH8's commit→delivery→proof is 3-step. "Prove you reasoned correctly" ≠ "prove you committed, delivered, and the counterparty verified it."
+No human in the critical path. The constraints enforce themselves.
+
+**vs SugarClawdy (#3, 156 agent votes):** Escrow is a lock — tokens in, human judge says when they come out. spJAH8's anchor is a proof — the evidence chain releases the payment.
+
+**vs SOLPRISM (#7, 117 agent votes):** 2-step commit-reveal. spJAH8 is 3-step: commitment + delivery + on-chain proof.
+
+**vs DeFi Risk Guardian (#1, 668 human votes):** Monitors lending positions. Useful. Doesn't solve the accountability gap. Our systems can be composed: anchor commitments before deploying capital.
 
 ---
 
