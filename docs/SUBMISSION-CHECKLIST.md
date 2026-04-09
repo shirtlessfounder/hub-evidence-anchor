@@ -1,48 +1,44 @@
 # Colosseum Frontier Submission Checklist
 
-**For Dylan** | Last updated: 2026-04-08 21:00 UTC
+**For Dylan** | Last updated: 2026-04-09 15:43 UTC
 
 ---
 
 ## Pre-Submission Checklist
 
-### 1. Demo Transaction (HIGHEST PRIORITY)
-- [ ] Run: `cd ~/hub-evidence-anchor && git checkout feat/demo`
-- [ ] Run: `export KEYPAIR_PATH=~/.config/solana/id.json`
-- [ ] Run: `node scripts/anchor-evidence-call.ts`
-- [ ] Save TX signature from output
-- [ ] Verify on explorer: `https://explorer.solana.com/tx/<sig>?cluster=devnet`
-- [ ] Note TX in Colosseum submission
+### 1. Fund Demo Wallet (HIGHEST PRIORITY — unblocks steps 2 and 3)
+- spJAH8 is deployed ✅ (305KB ELF, slot 453913783)
+- Demo script updated ✅ (34 obligations, 21 resolved, 72.4% resolution rate)
+- Only blocker: SOL in demo wallet
+```bash
+# Option 1: transfer from Df8vfRCa (Dylan's local wallet)
+solana transfer Fksv5UYJErj7au37USPeRJm7MP2QtyQ3XsvRVqc4jBED 0.5 --url devnet
 
-### 2. GitHub Actions: Deploy Correct Program
-- [ ] Fund wallet: `solana airdrop 5 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA --url devnet` (repeat until > 2 SOL)
-- [ ] GitHub → Actions → "Deploy Pre-built .so" → Run workflow
-- [ ] Verify: `solana program show spJAH8... --url devnet` → Data Length = 256064 bytes ✅
+# Then run demo:
+cd ~/hub-evidence-anchor && git pull && export ANCHOR_WALLET_JSON=~/.config/solana/id.json && node scripts/anchor-evidence-call.ts
+```
 
-### 3. Merge Demo Branch
-- [ ] `git checkout main && git merge feat/demo`
-- [ ] Resolve any conflicts
-- [ ] Push to origin/main
-
-### 4. Colosseum Registration
+### 2. Colosseum Registration
 - [ ] Visit: https://arena.colosseum.org/signup
 - [ ] Register with Solana wallet
 - [ ] Get `cklive_...` API key from dashboard
 - [ ] Save to: `~/.openclaw/credentials/colosseum-pat.txt`
-- [ ] Verify: `curl -s "https://agents.colosseum.com/api/agents/me" -H "Authorization: Bearer $(cat ~/.openclaw/credentials/colosseum-pat.txt)"`
+- [ ] Verify: `curl -s "https://agents.colosseum.com/api/agents/me" -H "Authorization: Bearer $(cat ~/.openclaw/credentials/colosseum-pat.txt)"` → should NOT return 404
 
-### 5. Forum Post (Pre-Submission)
-- [ ] Copy content from `docs/COLOSSEUM-FORUM-POST-v1.1.md`
+### 3. Forum Post (Pre-Submission)
+- [ ] Copy content from `docs/COLOSSEUM-FORUM-POST-v1.7.md`
 - [ ] Paste to: https://forum.colosseum.org
 - [ ] Add: live demo TX link from step 1
-- [ ] Tag: @philkok (judge)
+- [ ] Tag: @Phil_Kwok, @Anatoly, @LilyLiu_Solana, @clayrobby (all judges)
 
-### 6. Submit to Colosseum
-- [ ] `export COLOSSEUM_API_KEY=cklive_...`
-- [ ] `cd ~/hub-evidence-anchor && bash scripts/submit-colosseum.sh`
+### 4. Submit to Colosseum
+```bash
+export COLOSSEUM_API_KEY=$(cat ~/.openclaw/credentials/colosseum-pat.txt)
+cd ~/hub-evidence-anchor && bash scripts/submit-colosseum.sh
+```
 - [ ] Verify submission at: https://arena.colosseum.org
 
-### 7. Claim Agent (Required for Prizes)
+### 5. Claim Agent (Required for Prizes)
 - [ ] Submission script outputs `claimUrl`
 - [ ] Visit `claimUrl` in browser
 - [ ] Complete human claim verification
@@ -61,7 +57,7 @@
   "technicalApproach": "spJAH8 (Anchor/Rust on Solana devnet) + Hub obligation state machine. Flow: anchor_evidence → evidence posted → x402 routes payment → anchor_handoff confirms.",
   "targetAudience": "Autonomous AI agents on Solana that need verifiable proof of delivery for x402 payment dispatch.",
   "businessModel": "Open infrastructure. Revenue: MCP tool integration fees in HUB tokens + premium verification tiers.",
-  "competitiveLandscape": "x402/lobster.cash/MPP = payment rails, no accountability. Hub Evidence Anchor = accountability layer.",
+  "competitiveLandscape": "x402 Foundation (Linux Foundation, Solana + Google + Visa + Stripe as members) = payment rail. Hub Evidence Anchor = accountability layer for that rail.",
   "futureVision": "Every x402 payment on Solana goes through Hub Evidence Anchor first.",
   "tags": ["infrastructure", "ai-agents", "solana", "trust", "x402"],
   "status": "submitted"
@@ -70,51 +66,24 @@
 
 ---
 
-## Demo Script Command (Copy-Paste)
-
-```bash
-cd ~/hub-evidence-anchor
-git checkout feat/demo
-export KEYPAIR_PATH=~/.config/solana/id.json
-node scripts/anchor-evidence-call.ts
-```
-
-Expected output:
-```
-Authority: Df8vfRCaEKEZVtp5c8qmHMtnZpP1GXXVEwNayKcoW7ox
-Program: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
-Balance: 0.117 SOL
-hub_evidence PDA: FNmuQ4N5nAWs5hXqEQcJbjxiLDCEz19E2VhA5VbBvXf4
-Sending anchor_evidence transaction...
-TX: <save this>
-Explorer: https://explorer.solana.com/tx/<TX>?cluster=devnet
-```
-
----
-
 ## Prize Targets
 
 | Prize | Amount | Priority |
 |---|---|---|
-| Most Agentic | $5K | ⭐⭐⭐ HIGH |
-| Best Infrastructure | $5K | ⭐⭐⭐ HIGH |
+| Most Agentic | $5K | ⭐⭐⭐ HIGH — spJAH8: self-enforcing constraints, no admin key |
+| Best Infrastructure | $5K | ⭐⭐⭐ HIGH — spJAH8 + Hub obligation state machine |
 | Grand Champion | $30K | ⭐ MEDIUM |
-| Superteam Earn: x402 | TBD | ⭐⭐ MEDIUM |
+| Superteam Earn: x402 | TBD | ⭐⭐ MEDIUM — requires mainnet deploy |
 
 ---
 
-## Key Competitors (from Forum Research)
+## Key Intel (Updated Apr 9)
 
-| Project | What they do | Our angle |
-|---|---|---|
-| TOWEL | Bilateral git repos + trust | We work without pre-existing relationships |
-| ClawVer | WASM sandbox + x402 | We verify commitments, not just execution quality |
-| Proof of Work | Every action logged | We prove delivery, not just activity |
-| SugarClawdy | Escrow with human dispute | No human in our critical path |
-
----
+- **x402 Foundation**: Launched Apr 2 under Linux Foundation. Founding members: Solana + Google + Amazon + Visa + Circle + Coinbase + Cloudflare + Stripe + Mastercard + Microsoft
+- **STRIDE/SIRN**: Solana Foundation security response to $285M Drift hack. Evaluates CODE security. Doesn't cover behavioral accountability — that's our gap.
+- **Demo TX**: Blocked on SOL funding. spJAH8 is live ✅. Demo script is updated ✅.
 
 ## Deadline
 
-**May 11, 2026** — 33 days left
+**May 11, 2026** — 32 days left
 
