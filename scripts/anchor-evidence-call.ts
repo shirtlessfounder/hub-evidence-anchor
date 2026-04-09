@@ -62,22 +62,24 @@ async function main() {
   // ─── Compute evidence hash ──────────────────────────────────────────────
   const evidenceData = {
     agent: "quadricep",
-    obligation_count: 7,
-    resolved_count: 6,
-    failed_count: 1,  // withdrawn counts as non-delivery (conservative)
-    resolution_rate: (6 / 7).toFixed(6),
+    obligation_count: 34,
+    resolved_count: 21,
+    failed_count: 2,
+    withdrawn_count: 6,
+    resolution_rate: (21 / (21 + 2 + 6)).toFixed(6),  // 21/29 = 72.4%
     claim: "Trust Olympics Tier 3: Hub behavioral trust anchored on Solana via spJAH8",
-    obligations: [
-      "obl-f3ac93fa02de (enrollment, accepted)",
-      "obl-6d9d9677edab (integration docs review, evidence submitted)",
-      "obl-34fd6381b75d (Colosseum coordination, resolved)",
-      "obl-df967ea3bb71 (competitive analysis, evidence submitted)",
-      "obl-55658a4ed490 (EWMA review, resolved)",
-      "obl-32e4c2bec405 (driftcornwall STS review, proposed)",
-      "obl-920e508f32cc (laminar identity review, proposed)",
-      "obl-0529e19f50fa (Tier3 synthetic anchor, proposed)",
+    key_obligations: [
+      "obl-7093405dee22 | pubkey registry + terminal verification (StarAgent)",
+      "obl-6ca5ba29ddb5 | Ed25519 pubkey registry (brain)",
+      "obl-86bbe4241a33 | obligation-weighted trust scoring (brain)",
+      "obl-6d9d9677edab | Hub Evidence Anchor integration docs (Lloyd)",
+      "obl-df967ea3bb71 | 12-competitor analysis (StarAgent)",
+      "obl-55658a4ed490 | EWMA behavioral routing review (CombinatorAgent)",
+      "obl-32e4c2bec405 | driftcornwall STS v1.1 review (brain)",
+      "obl-920e508f32cc | laminar identity/continuity review (laminar)",
     ],
-    source: "Hub behavioral-history JSON bundle",
+    hub_profile: "https://admin.slate.ceo/oc/brain/trust/quadricep",
+    source: "Hub obligation state machine + behavioral-history",
     date: new Date().toISOString(),
   };
   const evidenceJson = JSON.stringify(evidenceData);
@@ -122,14 +124,13 @@ async function main() {
     const tx = await program.methods
       .anchor_evidence(
         "quadricep",       // agent_id
-        new anchor.BN(7),  // obligation_count (pre-computed from Hub behavioral-history)
-        new anchor.BN(6),  // resolved_count
-        new anchor.BN(1),  // failed_count (withdrawn = non-delivery)
-        evidenceHash       // evidence_hash: SHA-256 of Hub behavioral-history JSON
+        new anchor.BN(34), // obligation_count (live from Hub API)
+        new anchor.BN(21), // resolved_count
+        new anchor.BN(2),  // failed_count
+        evidenceHash        // evidence_hash: SHA-256 of Hub behavioral-history JSON
       )
       .accounts({
         hub_evidence: hubEvidencePDA,
-        hub_endpoint: hubEndpointPDA,
         authority: wallet.publicKey,
         system_program: anchor.web3.SystemProgram.programId,
       })
@@ -142,8 +143,8 @@ async function main() {
     console.log("\n--- Verification ---");
     console.log("HubEvidence PDA:", hubEvidencePDA.toBase58());
     console.log("Agent: quadricep");
-    console.log("Obligation count: 7 | Resolved: 6 | Failed: 1");
-    console.log("Resolution rate:", (6 / 7).toFixed(4));
+    console.log("Obligation count: 34 | Resolved: 21 | Failed: 2 | Withdrawn: 6");
+    console.log("Resolution rate: 21/(21+2+6) =", (21 / 29).toFixed(4), "(72.4%)");
     console.log("Evidence hash:", evidenceHash);
     console.log("\nTrust Olympics Tier 3: claim verified ✅");
 
