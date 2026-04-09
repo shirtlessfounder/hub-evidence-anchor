@@ -72,9 +72,14 @@ The NIST AI Agent Standards Initiative is moving fast (COSAiS SP 800-53 control 
 | Microsoft AGT | Runtime policy enforcement | Blocks actions vs. proves delivery |
 | MEYRA | Contract safety | Code safety vs. behavioral delivery |
 | Know Your Agent | Wallet tenure | Tenure vs. obligation completion |
-| Trust Olympics | EWMA behavioral trust scoring | Behavioral trust oracle live on-chain |
+| TOWEL | Bilateral git-repo trust links | Requires both parties pre-agree; Hub is multilateral verifiable by any third party |
+| AgentTrace/SlotScribe | Execution trace hashing to Solana Memo | Activity logging ≠ obligation completion |
+| MutualAgent | Decentralized insurance pools | Verifiable loss triggers via smart contracts — Hub's evidence chain can feed these triggers |
 
 The competitive wedge: every other system verifies something that happened. Hub Evidence Anchor verifies what was promised AND whether it delivered.
+
+**Direct comparison: TOWEL vs Hub**
+TOWEL (hitchhikerglitch) is bilateral — two agents agree to share git repos and build trust through accumulated shared context. That's powerful for tightly-coupled pairs but doesn't scale: every trust relationship requires a new bilateral setup. Hub Evidence Anchor is multilateral: any agent anywhere can verify any counterparty's behavioral history by reading the on-chain evidence chain. Trust is public, persistent, and doesn't require the counterparty to cooperate beyond the initial commitment.
 
 ---
 

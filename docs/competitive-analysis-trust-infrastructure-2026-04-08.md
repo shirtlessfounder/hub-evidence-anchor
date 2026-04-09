@@ -80,9 +80,16 @@ Hub Evidence Anchor (spJAH8) sits at the behavioral accountability layer for aut
 **Status:** Forum post only. MIT, TypeScript.
 
 ### 12. TOWEL (Colosseum forum: "Trusted Observable Web of Encrypted Links")
-**What it does:** Bilateral trust through shared git repos + rotating handshake + cluster identity.  
-**Evidence anchor differentiation:** TOWEL requires bilateral relationship; doesn't scale to anonymous cross-agent commerce. Hub uses obligation state machine which scales to any counterparty.  
-**Status:** Forum post only.
+**What it does:** Bilateral trust through shared git repos + rotating handshake + cluster identity. Zero cost. Zero API keys. Just git and SHA256.  
+**Evidence anchor differentiation:** TOWEL requires bilateral cooperation — every trust link requires a shared git repo and mutual agreement. Doesn't scale to anonymous cross-agent commerce. Hub uses obligation state machine with on-chain verification that any third party can read, no pre-existing relationship needed. TOWEL is relationship-trust; Hub is evidence-trust.  
+**Key insight:** TOWEL's thesis ("your identity should be the sum of your verifiable relationships") aligns with Hub's behavioral evidence approach. The difference: Hub's evidence is public and persistent on-chain; TOWEL's evidence lives in bilateral git repos.  
+**Status:** Forum post only. Actively seeking bilateral trust link partners.
+
+### 13. MutualAgent (Colosseum forum: "When AI Trading Agents Get Rugged")
+**What it does:** Decentralized insurance pools where AI agents protect each other. Agents contribute premiums to shared risk pools; claims processed via smart contracts when verifiable losses occur.  
+**Evidence anchor differentiation:** MutualAgent's claim triggers need verifiable loss data — exactly what Hub's obligation-completion evidence chain provides. Hub's anchor_handoff confirms whether the agent delivered before the loss event; the delivery record is the claim evidence. Natural integration: Hub evidence chain feeds MutualAgent smart contract claim verification.  
+**Strategic angle:** Hub Evidence Anchor can be the "before" oracle (did the agent commit and deliver?) while MutualAgent handles the "after" protection (did a loss occur?). Together: prevention + protection.  
+**Status:** Forum post only. Insurance is a strong narrative for Colosseum judges — real problem, real stakes.
 
 ---
 
@@ -100,6 +107,8 @@ Hub Evidence Anchor (spJAH8) sits at the behavioral accountability layer for aut
 | KYA | Wallet history | Wallet tenure ≠ delivery |
 | 0protocol | Attestation | Claims ≠ verified evidence |
 | BlockHelix | Financial escrow | Punishment after ≠ evidence before |
+| TOWEL | Bilateral git-repo trust | Bilateral (pairs) ≠ multilateral (anyone) |
+| MutualAgent | Insurance pools | Loss trigger only (after) ≠ delivery proof (before) |
 
 **Hub Evidence Anchor occupies a unique position:** none of the above verify whether an agent committed to something AND delivered it, with the evidence anchored on-chain via Solana and the verification triggered by the payment rail itself.
 
@@ -126,3 +135,5 @@ Hub Evidence Anchor (spJAH8) sits at the behavioral accountability layer for aut
 - Mastercard Verifiable Intent: verifiableintent.dev
 - AGT: Microsoft Agent Governance Toolkit, public preview April 2 2026
 - KYA: F5 + Skyfire partnership, Apr 2026
+- TOWEL: Colosseum forum post ID 6999 (hitchhikerglitch)
+- MutualAgent: Colosseum forum post ID 6933 (MutualAgent)
