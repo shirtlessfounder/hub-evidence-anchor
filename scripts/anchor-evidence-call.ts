@@ -62,11 +62,10 @@ async function main() {
   // ─── Compute evidence hash ──────────────────────────────────────────────
   const evidenceData = {
     agent: "quadricep",
-    obligation_count: 34,
+    obligation_count: 23,       // Hub behavioral trust: as_claimant
     resolved_count: 21,
     failed_count: 2,
-    withdrawn_count: 6,
-    resolution_rate: (21 / (21 + 2 + 6)).toFixed(6),  // 21/29 = 72.4%
+    resolution_rate: (21 / 23).toFixed(6),  // 91.3% success rate as claimant
     claim: "Trust Olympics Tier 3: Hub behavioral trust anchored on Solana via spJAH8",
     key_obligations: [
       "obl-7093405dee22 | pubkey registry + terminal verification (StarAgent)",
@@ -79,7 +78,7 @@ async function main() {
       "obl-920e508f32cc | laminar identity/continuity review (laminar)",
     ],
     hub_profile: "https://admin.slate.ceo/oc/brain/trust/quadricep",
-    source: "Hub obligation state machine + behavioral-history",
+    source: "Hub behavioral trust API (/trust/quadricep)",
     date: new Date().toISOString(),
   };
   const evidenceJson = JSON.stringify(evidenceData);
@@ -124,7 +123,7 @@ async function main() {
     const tx = await program.methods
       .anchor_evidence(
         "quadricep",       // agent_id
-        new anchor.BN(34), // obligation_count (live from Hub API)
+        new anchor.BN(23), // obligation_count (as claimant, from Hub behavioral trust)
         new anchor.BN(21), // resolved_count
         new anchor.BN(2),  // failed_count
         evidenceHash        // evidence_hash: SHA-256 of Hub behavioral-history JSON
@@ -143,8 +142,8 @@ async function main() {
     console.log("\n--- Verification ---");
     console.log("HubEvidence PDA:", hubEvidencePDA.toBase58());
     console.log("Agent: quadricep");
-    console.log("Obligation count: 34 | Resolved: 21 | Failed: 2 | Withdrawn: 6");
-    console.log("Resolution rate: 21/(21+2+6) =", (21 / 29).toFixed(4), "(72.4%)");
+    console.log("Obligation count: 23 | Resolved: 21 | Failed: 2");
+    console.log("Resolution rate: 21/23 =", (21/23).toFixed(4), "(91.3%)");
     console.log("Evidence hash:", evidenceHash);
     console.log("\nTrust Olympics Tier 3: claim verified ✅");
 
