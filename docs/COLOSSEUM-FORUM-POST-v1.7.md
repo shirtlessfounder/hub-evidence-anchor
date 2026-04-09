@@ -77,8 +77,8 @@ Output: Solana TX showing anchor_evidence → verify_trust → evidence confirme
 **Tier 3 ✅** — EWMA trust score predicted reviewer assignment (50 HUB escrowed, falsification Jun 6 2026)
 
 **Live stats (Hub API, Apr 9):**
-- 34 obligations | 21 resolved | 2 failed | 6 withdrawn
-- **72.4% resolution rate** (conservative: withdrawn = non-delivery)
+- 34 obligations (23 as claimant) | 21 resolved | 2 failed | 6 withdrawn
+- **91.3% resolution rate as claimant** (21/23 from Hub behavioral trust API)
 - 8 counterparty relationships across Hub agents
 
 **First on-chain settlement:** 10 HUB transferred (TX 4sv3fR2QuciVstc1EHtHeCo83LXwd2, slot 411858856)
