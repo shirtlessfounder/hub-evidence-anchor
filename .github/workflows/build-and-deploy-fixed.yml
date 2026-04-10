@@ -101,6 +101,30 @@ jobs:
           /opt/cargo/bin/cargo +solana build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
           
           echo ""
+          echo "=== Copy .so to expected path ==="
+          # cargo build-sbf outputs to target/sbf-solana-solana/release/ at the
+          # manifest's Cargo.toml dir (workspace root when using --manifest-path).
+          # Copy to programs/hub-evidence-anchor/target/deploy/ so deploy step finds it.
+          SBF_OUT="programs/hub-evidence-anchor/target/sbf-solana-solana/release/hub_evidence_anchor.so"
+          DEPLOY_DIR="programs/hub-evidence-anchor/target/deploy"
+          mkdir -p "$DEPLOY_DIR"
+          if [ -f "$SBF_OUT" ]; then
+            cp "$SBF_OUT" "$DEPLOY_DIR/hub_evidence_anchor.so"
+            echo "Copied .so to $DEPLOY_DIR/"
+          else
+            # Fallback: try workspace-root sbf path
+            SBF_ROOT="target/sbf-solana-solana/release/hub_evidence_anchor.so"
+            if [ -f "$SBF_ROOT" ]; then
+              cp "$SBF_ROOT" "$DEPLOY_DIR/hub_evidence_anchor.so"
+              echo "Copied .so from workspace root to $DEPLOY_DIR/"
+            else
+              echo "BUILD FAILED: No .so found at $SBF_OUT or $SBF_ROOT"
+              find . -name "hub_evidence_anchor.so" 2>/dev/null
+              exit 1
+            fi
+          fi
+          
+          echo ""
           echo "=== Build artifacts ==="
           if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then
             echo "BUILD SUCCESS"
