@@ -31,6 +31,19 @@ jobs:
           cargo install --git https://github.com/coral-xyz/anchor --tag v0.32.1 anchor-cli || npm install -g @coral-xyz/anchor-cli@0.31.2
           echo "$(npm root -g)" >> $GITHUB_PATH
 
+      - name: Install Rust 1.82 (for lockfile v3 compatibility)
+        run: |
+          export CARGO_HOME="/opt/cargo"
+          export RUSTUP_HOME="/opt/rustup"
+          export PATH="$CARGO_HOME/bin:$PATH"
+          rm -rf "$CARGO_HOME" "$RUSTUP_HOME"
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+            CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
+            sh -s -- -y --default-toolchain 1.82.0 --no-modify-path
+
+      - name: Install clang for BPF
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq clang-14 llvm
+
       - name: Decode program wallet
         env:
           PROGRAM_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
@@ -83,38 +96,55 @@ jobs:
       - name: Build program
         run: |
           set -e
-          export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
-          # Regenerate lock file at workspace root to fix any parse errors
-          cargo generate-lockfile
-          cd programs/hub-evidence-anchor
-          # Sync program ID explicitly to avoid anchor auto-detection mismatch
-          anchor keys sync --program-name hub_evidence_anchor
-          anchor build
+          export CARGO_HOME="/opt/cargo"
+          export RUSTUP_HOME="/opt/rustup"
+          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
+          export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
+          # Delete any existing Cargo.lock to avoid v4 lockfile issues
+          rm -f Cargo.lock
+          find . -name "Cargo.lock" -delete 2>/dev/null || true
+          echo "=== Program ID in code ==="
+          grep declare_id programs/hub-evidence-anchor/src/lib.rs
+          echo ""
+          echo "=== Building with cargo-build-sbf ==="
+          /tmp/solana-release/bin/cargo-build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
+          echo ""
+          echo "=== Verifying .so ==="
+          if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then
+            echo "BUILD SUCCESS: $(ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so)"
+          else
+            echo "BUILD FAILED"
+            find programs/hub-evidence-anchor/target -name "*.so" 2>/dev/null
+            exit 1
+          fi
 
       - name: Deploy program
         id: deploy
         run: |
-          export PATH="/tmp/solana-release/bin:$PATH"
+          export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           WALLET=$(cat /tmp/program-pubkey.txt | tr -d '\n')
           echo "Deploying from wallet: $WALLET"
           echo "Program ID: $PROGRAM_ID"
           # Generate ephemeral buffer keypair (non-interactive deploy)
           solana-keygen new --no-passphrase -o /tmp/buffer-keypair.json 2>/dev/null
           solana program deploy \
-            programs/hub-evidence-anchor/hub_evidence_anchor.so \
+            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
             --buffer /tmp/buffer-keypair.json \
             --program-id $PROGRAM_ID \
             --url devnet > /tmp/deploy-output.txt 2>&1 || true
           echo "=== Deploy output ==="
           cat /tmp/deploy-output.txt
+          DEPLOY_SIG=$(grep -o '[A-Za-z0-9]\{44,\}' /tmp/deploy-output.txt | grep -v "Error\|error" | tail -1)
+          echo "Deploy signature: $DEPLOY_SIG"
           if grep -qi "Error\|error" /tmp/deploy-output.txt; then
             echo "Deploy had errors - check above"
             exit 1
           fi
+          echo "DEPLOY_SIG=$DEPLOY_SIG" >> $GITHUB_OUTPUT || true
 
       - name: Verify
         run: |
-          export PATH="/tmp/solana-release/bin:$PATH"
+          export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           echo "Verifying program: $PROGRAM_ID"
           solana program show "$PROGRAM_ID" --url devnet
