@@ -9,8 +9,6 @@ on:
         type: string
 
 env:
-  CARGO_REGISTRY_INDEX_HTTPS_URL: https://github.com/rust-lang/crates.io-index.git
-  CARGO_REGISTRY_INDEX_SPARSE_URL: https://index.crates.io
 
 jobs:
   build-and-deploy:
