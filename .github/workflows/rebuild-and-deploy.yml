@@ -66,17 +66,15 @@ jobs:
           export SBF_SOLANA_TOOLCHAIN_PATH="/opt/rustup/toolchains/1.85.0-x86_64-unknown-linux-gnu"
           export SOLANA_SBF_MIXED_REBUILD=1
           
-          # Delete ALL Cargo.lock files to force fresh resolution
-          # Explicitly remove root workspace lockfile (find -mindepth skips it)
+          # Keep Cargo.lock to avoid pulling latest deps with Rust 2024 edition requirements
           REPO_ROOT="$(pwd)"
-          rm -f "${REPO_ROOT}/Cargo.lock" Cargo.lock ./Cargo.lock
-          find "${REPO_ROOT}" -mindepth 2 -name "Cargo.lock" -delete 2>/dev/null || true
+          echo "Cargo.lock files:"
+          find "${REPO_ROOT}" -name "Cargo.lock" -not -path "*/target/*" | head -5
           echo "Cargo.lock remaining: $(find "${REPO_ROOT}" -name 'Cargo.lock' -not -path '*/target/*' | tr '\n' ' ')"
           
           echo "=== Building with cargo-build-sbf ==="
           echo "SBF_TOOLCHAIN=$SBF_SOLANA_TOOLCHAIN_PATH"
-          /tmp/solana-release/bin/cargo-build-sbf \
-            --manifest-path programs/hub-evidence-anchor/Cargo.toml \
+          /tmp/solana-release/bin/cargo-build-sbf --locked \
             2>&1 | tail -30
           
           echo ""
