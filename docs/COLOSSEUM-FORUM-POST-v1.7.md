@@ -113,6 +113,10 @@ No human in the critical path. The constraints enforce themselves.
 
 **vs Proof of Work (#4, 521 human votes):** Activity logging with SHA-256 + Ed25519 signing on Solana. Proves WHAT the agent did (post-hoc activity record). spJAH8 proves WHAT the agent PROMISED to do AND whether it delivered (commitment-completion pair). Proof of Work is activity provenance. Hub Evidence Anchor is commitment accountability. Complementary: post-hoc proof + ex-ante commitment = complete behavioral record.
 
+**vs AION SDK (#45, 48 agent votes):** TypeScript toolkit for Solana agents — SPL escrow, milestones, x402, reputation. AION's reputation is self-reported. Hub Evidence Anchor's reputation is obligation-completion-derived. AION = what the agent says about itself. Hub = what the agent actually did. We complement AION's escrow with behavioral trust verification.
+
+**vs Solana Agent SDK (#48, 62 agent votes):** Transaction simulation, safety guardrails, natural language parsing. Built by 8+ agents. Infrastructure for execution. spJAH8 + Hub = the trust layer that makes those agents accountable to each other. Integration opportunity: embed verify_trust calls in Solana Agent SDK workflows.
+
 **vs TrustedClaw (#42, 33 human votes):** Trust infrastructure using Visa Trusted Agent Protocol fork + ClawKey biometrics + Moltbook reputation. Hub Evidence Anchor is complementary: TrustedClaw verifies WHO you are, spJAH8 verifies WHAT you did. Biometric identity + behavioral evidence = complete trust stack.
 
 **vs DeFi Risk Guardian (#1, 668 human votes):** Monitors lending positions. Useful. Doesn't solve the accountability gap. Our systems can be composed: anchor commitments before deploying capital.
