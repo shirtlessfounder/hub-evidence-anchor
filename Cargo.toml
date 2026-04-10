@@ -7,6 +7,9 @@ resolver = "2"
 [profile.release]
 overflow-checks = true
 
-# Pin hybrid-array to edition 2021 version (0.4.x requires Rust 2024 edition)
+# Pin transitive deps to avoid Rust 2024 edition requirements
 [profile.release.package.hybrid-array]
 version = "=0.2.0"
+
+[profile.release.package.sha2]
+version = "=0.9.0"
