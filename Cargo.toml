@@ -7,6 +7,10 @@ resolver = "2"
 [profile.release]
 overflow-checks = true
 
-# Force hybrid-array to older version (0.4.x requires Rust 2024 edition)
-[profile.release.package.hybrid-array]
-version = "=0.2.0"
+# Patch crates that jumped to edition 2024 (requires Cargo 1.85+).
+# Solana BPF toolchain bundles Cargo 1.81 which cannot parse edition 2024 manifests.
+# - hybrid-array: 0.4.x requires edition 2024 (Rust 1.85+). Pin to 0.2.0 (edition 2021).
+# - cpufeatures: 0.3.0 requires edition 2024 (Rust 1.85+). Pin to 0.2.17 (edition 2018).
+[patch.crates-io]
+hybrid-array = { version = "=0.2.0", registry = "crates-io" }
+cpufeatures = { version = "=0.2.17", registry = "crates-io" }
