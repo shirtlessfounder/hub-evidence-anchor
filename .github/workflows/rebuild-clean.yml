@@ -24,43 +24,63 @@ jobs:
           curl -L https://github.com/solana-labs/solana/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2 | tar xj -C solana-cli
           echo "$GITHUB_WORKSPACE/solana-cli/solana-release/bin" >> $GITHUB_PATH
 
-      - name: Verify Solana CLI
+      - name: Verify PATH and cargo
         run: |
-          export PATH="$HOME/.cargo/bin:$GITHUB_WORKSPACE/solana-cli/solana-release/bin:$PATH"
-          solana --version
-          cargo-build-sbf --version
-
-      - name: Verify cargo is Rust 1.85
-        run: |
-          export PATH="$HOME/.cargo/bin:$GITHUB_WORKSPACE/solana-cli/solana-release/bin:$PATH"
-          which cargo && cargo --version
-
-      - name: Decode wallet
-        env:
-          ANCHOR_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
-        run: |
-          echo "$ANCHOR_WALLET_JSON" | base64 -d > /tmp/deploy-keypair.json
-          export PATH="$HOME/.cargo/bin:$GITHUB_WORKSPACE/solana-cli/solana-release/bin:$PATH"
-          echo "Wallet: $(solana-keygen pubkey /tmp/deploy-keypair.json)"
+          echo "=== System PATH ==="
+          echo "$PATH" | tr ':' '\n' | head -10
+          echo ""
+          echo "=== Which cargo? ==="
+          which cargo || echo "not found in PATH"
+          cargo --version || echo "cargo not available"
+          echo ""
+          echo "=== Rustup toolchains ==="
+          rustup show
+          echo ""
+          echo "=== Default toolchain ==="
+          rustup default
 
       - name: Build program
+        env:
+          # CRITICAL: cargo-build-sbf calls `cargo` from PATH at runtime.
+          # We put Rust 1.85 cargo first in GITHUB_PATH so it's found first.
+          # But cargo-build-sbf may still call the runner's cargo 1.81.
+          # Workaround: put rustup cargo path FIRST in PATH, overriding system cargo.
+          PATH: "$HOME/.cargo/bin:$GITHUB_WORKSPACE/solana-cli/solana-release/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
         run: |
-          export PATH="$HOME/.cargo/bin:$GITHUB_WORKSPACE/solana-cli/solana-release/bin:$PATH"
-          echo "Cargo: $(which cargo) $(cargo --version)"
-          echo "cargo-build-sbf: $(cargo-build-sbf --version | head -1)"
+          echo "=== PATH for this step ==="
+          echo "$PATH" | tr ':' '\n' | head -5
+          echo ""
+          echo "=== Which cargo is in PATH? ==="
+          which cargo
+          cargo --version
+          echo ""
+          echo "=== cargo-build-sbf version ==="
+          cargo-build-sbf --version
+          echo ""
+          echo "=== Building ==="
           cargo-build-sbf 2>&1 | tee build.log
+          echo ""
+          echo "=== Build output ==="
           find target -name "hub_evidence_anchor.so" 2>/dev/null || echo "No .so found"
-          tail -5 build.log
+          tail -10 build.log
 
       - name: Deploy to devnet
         env:
           ANCHOR_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
+          PATH: "$HOME/.cargo/bin:$GITHUB_WORKSPACE/solana-cli/solana-release/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
         run: |
-          export PATH="$HOME/.cargo/bin:$GITHUB_WORKSPACE/solana-cli/solana-release/bin:$PATH"
+          echo "$ANCHOR_WALLET_JSON" | base64 -d > /tmp/deploy-keypair.json
+          echo "Wallet: $(solana-keygen pubkey /tmp/deploy-keypair.json)"
+          echo ""
           echo "Balance:"
           solana balance $(solana-keygen pubkey /tmp/deploy-keypair.json) --url devnet || true
+          echo ""
+          echo "Program:"
+          solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url devnet 2>/dev/null || echo "Not deployed"
+          echo ""
+          echo "=== Deploying ==="
           SO=$(find target -name "hub_evidence_anchor.so" 2>/dev/null | head -1)
-          echo "Deploying: $SO"
+          echo "SO: $SO"
           if [ -n "$SO" ]; then
             solana program deploy \
               --program-id /tmp/deploy-keypair.json \
