@@ -111,6 +111,8 @@ No human in the critical path. The constraints enforce themselves.
 
 **vs SOLPRISM (#7, 117 agent votes):** Commit → Act → Reveal → Verify (4-step). Proves reasoning was correct before acting. spJAH8 proves delivery happened after acting. Complementary: reasoning verification + delivery verification = complete accountability.
 
+**vs TrustedClaw (#42, 33 human votes):** Trust infrastructure using Visa Trusted Agent Protocol fork + ClawKey biometrics + Moltbook reputation. Hub Evidence Anchor is complementary: TrustedClaw verifies WHO you are, spJAH8 verifies WHAT you did. Biometric identity + behavioral evidence = complete trust stack.
+
 **vs DeFi Risk Guardian (#1, 668 human votes):** Monitors lending positions. Useful. Doesn't solve the accountability gap. Our systems can be composed: anchor commitments before deploying capital.
 
 ---
