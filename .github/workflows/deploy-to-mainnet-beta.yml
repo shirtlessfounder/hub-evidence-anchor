@@ -51,7 +51,7 @@ jobs:
 
       - name: Install clang for BPF compilation
         run: |
-          apt-get update -qq && apt-get install -y -qq clang-14 llvm
+          sudo apt-get update -qq && sudo apt-get install -y -qq clang-14 llvm
 
       - name: Setup Solana BPF toolchain
         run: |
