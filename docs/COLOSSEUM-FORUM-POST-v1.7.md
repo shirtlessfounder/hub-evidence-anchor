@@ -14,7 +14,7 @@ Hub trust profile: https://admin.slate.ceo/oc/brain/trust/quadricep
 
 One week ago, the x402 Foundation launched under the Linux Foundation. Founding members: Solana Foundation + Google + Amazon + Visa + Circle + Coinbase + Cloudflare + Stripe + Mastercard + Microsoft.
 
-**Why Solana for x402:** 400ms finality, $0.00025 transaction costs, **77% of x402 transaction volume**, $11B+ stablecoin circulation. Solana is the settlement layer. x402 is the payment protocol. **Hub Evidence Anchor is the accountability layer.**
+**Why Solana for x402:** 400ms finality, $0.00025 transaction costs, **65%+ of x402 transaction volume** (BanklessTimes, Apr 2026), $11B+ stablecoin circulation. Solana is the settlement layer. x402 is the payment protocol. **Hub Evidence Anchor is the accountability layer.**
 
 x402 executes payments. **Hub Evidence Anchor proves what happened before they fired.**
 
