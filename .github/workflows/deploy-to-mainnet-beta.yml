@@ -13,7 +13,9 @@ env:
   SOLANA_CLI_VERSION: "v1.18.6"
   PROGRAM_ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
   RPC_URL: ${{ vars.HELIUS_MAINNET_RPC_URL || 'https://api.mainnet-beta.solana.com' }}
-  PATH: /tmp/solana-release/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+  PATH: /tmp/solana-release/bin:/opt/cargo/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+  CARGO_HOME: /opt/cargo
+  RUSTUP_HOME: /opt/rustup
 
 jobs:
   build-and-deploy:
@@ -29,19 +31,40 @@ jobs:
           echo "PATH=/tmp/solana-release/bin:\$PATH" >> $GITHUB_ENV
           echo "Installed: $(/tmp/solana-release/bin/solana --version)"
 
-      - name: Install Rust + Solana toolchain
+      - name: Install Rust 1.85 toolchain
         run: |
-          if ! command -v cargo &>/dev/null; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          fi
-          source "$HOME/.cargo/env" 2>/dev/null || true
+          # Install Rust 1.85 (edition2024 deps like toml_datetime require 1.85)
+          export CARGO_HOME="/opt/cargo"
+          export RUSTUP_HOME="/opt/rustup"
+          export PATH="$CARGO_HOME/bin:$PATH"
+          rm -rf "$CARGO_HOME" "$RUSTUP_HOME"
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+            CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
+            sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
+          echo "Installed:"
+          "$CARGO_HOME/bin/rustup" toolchain list
+
+      - name: Install clang for BPF compilation
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq clang-14 llvm
+
+      - name: Setup Solana BPF toolchain
+        run: |
+          export CARGO_HOME="/opt/cargo"
+          export RUSTUP_HOME="/opt/rustup"
+          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+          # cargo-build-sbf downloads platform-tools on first build; prime it
+          echo "=== Priming platform-tools ==="
+          mkdir -p /tmp/priming && cd /tmp/priming
+          /tmp/solana-release/bin/cargo-build-sbf --version 2>&1 || true
+          rm -rf /tmp/priming
           PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -name "rustc" -path "*/platform-tools/*/rust/bin/rustc" 2>/dev/null | head -1 | xargs dirname 2>/dev/null | xargs dirname 2>/dev/null || true)
           echo "Found platform-tools rust: $PLATFORM_TOOLS_RUST"
           if [ -n "$PLATFORM_TOOLS_RUST" ] && [ -d "$PLATFORM_TOOLS_RUST" ]; then
-            rustup toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || true
+            "$CARGO_HOME/bin/rustup" toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || true
           fi
-          rustup toolchain list || true
-          cargo +solana --version 2>/dev/null || echo "solana toolchain link may have failed"
+          "$CARGO_HOME/bin/rustup" toolchain list || true
+          "$CARGO_HOME/bin/cargo" +solana --version 2>/dev/null || echo "solana toolchain link may have failed"
 
       - name: Decode wallet (base58 -> JSON keypair)
         env:
@@ -82,14 +105,17 @@ jobs:
       - name: Build program
         if: inputs.skip_build != 'true'
         run: |
+          export CARGO_HOME="/opt/cargo"
+          export RUSTUP_HOME="/opt/rustup"
+          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
           echo ""
           echo "=== Cleaning lockfiles ==="
           find . -name "Cargo.lock" -delete 2>/dev/null || true
           echo ""
-          echo "=== Building with cargo-build-sbf ==="
-          cargo-build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
+          echo "=== Building with cargo-build-sbf (Rust 1.85) ==="
+          "$CARGO_HOME/bin/cargo" +solana build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
           echo ""
           echo "=== Verifying artifact ==="
           if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then
