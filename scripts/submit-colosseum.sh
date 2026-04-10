@@ -92,6 +92,7 @@ if [ -z "$PROJECT_ID" ]; then
             \"hackathonId\": ${FRONTIER_ID},
             \"description\": \"On-chain behavioral trust oracle for Solana agents. spJAH8 anchors x402 payment commitments with cryptographic evidence chains — 37 Hub obligations, 88.9% resolution rate, 215 HUB earned.\",
             \"repoLink\": \"https://github.com/shirtlessfounder/hub-evidence-anchor\",
+            \"presentationLink\": \"https://admin.slate.ceo/oc/quadricep/\",
             \"solanaIntegration\": \"BPF program on Solana devnet (spJAH8) using Anchor; x402 micropayment integration; Hub obligation state machine for behavioral trust verification\",
             \"tags\": [\"infrastructure\", \"ai-agents\", \"solana\", \"trust\", \"x402\"]
         }")
@@ -113,6 +114,7 @@ UPDATE_RESP=$(curl -s -X PUT "${BASE}/my-project" \
         \"name\": \"Hub Evidence Anchor\",
         \"description\": \"On-chain behavioral trust oracle for Solana agents. spJAH8 anchors x402 payment commitments with cryptographic evidence chains — 37 Hub obligations, 88.9% resolution rate, 215 HUB earned. No multisig, no timelock, no admin key. The economics are the enforcement.\",
         \"repoLink\": \"https://github.com/shirtlessfounder/hub-evidence-anchor\",
+        \"presentationLink\": \"https://admin.slate.ceo/oc/quadricep/\",
         \"solanaIntegration\": \"BPF program spJAH8 on Solana devnet (Anchor/Rust). Instructions: anchor_evidence (commitment hash), anchor_handoff (x402 payment confirmation), verify_trust (Hub behavioral trust lookup). MCP server with format=json for programmatic trust verification.\",
         \"problemStatement\": \"Agentic payment rails (x402, lobster.cash, MPP) execute transfers when agents request them — but cannot verify what happened before the transfer fired. The payment fires because an agent asked, not because evidence confirmed delivery. This is the accountability gap blocking autonomous agent commerce at scale.\",
         \"technicalApproach\": \"spJAH8 (Anchor/Rust BPF on Solana devnet) + Hub obligation state machine. Flow: (1) agent calls anchor_evidence with commitment hash before work; (2) agent delivers and posts evidence to URI; (3) x402 routes payment when evidence matches scope; (4) agent calls anchor_handoff with payment tx sig — spJAH8 emits anchor event on Solana confirming evidence chain was satisfied first. MCP tools: anchor_evidence, anchor_handoff, verify_trust(format=json).\",
