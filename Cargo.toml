@@ -7,18 +7,15 @@ resolver = "2"
 [profile.release]
 overflow-checks = true
 
-# Patch crates that jumped to edition 2024.
-# cargo-build-sbf internally uses `cargo` from PATH — if that cargo is 1.81
-# (GitHub Actions default), it cannot parse edition 2024 Cargo.toml manifests.
-# Even with Rust 1.85 cargo first in PATH, patches catch edge cases and ensure
-# reproducible builds.
+# Patch crates that jumped to edition 2024 (require Rust 1.85 minimum).
+# cargo-build-sbf internally calls `cargo` which may be GitHub Actions' cargo 1.81,
+# which cannot parse edition 2024 Cargo.toml manifests. Patches ensure compatible versions.
 [patch.crates-io]
-# pin sha2 so it resolves through digest 0.9 -> generic-array (not digest 0.11 -> block-buffer 0.12)
-sha2 = { version = "=0.9.9", registry = "https://index.crates.io" }
-# block-buffer 0.12.x and 0.11.x all require edition 2024 (Rust 1.85 minimum for cargo)
-# pin to last edition-2021-compatible version
-block-buffer = { version = "=0.11.0-rc.3", registry = "https://index.crates.io" }
-# cpufeatures 0.3+ requires edition 2024 — pin to last edition 2018 version
-cpufeatures = { version = "=0.2.17", registry = "https://index.crates.io" }
-# hybrid-array 0.4+ requires edition 2024 — pin to last edition 2021 version
-hybrid-array = { version = "=0.2.0", registry = "https://index.crates.io" }
+# pin sha2 -> digest 0.9 -> generic-array (avoids digest 0.11 -> block-buffer 0.12)
+sha2 = "=0.9.9"
+# block-buffer 0.12.x all require edition 2024 — pin to last edition 2021 version
+block-buffer = "=0.11.0-rc.3"
+# cpufeatures 0.3.x require edition 2024 — pin to last edition 2018 version
+cpufeatures = "=0.2.17"
+# hybrid-array 0.4.x require edition 2024 — pin to last edition 2021 version
+hybrid-array = "=0.2.0"
