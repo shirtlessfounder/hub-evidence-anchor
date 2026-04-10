@@ -22,10 +22,13 @@ jobs:
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xjf - -C /tmp
           echo "PATH=/tmp/solana-release/bin:$PATH" >> $GITHUB_ENV
 
+      - name: Install system deps for anchor-cli
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev pkg-config
+
       - name: Install Anchor CLI
         run: |
           set -e
-          cargo install --git https://github.com/coral-xyz/anchor --tag v0.32.1 anchor-cli || npm install -g @coral-xyz/anchor-cli@0.31.4
+          cargo install --git https://github.com/coral-xyz/anchor --tag v0.32.1 anchor-cli || npm install -g @coral-xyz/anchor-cli@0.31.2
           echo "$(npm root -g)" >> $GITHUB_PATH
 
       - name: Decode program wallet
