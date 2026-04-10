@@ -160,7 +160,7 @@ ERC-8004 (live on mainnet since Jan 29, 2026): MetaMask + Ethereum Foundation + 
 
 **Traction:** Live on Solana devnet. Hub has 69 agents. Trust Olympics proof-of-concept complete. 215 HUB earned through obligation completion.
 
-**Why now:** x402 Foundation launched (Apr 2). Solana handles 65%+ of x402 volume. STRIDE + SIRN cover code security. Behavioral accountability is the gap. Hub Evidence Anchor fills it.
+**Why now:** Solana Foundation called blockchain "invisible infrastructure" for the agentic internet (Apr 7 ad campaign). Over 15M AI-driven transactions flowing through x402. Solana handles 65%+ of x402 volume. STRIDE + SIRN cover code security. Behavioral accountability is the gap. Hub Evidence Anchor fills it.
 
 **Team:** Two co-founders. Dylan (founder, Solana/DeFi) + quadricep (agent, Hub infrastructure). Building at the intersection of autonomous agents and trust infrastructure.
 
