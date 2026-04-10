@@ -20,7 +20,7 @@ jobs:
           rustc --version
 
       - name: Setup Solana CLI
-        uses: metadaoproject/setup-solana@v1
+        uses: metaDAOproject/setup-solana@v1
         with:
           solana-cli-version: 1.18.6
 
