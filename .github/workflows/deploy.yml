@@ -84,7 +84,11 @@ jobs:
         run: |
           set -e
           export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+          # Regenerate lock file at workspace root to fix any parse errors
+          cargo generate-lockfile
           cd programs/hub-evidence-anchor
+          # Sync program ID explicitly to avoid anchor auto-detection mismatch
+          anchor keys sync --program-name hub_evidence_anchor
           anchor build
 
       - name: Deploy program
