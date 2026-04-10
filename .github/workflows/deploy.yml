@@ -107,7 +107,7 @@ jobs:
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           echo ""
           echo "=== Building with cargo +1.85 build-sbf (edition2024 deps require 1.85) ==="
-          /opt/cargo/bin/cargo +1.85 build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml -Znext-lockfile-bump 2>&1
+          /opt/cargo/bin/cargo +1.85 build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml -- -Z next-lockfile-bump 2>&1
           echo ""
           echo "=== Verifying .so ==="
           if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then
