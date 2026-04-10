@@ -1,162 +1,82 @@
-name: Rebuild and Deploy
+name: Rebuild and Deploy (fix edition 2024)
 
 on:
   workflow_dispatch:
 
-env:
-  PROGRAM_ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
-  CARGO_HOME: /home/runner/.cargo
-  RUSTUP_HOME: /home/runner/.rustup
-
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust 1.85 (cmov 0.5.x requires 2024 edition) + Solana toolchain
+      - name: Install Rust 1.85
         run: |
-          export CARGO_HOME="/opt/cargo"
-          export RUSTUP_HOME="/opt/rustup"
-          export PATH="$CARGO_HOME/bin:$PATH"
-          export RUSTUP_INIT_SKIP_RECOMMENDATIONS=1
-          
-          # Install Rust 1.82 (needed to parse lockfile v4 generated locally)
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-            CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
-            sh -s -- -y --default-toolchain 1.85.0
-          
-          source "$CARGO_HOME/env"
-          
-          # Find the installed toolchain path
-          TOOLCHAIN=$(find "$RUSTUP_HOME/toolchains" -mindepth 1 -maxdepth 1 -type d | head -1)
-          echo "Found: $TOOLCHAIN"
-          
-          # Create cargo+solana wrapper: uses this rustc with SOLANA_SBF_MIXED_REBUILD=1
-          # cargo-build-sbf uses +solana override by finding cargo-sbf script
-          # Instead: make cargo appear as solana by symlinking
-          ln -sf "$TOOLCHAIN/bin/cargo" "$CARGO_HOME/bin/cargo-solana"
-          ln -sf "$TOOLCHAIN/bin/rustc" "$CARGO_HOME/bin/rustc-solana"
-          ln -sf "$TOOLCHAIN/bin/rustc" "$CARGO_HOME/bin/rustup-toolchain"
-          
-          # Tell cargo-build-sbf to use our toolchain
-          export SOLANA_SBF_MIXED_REBUILD=1
-          export SBF_SOLANA_TOOLCHAIN_PATH="$TOOLCHAIN"
-          
-          echo "=== Verify ==="
-          cargo-solana --version
-          rustc-solana --version
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Install Solana CLI + SBF tools
+      - name: Verify Rust 1.85 cargo
         run: |
-          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
-          echo "Solana: $(/tmp/solana-release/bin/solana --version)"
-          echo "cargo-build-sbf: $(/tmp/solana-release/bin/cargo-build-sbf --version 2>/dev/null || echo 'ok')"
+          cargo --version
+          rustc --version
 
-      - name: Fix program Anchor.toml with spJAH8
+      - name: Setup Solana CLI
+        uses: metaDAOproject/setup-solana@v1
+        with:
+          solana-cli-version: 1.18.6
+
+      - name: Verify Solana CLI
         run: |
-          perl -i -pe 's{^(hub_evidence_anchor = ")[^"]*"}{$1spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"}' Anchor.toml
-          grep "hub_evidence_anchor" Anchor.toml
+          solana --version
+          cargo-build-sbf --version
+
+      - name: Verify Rust 1.85 cargo is first in PATH
+        run: |
+          which cargo
+          cargo --version
+
+      - name: Decode wallet keypair
+        env:
+          ANCHOR_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
+        run: |
+          echo "$ANCHOR_WALLET_JSON" | base64 -d > /tmp/deploy-keypair.json
+          echo "Wallet: $(solana-keygen pubkey /tmp/deploy-keypair.json)"
 
       - name: Build program
+        env:
+          RUST_LOG: debug
         run: |
-          source "$HOME/.cargo/env"
-          export PATH="$HOME/.cargo/bin:$PATH"
-          export SBF_SOLANA_TOOLCHAIN_PATH="/opt/rustup/toolchains/1.85.0-x86_64-unknown-linux-gnu"
-          export SOLANA_SBF_MIXED_REBUILD=1
-          
-          # Delete ALL Cargo.lock files to force fresh resolution
-          # Explicitly remove root workspace lockfile (find -mindepth skips it)
-          REPO_ROOT="$(pwd)"
-          rm -f "${REPO_ROOT}/Cargo.lock" Cargo.lock ./Cargo.lock
-          find "${REPO_ROOT}" -mindepth 2 -name "Cargo.lock" -delete 2>/dev/null || true
-          echo "Cargo.lock remaining: $(find "${REPO_ROOT}" -name 'Cargo.lock' -not -path '*/target/*' | tr '\n' ' ')"
-          
-          echo "=== Building with cargo-build-sbf ==="
-          echo "SBF_TOOLCHAIN=$SBF_SOLANA_TOOLCHAIN_PATH"
-          /tmp/solana-release/bin/cargo-build-sbf \
-            --manifest-path programs/hub-evidence-anchor/Cargo.toml \
-            2>&1 | tail -30
-          
+          echo "=== PATH order ==="
+          echo "$PATH" | tr ':' '\n' | head -5
           echo ""
-          echo "=== Build artifacts ==="
-          ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so 2>/dev/null && echo "BUILD SUCCESS"
+          echo "=== Which cargo ==="
+          which cargo
+          cargo --version
+          echo ""
+          echo "=== cargo-build-sbf version ==="
+          cargo-build-sbf --version
+          echo ""
+          echo "=== Building ==="
+          cargo-build-sbf 2>&1 | tee build.log
+          echo ""
+          echo "=== Build output ==="
+          find target -name "hub_evidence_anchor.so" -o -name "*.so" 2>/dev/null | head -5
+          tail -20 build.log
 
-      - name: Decode program wallet
+      - name: Deploy to devnet
         env:
-          PROGRAM_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
+          ANCHOR_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
-          python3 << 'PYEOF'
-          import os, json, base64
-          ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-          secret = os.environ.get("PROGRAM_WALLET_JSON", "").strip()
-          raw = None
-          if len(secret) == 88:
-              try:
-                  n = 0
-                  for c in secret:
-                      n = n * 58 + ALPHABET.index(c)
-                  raw = n.to_bytes(64, "big")
-              except ValueError:
-                  raw = None
-          if raw is None:
-              try:
-                  raw = base64.b64decode(secret)
-                  if len(raw) != 64: raw = None
-              except: raw = None
-          if raw is None:
-              try:
-                  arr = json.loads(secret)
-                  if isinstance(arr, list) and len(arr) == 64:
-                      raw = bytes(int(x) if isinstance(x, int) else x for x in arr)
-              except: pass
-          if raw is None: print("ERROR: could not decode wallet"); exit(1)
-          with open("/tmp/program-wallet.json", "w") as f: json.dump(list(raw), f)
-          npub = int.from_bytes(raw[32:], "big")
-          addr = ""
-          while npub > 0: npub, rem = divmod(npub, 58); addr = ALPHABET[rem] + addr
-          with open("/tmp/program-pubkey.txt", "w") as f: f.write(addr)
-          print(f"Wallet: {addr}")
-          PYEOF
-
-      - name: Airdrop SOL (Helius or Solana Foundation)
-        env:
-          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
-        run: |
-          PROGRAM_PUBKEY=$(cat /tmp/program-pubkey.txt)
-          echo "Balance before:"
-          /tmp/solana-release/bin/solana balance "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com
-          
-          if [ -n "$HELIUS_API_KEY" ]; then
-            echo "Using Helius faucet..."
-            result=$(curl -s -X POST "https://devnet.helius-rpc.com/?api-key=$HELIUS_API_KEY" \
-              -H "Content-Type: application/json" \
-              -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"requestAirdrop\",\"params\":[\"$PROGRAM_PUBKEY\", 2000000000]}")
-            echo "Helius response: $result"
-          else
-            echo "Requesting from Solana Foundation (10 retries)..."
-            for i in 1 2 3 4 5 6 7 8 9 10; do
-              result=$(/tmp/solana-release/bin/solana airdrop 2 "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com 2>&1)
-              if echo "$result" | grep -q "Success"; then
-                echo "Airdrop $i succeeded"; break
-              fi
-              echo "Airdrop $i: $(echo $result | head -1)"
-              sleep 5
-            done
+          echo "=== Wallet balance ==="
+          solana balance $(solana-keygen pubkey /tmp/deploy-keypair.json) --url devnet
+          echo ""
+          echo "=== Program address ==="
+          solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url devnet 2>/dev/null || echo "Not yet deployed"
+          echo ""
+          echo "=== Deploying ==="
+          SO=$(find target -name "hub_evidence_anchor.so" 2>/dev/null | head -1)
+          echo "SO: $SO"
+          if [ -n "$SO" ]; then
+            solana program deploy \
+              --program-id /tmp/deploy-keypair.json \
+              --url devnet "$SO" || echo "Deploy failed"
           fi
-          
-          echo "Balance after:"
-          /tmp/solana-release/bin/solana balance "$PROGRAM_PUBKEY" --url https://api.devnet.solana.com
-
-      - name: Deploy
-        run: |
-          /tmp/solana-release/bin/solana program deploy \
-            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
-            --keypair /tmp/program-wallet.json \
-            --program-id $PROGRAM_ID \
-            --url https://api.devnet.solana.com
-
-      - name: Verify
-        run: |
-          /tmp/solana-release/bin/solana program show $PROGRAM_ID --url https://api.devnet.solana.com
