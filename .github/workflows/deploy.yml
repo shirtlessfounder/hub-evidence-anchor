@@ -116,6 +116,13 @@ jobs:
           cargo +1.85 --version 2>&1 || echo "cargo +1.85 failed"
           which cargo || echo "CARGO NOT IN PATH"
           echo "PATH: $PATH"
+          echo "=== Create cargo wrapper for cargo-build-sbf ==="
+          mkdir -p /usr/local/bin
+          printf '#!/bin/bash\n' > /usr/local/bin/cargo
+          printf 'exec /opt/cargo/bin/cargo "$@"\n' >> /usr/local/bin/cargo
+          chmod +x /usr/local/bin/cargo
+          /usr/local/bin/cargo --version || echo "Wrapper failed"
+          which cargo
           echo "=== Program ID in code ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           echo ""
