@@ -9,4 +9,4 @@ overflow-checks = true
 
 # Workspace-level patches for Rust 2024 edition deps
 [patch.crates-io]
-hybrid-array = { version = "0.2.0" }
+hybrid-array = { version = "=0.2.3" }
