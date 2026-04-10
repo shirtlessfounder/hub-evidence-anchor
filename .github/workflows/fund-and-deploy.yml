@@ -1,0 +1,103 @@
+name: Fund Buffer + Deploy
+
+on:
+  workflow_dispatch:
+
+env:
+  PROGRAM_ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
+  BUFFER_AUTH: 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA
+  RPC: https://api.devnet.solana.com
+
+jobs:
+  fund-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Solana CLI
+        run: |
+          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
+          echo "Installed: $(/tmp/solana-release/bin/solana --version)"
+
+      - name: Decode deployer wallet
+        env:
+          DEPLOY_KEYPAIR: ${{ secrets.ANCHOR_WALLET_JSON }}
+        run: |
+          python3 << 'PYEOF'
+          import os, json, base64
+          ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+          secret = os.environ.get("DEPLOY_KEYPAIR", "").strip()
+          raw = None
+          if len(secret) == 88:
+              try:
+                  n = 0
+                  for c in secret:
+                      n = n * 58 + ALPHABET.index(c)
+                  raw = n.to_bytes(64, "big")
+              except ValueError:
+                  raw = None
+          if raw is None:
+              try:
+                  raw = base64.b64decode(secret)
+                  if len(raw) != 64: raw = None
+              except: raw = None
+          if raw is None:
+              try:
+                  arr = json.loads(secret)
+                  if isinstance(arr, list) and len(arr) == 64:
+                      raw = bytes(int(x) if isinstance(x, int) else x for x in arr)
+              except: pass
+          if raw is None: print("ERROR: cannot decode wallet"); exit(1)
+          with open("/tmp/wallet.json", "w") as f: json.dump(list(raw), f)
+          npub = int.from_bytes(raw[32:], "big")
+          addr = ""
+          while npub > 0: npub, rem = divmod(npub, 58); addr = ALPHABET[rem] + addr
+          with open("/tmp/pubkey.txt", "w") as f: f.write(addr)
+          print(f"Wallet pubkey: {addr}")
+          PYEOF
+
+      - name: Check balances
+        run: |
+          DEPLOYER=$(cat /tmp/pubkey.txt)
+          echo "Deployer: $DEPLOYER"
+          echo "Buffer authority: $BUFFER_AUTH"
+          /tmp/solana-release/bin/solana balance "$DEPLOYER" --url $RPC
+          /tmp/solana-release/bin/solana balance "$BUFFER_AUTH" --url $RPC
+
+      - name: Airdrop to buffer authority via Helius
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+        run: |
+          echo "Airdropping 0.002 SOL to buffer authority via Helius..."
+          result=$(curl -s -X POST "https://devnet.helius-rpc.com/?api-key=$HELIUS_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"requestAirdrop\",\"params\":[\"$BUFFER_AUTH\", 2000000]}")
+          echo "Result: $result"
+          
+          # Also try Solana foundation airdrop as backup
+          sleep 5
+          /tmp/solana-release/bin/solana airdrop 0.002 "$BUFFER_AUTH" --url $RPC 2>&1 || true
+
+      - name: Verify buffer authority funded
+        run: |
+          sleep 10
+          BALANCE=$(/tmp/solana-release/bin/solana balance "$BUFFER_AUTH" --url $RPC | awk '{print $1}')
+          echo "Buffer authority balance: $BALANCE SOL"
+          if (( $(echo "$BALANCE < 0.002" | bc -l) )); then
+            echo "ERROR: Buffer authority still underfunded"
+            exit 1
+          fi
+          echo "Buffer authority funded successfully!"
+
+      - name: Deploy pre-built .so
+        run: |
+          /tmp/solana-release/bin/solana program deploy \
+            programs/hub-evidence-anchor/hub_evidence_anchor.so \
+            --keypair /tmp/wallet.json \
+            --program-id $PROGRAM_ID \
+            --url $RPC 2>&1
+
+      - name: Verify deployment
+        run: |
+          /tmp/solana-release/bin/solana program show $PROGRAM_ID --url $RPC
