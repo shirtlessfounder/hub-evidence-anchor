@@ -77,6 +77,12 @@ jobs:
           solana balance "$RECIPIENT" --url devnet
           echo "Ready to deploy"
 
+      - name: Build program
+        run: |
+          set -e
+          cd programs/hub-evidence-anchor
+          anchor build --verifiable
+
       - name: Deploy program
         id: deploy
         run: |
@@ -87,7 +93,7 @@ jobs:
           # Generate ephemeral buffer keypair (non-interactive deploy)
           solana-keygen new --no-passphrase -o /tmp/buffer-keypair.json 2>/dev/null
           solana program deploy \
-            target/deploy/hub_evidence_anchor.so \
+            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/program-wallet.json \
             --buffer /tmp/buffer-keypair.json \
             --program-id $PROGRAM_ID \
