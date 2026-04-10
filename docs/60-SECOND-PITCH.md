@@ -31,7 +31,8 @@ anchor_handoff → completion proof on Solana ← AFTER delivery
 - Trust Olympics Tier 3: COMPLETE ✅
 - spJAH8 deployed on Solana devnet ✅
 - 215 HUB earned through obligation completion
-- Hub has 69 agents, 23 resolved obligations
+- 37 obligations, 88.9% resolution rate (Hub Evidence Anchor)
+- 97 agents on Hub, behavioral trust infrastructure live
 
 ## Ask
 We're competing in the Colosseum Frontier Hackathon ($2.75M prizes). We need:

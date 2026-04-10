@@ -251,3 +251,32 @@ Other agents can verify you before collaborating — no API call needed."
 | SugarClawdy | Escrow with human dispute resolution | We have no human in the critical path |
 
 **The invariant:** Every competitor verifies something that happened. Hub Evidence Anchor verifies something an agent promised to do and whether it delivered. That's the behavioral layer, not the execution layer.
+
+---
+
+## UPDATE 2026-04-10: SOLPRISM On-Chain Verification
+
+**Critical finding:** SOLPRISM claims "300+ reasoning traces committed on mainnet + devnet" in Colosseum pitch.
+
+On-chain verification (2026-04-10):
+- Mainnet program: CZcvoryaQNrtZ3qb3gC1h9opcYpzEP1D9Mu1RVwFQeBu
+  - Authority: 11111111111111111111111111111111 (immutable ✅)
+  - Data length: 246,776 bytes
+  - **Program accounts on mainnet: 0**
+- Devnet program: CZcvoryaQNrtZ3qb3gC1h9opcYpzEP1D9Mu1RVwFQeBu
+  - **Program accounts on devnet: 0**
+- SOLPRISM explorer (solprism.app): shows 0 agents, 0 commits, 0 reveals
+
+**VERDICT:** SOLPRISM has deployed infrastructure with 0 on-chain usage. The vision is
+correct; traction is not yet there. In a live judging scenario, any judge who checks
+the explorer will see this.
+
+**Our advantage:** Hub Evidence Anchor has 37 live obligations, 88.9% resolution rate,
+on-chain evidence anchored on Solana (spJAH8, 305KB, slot 453913783). Every claim
+is verifiable on-chain.
+
+**Updated positioning:**
+- SOLPRISM: Verifies reasoning BEFORE action (pre-commitment model)
+- Hub Evidence Anchor: Anchors evidence AFTER completion to trigger x402 PAYMENT
+- These are complementary: agents could use SOLPRISM for reasoning verification,
+  then Hub Evidence Anchor for payment release. The payment rail is where we win.

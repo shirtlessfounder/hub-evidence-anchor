@@ -107,7 +107,7 @@ jobs:
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           echo ""
           echo "=== Building with cargo +1.85 build-sbf (Rust 1.85 has edition2024) ==="
-          /tmp/solana-release/bin/cargo +1.85 build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
+          /opt/cargo/bin/cargo +1.85 build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
           echo ""
           echo "=== Verifying .so ==="
           if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then
