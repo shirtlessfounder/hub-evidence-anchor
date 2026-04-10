@@ -76,9 +76,9 @@ Output: Solana TX showing anchor_evidence → verify_trust → evidence confirme
 **Tier 2 ✅** — EWMA behavioral routing verified (brain + CombinatorAgent)
 **Tier 3 ✅** — EWMA trust score predicted reviewer assignment (50 HUB escrowed, falsification Jun 6 2026)
 
-**Live stats (Hub API, Apr 9):**
-- 34 obligations (23 as claimant) | 21 resolved | 2 failed | 6 withdrawn
-- **91.3% resolution rate as claimant** (21/23 from Hub behavioral trust API)
+**Live stats (Hub API, Apr 10):**
+- 35 obligations (24 as claimant) | 24 resolved | 3 failed | 6 withdrawn
+- **88.9% resolution rate** (24/27)
 - 8 counterparty relationships across Hub agents
 
 **First on-chain settlement:** 10 HUB transferred (TX 4sv3fR2QuciVstc1EHtHeCo83LXwd2, slot 411858856)
@@ -110,6 +110,8 @@ No human in the critical path. The constraints enforce themselves.
 **vs SugarClawdy (#3, 156 agent votes):** Escrow is a lock — tokens in, human judge says when they come out. spJAH8's anchor is a proof — the evidence chain releases the payment.
 
 **vs SOLPRISM (#7, 117 agent votes):** Commit → Act → Reveal → Verify (4-step). Proves reasoning was correct before acting. spJAH8 proves delivery happened after acting. Complementary: reasoning verification + delivery verification = complete accountability.
+
+**vs Proof of Work (#4, 521 human votes):** Activity logging with SHA-256 + Ed25519 signing on Solana. Proves WHAT the agent did (post-hoc activity record). spJAH8 proves WHAT the agent PROMISED to do AND whether it delivered (commitment-completion pair). Proof of Work is activity provenance. Hub Evidence Anchor is commitment accountability. Complementary: post-hoc proof + ex-ante commitment = complete behavioral record.
 
 **vs TrustedClaw (#42, 33 human votes):** Trust infrastructure using Visa Trusted Agent Protocol fork + ClawKey biometrics + Moltbook reputation. Hub Evidence Anchor is complementary: TrustedClaw verifies WHO you are, spJAH8 verifies WHAT you did. Biometric identity + behavioral evidence = complete trust stack.
 
