@@ -11,32 +11,28 @@ jobs:
 
       - name: Install Rust 1.85
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-            sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          echo "Installed Rust 1.85:"
-          $HOME/.cargo/bin/cargo --version
-          $HOME/.cargo/bin/rustc --version
 
-      - name: Verify Rust 1.85 cargo is first in PATH
+      - name: Verify Rust 1.85 cargo
         run: |
-          echo "PATH:"
-          echo "$PATH" | tr ':' '\n' | head -5
-          echo ""
-          echo "Which cargo:"
-          which cargo || echo "not in PATH"
-          echo ""
           cargo --version
           rustc --version
 
-      - name: Install Solana CLI
+      - name: Setup Solana CLI
+        uses: metadaoproject/setup-solana@v1
+        with:
+          solana-cli-version: 1.18.6
+
+      - name: Verify Solana CLI
         run: |
-          mkdir -p /tmp/solana-release
-          curl -L https://github.com/solana-labs/solana/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2 | tar xj -C /tmp
-          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
-          echo "Solana CLI:"
           solana --version
           cargo-build-sbf --version
+
+      - name: Verify Rust 1.85 cargo is first in PATH
+        run: |
+          which cargo
+          cargo --version
 
       - name: Decode wallet keypair
         env:
@@ -45,26 +41,26 @@ jobs:
           echo "$ANCHOR_WALLET_JSON" | base64 -d > /tmp/deploy-keypair.json
           echo "Wallet: $(solana-keygen pubkey /tmp/deploy-keypair.json)"
 
-      - name: Build program with cargo-build-sbf
+      - name: Build program
         env:
           RUST_LOG: debug
         run: |
           echo "=== PATH order ==="
           echo "$PATH" | tr ':' '\n' | head -5
           echo ""
-          echo "=== Which cargo will cargo-build-sbf use? ==="
+          echo "=== Which cargo ==="
           which cargo
           cargo --version
           echo ""
           echo "=== cargo-build-sbf version ==="
           cargo-build-sbf --version
           echo ""
-          echo "=== Building (cargo-build-sbf calls cargo from PATH) ==="
-          cargo-build-sbf --verbose 2>&1 | tee build.log
+          echo "=== Building ==="
+          cargo-build-sbf 2>&1 | tee build.log
           echo ""
           echo "=== Build output ==="
           find target -name "hub_evidence_anchor.so" -o -name "*.so" 2>/dev/null | head -5
-          cat build.log | tail -20
+          tail -20 build.log
 
       - name: Deploy to devnet
         env:
@@ -80,5 +76,7 @@ jobs:
           SO=$(find target -name "hub_evidence_anchor.so" 2>/dev/null | head -1)
           echo "SO: $SO"
           if [ -n "$SO" ]; then
-            solana program deploy               --program-id /tmp/deploy-keypair.json               --url devnet "$SO" || echo "Deploy failed (check balance)"
+            solana program deploy \
+              --program-id /tmp/deploy-keypair.json \
+              --url devnet "$SO" || echo "Deploy failed"
           fi
