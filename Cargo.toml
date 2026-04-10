@@ -9,5 +9,5 @@ overflow-checks = true
 
 # Force older transitive deps that require Rust 2024 edition
 [patch.crates-io]
-toml_edit = "=0.21.0"
-blake3 = "=1.7.1"
+toml_edit = { version = "0.21.0" }
+blake3 = { version = "1.7.1" }
