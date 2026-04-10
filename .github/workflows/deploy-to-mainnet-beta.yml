@@ -107,15 +107,15 @@ jobs:
         run: |
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
-          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$PATH"
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
           echo ""
           echo "=== Cleaning lockfiles ==="
           find . -name "Cargo.lock" -delete 2>/dev/null || true
           echo ""
-          echo "=== Building with cargo-build-sbf (Rust 1.85) ==="
-          "$CARGO_HOME/bin/cargo" +solana build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
+          echo "=== Building with cargo +1.85 build-sbf ==="
+          /opt/cargo/bin/cargo +1.85 build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
           echo ""
           echo "=== Verifying artifact ==="
           if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then

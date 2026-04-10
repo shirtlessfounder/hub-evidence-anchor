@@ -88,8 +88,13 @@ jobs:
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           
           echo ""
-          echo "=== Building ==="
-          /opt/cargo/bin/cargo +1.85 build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml -- -Z next-lockfile-bump 2>&1
+          echo "=== Toolchain check ==="
+          /opt/cargo/bin/cargo +solana --version 2>&1 || echo "solana toolchain check failed"
+          /opt/cargo/bin/rustup toolchain list 2>&1
+          
+          echo ""
+          echo "=== Building with cargo +solana build-sbf ==="
+          /opt/cargo/bin/cargo +solana build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
           
           echo ""
           echo "=== Build artifacts ==="
