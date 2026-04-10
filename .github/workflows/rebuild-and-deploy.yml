@@ -2,13 +2,9 @@ name: Rebuild and Deploy (fix edition 2024)
 
 on:
   workflow_dispatch:
-    inputs:
-      description:
-        required: false
-        default: ''
-        type: string
 
 env:
+  CARGO_REGISTRY_INDEX_SPARSE_URL: https://index.crates.io
 
 jobs:
   build-and-deploy:
@@ -35,22 +31,17 @@ jobs:
 
       - name: Verify Solana CLI
         run: |
-          solana-install info 2>/dev/null || echo "solana-install not available, using direct CLI"
           solana --version
           cargo-build-sbf --version
 
       - name: Generate Cargo.lock with Rust 1.85 cargo
-        # Critical: Rust 1.85 cargo can parse edition 2024 Cargo.toml manifests.
-        # cargo-build-sbf calls cargo from PATH at runtime, so putting
-        # Rust 1.85 cargo first in PATH fixes the "edition 2024" parse failure.
-        # Cargo.lock is regenerated to resolve deps with Rust 1.85's cargo.
         run: |
           echo "=== Removing stale Cargo.lock ==="
           rm -f Cargo.lock programs/*/Cargo.lock
-          echo "=== Generating Cargo.lock with Rust $(cargo --version) ==="
+          echo "=== Cargo version: ==="
+          cargo --version
+          echo "=== Generating Cargo.lock ==="
           cargo generate-lockfile
-          echo "=== Verifying sha2 in lockfile ==="
-          grep -A3 "^name = .sha2" Cargo.lock | head -8
           echo "=== Verifying cpufeatures in lockfile ==="
           grep "cpufeatures" Cargo.lock | grep "version" | sort -u
 
@@ -61,17 +52,9 @@ jobs:
           echo "$ANCHOR_WALLET_JSON" | base64 -d > /tmp/deploy-keypair.json
           echo "Wallet pubkey: $(solana-keygen pubkey /tmp/deploy-keypair.json)"
 
-      - name: Set PATH with Rust 1.85 cargo first
-        run: |
-          echo "PATH order:"
-          echo "$PATH" | tr ':' '\n' | head -5
-          echo "---"
-          # Rust 1.85 cargo must be first
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          echo "PATH after adding Rust 1.85:"
-          echo "$PATH" | tr ':' '\n' | head -5
-
       - name: Build program
+        env:
+          CARGO_REGISTRY_INDEX_SPARSE_URL: https://index.crates.io
         run: |
           echo "=== Cargo version being used ==="
           which cargo
@@ -80,13 +63,11 @@ jobs:
           echo "=== cargo-build-sbf version ==="
           cargo-build-sbf --version
           echo ""
-          echo "=== Building with cargo-build-sbf (now using Rust 1.85 cargo) ==="
+          echo "=== Building with cargo-build-sbf ==="
           cargo-build-sbf
           echo ""
           echo "=== Build output ==="
-          ls -la target/sbf-solana-solana/release/*.so 2>/dev/null || \
-            ls -la target/deploy/*.so 2>/dev/null || \
-            find target -name "*.so" -newer Cargo.lock 2>/dev/null
+          find target -name "hub_evidence_anchor.so" -o -name "*.so" 2>/dev/null | head -5
 
       - name: Deploy to devnet
         env:
