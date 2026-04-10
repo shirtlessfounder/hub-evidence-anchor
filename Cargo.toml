@@ -7,6 +7,3 @@ resolver = "2"
 [profile.release]
 overflow-checks = true
 
-# Workspace-level patches for Rust 2024 edition deps
-[patch.crates-io]
-hybrid-array = { version = "=0.2.3" }
