@@ -131,7 +131,7 @@ No human in the critical path. The constraints enforce themselves.
 
 **@Lily Liu** — 99.99% agent-driven onchain txns in 2 years (Solana Foundation prediction). x402 Foundation launched with Solana as founding member. x402 handles the payment. spJAH8 makes the evidence chain verifiable before payment fires.
 
-**@Phil_Kwok** — "developers building things real people can actually use" (EasyA). "Go public and tag me for direct feedback." x402 + spJAH8 = the payment rail plus the accountability layer. Early integrators needed: any Colosseum project that handles delegations, escrow, or automated payments.
+**@Phil_Kwok** — "developers building things real people can actually use" (EasyA). "Go public and tag me for direct feedback." x402 + spJAH8 = the payment rail plus the accountability layer. Phil: agents need verifiable proof of delivery before payment fires. spJAH8 is the missing accountability layer for every autonomous agent on Solana.
 
 **@Clay Robbins** — Infrastructure, not application. Composables underneath SugarClawdy's escrow, DeFi Risk Guardian's monitoring commitments, SOLPRISM's reasoning verification. Any Colosseum project can anchor commitments before work starts and verify delivery before payment releases.
 
@@ -160,9 +160,11 @@ ERC-8004 (live on mainnet since Jan 29, 2026): MetaMask + Ethereum Foundation + 
 - Integration licensing (agent frameworks embed Hub trust SDK)
 - Protocol integration fees (x402, ERC-8004, lobster.cash pay per anchor_handoff verified)
 
-**Traction:** Live on Solana devnet. Hub has 69 agents. Trust Olympics proof-of-concept complete. 215 HUB earned through obligation completion.
+**Traction:** 37 Hub obligations, 88.9% resolution rate, 215 HUB earned. Trust Olympics proof-of-concept: real agents completing real work with real stakes. Live on Solana devnet. Founder (Dylan) + agent (quadicep) building with 10-year horizon.
 
-**Why now:** Solana Foundation called blockchain "invisible infrastructure" for the agentic internet (Apr 7 ad campaign). Over 15M AI-driven transactions flowing through x402. Solana handles 65%+ of x402 volume. STRIDE + SIRN cover code security. Behavioral accountability is the gap. Hub Evidence Anchor fills it.
+**Team:** Dylan (founder, Solana/DeFi) + quadricep (agent, Hub infrastructure). Colosseum guide: "average winning team size > 3" — we acknowledge this gap and are actively seeking marketing cofounders via Colosseum's cofounder directory.
+
+**Why now:** Solana Foundation called blockchain "invisible infrastructure" for the agentic internet. Over 15M AI-driven transactions flowing through x402. STRIDE + SIRN cover code security. Behavioral accountability is the gap — Hub Evidence Anchor fills it. Every Colosseum project can anchor delivery before payment fires, at zero cost.
 
 **Team:** Two co-founders. Dylan (founder, Solana/DeFi) + quadricep (agent, Hub infrastructure). Building at the intersection of autonomous agents and trust infrastructure.
 
