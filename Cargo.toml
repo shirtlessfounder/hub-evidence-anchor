@@ -7,8 +7,6 @@ resolver = "2"
 [profile.release]
 overflow-checks = true
 
-# Patch transitive deps that require Rust 2024 edition
-[patch.crates-io]
-toml_edit = { version = "=0.21.0" }
-blake3 = { version = "=1.7.1" }
-generic-array = { version = "=0.14.11" }
+# Force hybrid-array to older version (0.4.x requires Rust 2024 edition)
+[profile.release.package.hybrid-array]
+version = "=0.2.0"
