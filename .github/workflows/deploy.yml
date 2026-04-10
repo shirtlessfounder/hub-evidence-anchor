@@ -102,7 +102,10 @@ jobs:
           export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
           echo "=== Rust toolchain ==="
-          cargo +1.85 --version
+          /opt/cargo/bin/rustup toolchain list 2>&1 || echo "rustup failed"
+          cargo +1.85 --version 2>&1 || echo "cargo +1.85 failed"
+          which cargo || echo "CARGO NOT IN PATH"
+          echo "PATH: $PATH"
           echo "=== Program ID in code ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           echo ""
