@@ -7,7 +7,4 @@ resolver = "2"
 [profile.release]
 overflow-checks = true
 
-# Force older transitive deps that require Rust 2024 edition
-[patch.crates-io]
-toml_edit = { version = "=0.21.0" }
-blake3 = { version = "=1.8.4" }
+# Removed: patches were causing cargo resolution errors. Rust 1.85 in CI handles edition 2024 natively.
