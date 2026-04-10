@@ -1,0 +1,75 @@
+name: Rebuild and Deploy
+
+on:
+  push:
+    branches:
+      - ci-clean-test
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust 1.85
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Verify Rust 1.85
+        run: |
+          cargo --version
+          rustc --version
+
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v1.18.6/install)"
+
+      - name: Verify Solana CLI
+        run: |
+          export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          solana --version
+          cargo-build-sbf --version
+
+      - name: Verify cargo-build-sbf uses Rust 1.85 cargo
+        run: |
+          export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          which cargo
+          cargo --version
+          cargo-build-sbf --version
+
+      - name: Decode wallet
+        env:
+          ANCHOR_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
+        run: |
+          echo "$ANCHOR_WALLET_JSON" | base64 -d > /tmp/deploy-keypair.json
+          export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          echo "Wallet: $(solana-keygen pubkey /tmp/deploy-keypair.json)"
+
+      - name: Build program
+        run: |
+          export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          echo "=== Cargo: $(which cargo) $(cargo --version) ==="
+          echo "=== cargo-build-sbf: $(cargo-build-sbf --version 2>&1 | head -1) ==="
+          cargo-build-sbf 2>&1 | tee build.log
+          echo ""
+          echo "=== .so files ==="
+          find target -name "hub_evidence_anchor.so" 2>/dev/null || find target -name "*.so" -newer Cargo.toml 2>/dev/null | head -5
+          tail -10 build.log
+
+      - name: Deploy to devnet
+        env:
+          ANCHOR_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
+        run: |
+          export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          echo "Balance:"
+          solana balance $(solana-keygen pubkey /tmp/deploy-keypair.json) --url devnet || true
+          SO=$(find target -name "hub_evidence_anchor.so" 2>/dev/null | head -1)
+          echo "Deploying: $SO"
+          if [ -n "$SO" ]; then
+            solana program deploy \
+              --program-id /tmp/deploy-keypair.json \
+              --url devnet "$SO" || echo "Deploy failed (check balance)"
+          fi
