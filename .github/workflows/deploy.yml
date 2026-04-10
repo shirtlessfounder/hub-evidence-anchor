@@ -128,8 +128,31 @@ jobs:
           echo ""
           export RUSTUP_TOOLCHAIN=1.85
           export PATH="/opt/cargo/bin:$PATH"
+          # SOURCE cargo env so cargo-build-sbf subprocess finds 'cargo metadata'
+          source "$HOME/.cargo/env" 2>/dev/null || true
           echo "=== Building with cargo +1.85 build-sbf (edition2024 deps require 1.85) ==="
           /opt/cargo/bin/cargo +1.85 build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml -- -Z next-lockfile-bump 2>&1
+          echo ""
+          echo "=== Copy .so to deploy path ==="
+          # cargo build-sbf outputs to target/sbf-solana-solana/release/ at the manifest's dir (workspace root).
+          # Deploy step expects it at programs/hub-evidence-anchor/target/deploy/ — copy it over.
+          SBF_OUT="programs/hub-evidence-anchor/target/sbf-solana-solana/release/hub_evidence_anchor.so"
+          DEPLOY_DIR="programs/hub-evidence-anchor/target/deploy"
+          mkdir -p "$DEPLOY_DIR"
+          if [ -f "$SBF_OUT" ]; then
+            cp "$SBF_OUT" "$DEPLOY_DIR/hub_evidence_anchor.so"
+            echo "Copied .so to $DEPLOY_DIR/"
+          else
+            SBF_ROOT="target/sbf-solana-solana/release/hub_evidence_anchor.so"
+            if [ -f "$SBF_ROOT" ]; then
+              cp "$SBF_ROOT" "$DEPLOY_DIR/hub_evidence_anchor.so"
+              echo "Copied .so from workspace root to $DEPLOY_DIR/"
+            else
+              echo "BUILD FAILED: No .so found at $SBF_OUT or $SBF_ROOT"
+              find . -name "hub_evidence_anchor.so" 2>/dev/null
+              exit 1
+            fi
+          fi
           echo ""
           echo "=== Verifying .so ==="
           if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then
