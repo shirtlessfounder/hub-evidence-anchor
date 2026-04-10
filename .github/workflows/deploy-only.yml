@@ -44,7 +44,7 @@ jobs:
           echo "Balance before:"
           /tmp/solana-release/bin/solana balance "$UPGRADE_AUTH" --url ${{ env.RPC }}
           
-          SO_FILE="programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so"
+          SO_FILE="programs/hub-evidence-anchor/hub-evidence_anchor.so"
           if [ ! -f "$SO_FILE" ]; then
             echo "ERROR: No .so found at $SO_FILE"
             echo "Build locally and push .so to git."
