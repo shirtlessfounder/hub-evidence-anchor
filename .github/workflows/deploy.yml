@@ -31,7 +31,7 @@ jobs:
           cargo install --git https://github.com/coral-xyz/anchor --tag v0.32.1 anchor-cli || npm install -g @coral-xyz/anchor-cli@0.31.2
           echo "$(npm root -g)" >> $GITHUB_PATH
 
-      - name: Install Rust 1.82 toolchain
+      - name: Install Rust 1.85 toolchain
         run: |
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
@@ -39,8 +39,8 @@ jobs:
           rm -rf "$CARGO_HOME" "$RUSTUP_HOME"
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
-            sh -s -- -y --default-toolchain 1.82.0 --profile minimal --no-modify-path
-          rustup default 1.82.0
+            sh -s -- -y --default-toolchain 1.85.0 --profile minimal --no-modify-path
+          rustup default 1.85.0
 
       - name: Install clang for BPF
         run: sudo apt-get update -qq && sudo apt-get install -y -qq clang-14 llvm
@@ -102,12 +102,12 @@ jobs:
           export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
           echo "=== Rust toolchain ==="
-          cargo +1.82 --version
+          cargo +1.85 --version
           echo "=== Program ID in code ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           echo ""
-          echo "=== Building with cargo +1.82 build-sbf ==="
-          /opt/cargo/bin/cargo +1.82 build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
+          echo "=== Building with cargo +1.85 build-sbf (edition2024 deps require 1.85) ==="
+          /opt/cargo/bin/cargo +1.85 build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml --locked 2>&1
           echo ""
           echo "=== Verifying .so ==="
           if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then
