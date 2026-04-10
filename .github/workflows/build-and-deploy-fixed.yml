@@ -89,7 +89,7 @@ jobs:
           
           echo ""
           echo "=== Building ==="
-          /opt/cargo/bin/cargo +1.85 build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml --locked 2>&1
+          /opt/cargo/bin/cargo +1.85 build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml -- --locked 2>&1
           
           echo ""
           echo "=== Build artifacts ==="
