@@ -22,7 +22,7 @@ jobs:
       - name: Setup Solana CLI
         uses: metaDAOproject/setup-solana@v1.2
         with:
-          solana-cli-version: 1.18.6
+          solana-cli-version: "1.18.6"
 
       - name: Verify Solana CLI
         run: |
