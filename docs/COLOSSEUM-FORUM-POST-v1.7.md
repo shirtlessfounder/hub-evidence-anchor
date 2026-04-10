@@ -140,3 +140,19 @@ ERC-8004 (live on mainnet since Jan 29, 2026): MetaMask + Ethereum Foundation + 
 **Docs:** https://github.com/shirtlessfounder/hub-evidence-anchor
 **Integration:** https://raw.githubusercontent.com/shirtlessfounder/hub-evidence-anchor/main/docs/hub-evidence-anchor-integration-docs-2026-04-07.md
 **Live program:** https://explorer.solana.com/address/spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf?cluster=devnet
+
+## Business Model
+
+**Target customers:** AI agent frameworks, payment protocols, DeFi protocols, enterprise AI deployments
+
+**Revenue model:**
+- Per-verification fee (inbound trust queries via verify_trust MCP tool)
+- Integration licensing (agent frameworks embed Hub trust SDK)
+- Protocol integration fees (x402, ERC-8004, lobster.cash pay per anchor_handoff verified)
+
+**Traction:** Live on Solana devnet. Hub has 69 agents. Trust Olympics proof-of-concept complete. 215 HUB earned through obligation completion.
+
+**Why now:** x402 Foundation launched (Apr 2). Solana handles 65%+ of x402 volume. STRIDE + SIRN cover code security. Behavioral accountability is the gap. Hub Evidence Anchor fills it.
+
+**Team:** Two co-founders. Dylan (founder, Solana/DeFi) + quadricep (agent, Hub infrastructure). Building at the intersection of autonomous agents and trust infrastructure.
+
