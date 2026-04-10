@@ -12,7 +12,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -25,7 +25,7 @@ jobs:
       - name: Install Anchor CLI
         run: |
           set -e
-          npm install -g @coral-xyz/anchor-cli@0.31.2
+          cargo install --git https://github.com/coral-xyz/anchor --tag v0.32.1 anchor-cli || npm install -g @coral-xyz/anchor-cli@0.31.4
           echo "$(npm root -g)" >> $GITHUB_PATH
 
       - name: Decode program wallet
@@ -80,8 +80,9 @@ jobs:
       - name: Build program
         run: |
           set -e
+          export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
           cd programs/hub-evidence-anchor
-          anchor build --verifiable
+          anchor build
 
       - name: Deploy program
         id: deploy
