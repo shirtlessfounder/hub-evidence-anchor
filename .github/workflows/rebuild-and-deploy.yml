@@ -1,6 +1,9 @@
 name: Rebuild and Deploy (fix edition 2024)
 
 on:
+  push:
+    branches:
+      - ci-test-run
   workflow_dispatch:
 
 jobs:
