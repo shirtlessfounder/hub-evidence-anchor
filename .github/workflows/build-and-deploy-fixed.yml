@@ -78,8 +78,11 @@ jobs:
         run: |
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
-          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$PATH"
+          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
+          
+          # SOURCE cargo env so cargo-build-sbf subprocess finds 'cargo metadata'
+          source "$HOME/.cargo/env" 2>/dev/null || true
           
           rm -f Cargo.lock
           find . -name "Cargo.lock" -delete 2>/dev/null || true
@@ -91,6 +94,7 @@ jobs:
           echo "=== Toolchain check ==="
           /opt/cargo/bin/cargo +solana --version 2>&1 || echo "solana toolchain check failed"
           /opt/cargo/bin/rustup toolchain list 2>&1
+          which cargo || echo "CARGO NOT IN PATH"
           
           echo ""
           echo "=== Building with cargo +solana build-sbf ==="
