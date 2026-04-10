@@ -99,7 +99,7 @@ jobs:
           set -e
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
-          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
+          export PATH="/opt/cargo/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
           echo "=== Rust toolchain ==="
           /opt/cargo/bin/rustup toolchain list 2>&1 || echo "rustup failed"
