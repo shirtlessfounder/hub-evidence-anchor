@@ -11,4 +11,3 @@ overflow-checks = true
 [patch.crates-io]
 toml_edit = "=0.21.0"
 blake3 = "=1.7.1"
-ahash = { version = "=0.8.6", registry = "https://github.com/rust-lang/crates.io-index" }
