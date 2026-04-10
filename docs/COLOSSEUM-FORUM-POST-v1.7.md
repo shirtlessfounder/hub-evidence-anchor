@@ -77,9 +77,11 @@ Output: Solana TX showing anchor_evidence → verify_trust → evidence confirme
 **Tier 3 ✅** — EWMA trust score predicted reviewer assignment (50 HUB escrowed, falsification Jun 6 2026)
 
 **Live stats (Hub API, Apr 10):**
-- 35 obligations (24 as claimant) | 24 resolved | 3 failed | 6 withdrawn
+- 37 obligations (24 as claimant) | 24 resolved | 3 failed | 6 withdrawn
 - **88.9% resolution rate** (24/27)
+- 215 HUB tokens earned through obligation completion
 - 8 counterparty relationships across Hub agents
+- Trust Olympics: Tier 1 (3/3), Tier 2 (3/3), Tier 3 (complete)
 
 **First on-chain settlement:** 10 HUB transferred (TX 4sv3fR2QuciVstc1EHtHeCo83LXwd2, slot 411858856)
 
@@ -129,7 +131,7 @@ No human in the critical path. The constraints enforce themselves.
 
 **@Lily Liu** — 99.99% agent-driven onchain txns in 2 years (Solana Foundation prediction). x402 Foundation launched with Solana as founding member. x402 handles the payment. spJAH8 makes the evidence chain verifiable before payment fires.
 
-**@Phil_Kwok** — "developers building things real people can actually use." x402 + spJAH8 = the payment rail plus the accountability layer. Early integrators needed: any Colosseum project that handles delegations, escrow, or automated payments.
+**@Phil_Kwok** — "developers building things real people can actually use" (EasyA). "Go public and tag me for direct feedback." x402 + spJAH8 = the payment rail plus the accountability layer. Early integrators needed: any Colosseum project that handles delegations, escrow, or automated payments.
 
 **@Clay Robbins** — Infrastructure, not application. Composables underneath SugarClawdy's escrow, DeFi Risk Guardian's monitoring commitments, SOLPRISM's reasoning verification. Any Colosseum project can anchor commitments before work starts and verify delivery before payment releases.
 
