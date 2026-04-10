@@ -94,6 +94,16 @@ jobs:
           solana balance "$RECIPIENT" --url devnet
           echo "Ready to deploy"
 
+      - name: Generate Cargo.lock with Rust 1.85 (avoids edition 2024 metadata failure)
+        run: |
+          export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+          echo "=== CARGO_HOME: $CARGO_HOME ==="
+          set -e
+          export RUSTUP_TOOLCHAIN=1.85
+          export PATH="/opt/cargo/bin:$PATH"
+          echo "=== Generating Cargo.lock with Rust 1.85 ==="
+          cargo +1.85 generate-lockfile --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1 || true
+          ls -la programs/hub-evidence-anchor/Cargo.lock 2>/dev/null || echo "No Cargo.lock generated"
       - name: Build program
         run: |
           set -e
@@ -109,6 +119,8 @@ jobs:
           echo "=== Program ID in code ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           echo ""
+          export RUSTUP_TOOLCHAIN=1.85
+          export PATH="/opt/cargo/bin:$PATH"
           echo "=== Building with cargo +1.85 build-sbf (edition2024 deps require 1.85) ==="
           /opt/cargo/bin/cargo +1.85 build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml -- -Z next-lockfile-bump 2>&1
           echo ""
