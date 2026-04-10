@@ -17,20 +17,54 @@ set -e
 
 API_KEY="${COLOSSEUM_API_KEY:-}"
 BASE="https://agents.colosseum.com/api"
+DRY_RUN="${COLOSSEUM_DRY_RUN:-0}"
+CHECK_ONLY="${COLOSSEUM_CHECK_ONLY:-0}"
 
 if [ -z "$API_KEY" ]; then
     echo "ERROR: COLOSSEUM_API_KEY not set."
-    echo "Get your key from the Colosseum dashboard after registering at arena.colosseum.org/signup"
+    echo "Get your key from arena.colosseum.org/signup (cklive_... key)"
+    echo "Save to: ~/.openclaw/credentials/colosseum-pat.txt"
+    echo "Usage: COLOSSEUM_API_KEY=\$(cat ~/.openclaw/credentials/colosseum-pat.txt) bash submit-colosseum.sh"
     exit 1
 fi
 
 AUTH_HEADER="Authorization: Bearer $API_KEY"
 
 echo "=== Colosseum Frontier Submission ==="
+echo "Mode: $([ "$CHECK_ONLY" = "1" ] && echo "CHECK ONLY (no changes)" || echo "LIVE SUBMISSION")"
+echo ""
 
-# Step 1: Check agent status
-echo "[1/6] Agent status..."
-STATUS=$(curl -s "${BASE}/agents/status")
+# Validate API key format (must be cklive_ prefix)
+if [[ ! "$API_KEY" =~ ^cklive_ ]]; then
+    echo "ERROR: API key must start with 'cklive_' (from arena.colosseum.org/signup)"
+    echo "Current key starts with: ${API_KEY:0:10}..."
+    echo "Your current PAT may be a GitHub OAuth token, not a Colosseum Arena key."
+    echo "Fix: Dylan must register at arena.colosseum.org/signup to get cklive_ key"
+    exit 1
+fi
+
+# Check API key validity
+echo "[0/7] Validating API key..."
+VALIDATE=$(curl -s "${BASE}/agents/status" -H "$AUTH_HEADER")
+if echo "$VALIDATE" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if d.get('agentName') else 1)" 2>/dev/null; then
+    AGENT_NAME=$(echo "$VALIDATE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('agentName','?'))")
+    echo "  ✅ API key valid — agent: $AGENT_NAME"
+else
+    echo "  ❌ API key invalid or revoked: ${VALIDATE:0:100}"
+    echo "  Fix: Dylan must re-register at arena.colosseum.org/signup"
+    exit 1
+fi
+
+if [ "$CHECK_ONLY" = "1" ]; then
+    echo ""
+    echo "=== CHECK COMPLETE ==="
+    echo "Run without COLOSSEUM_CHECK_ONLY=1 to submit."
+    exit 0
+fi
+
+# Step 1: Check agent status (already done above but keeping for reference)
+echo "[1/7] Agent status..."
+STATUS=$(curl -s "${BASE}/agents/status" -H "$AUTH_HEADER")
 echo "$STATUS" | python3 -m json.tool 2>/dev/null | head -20
 CLAIM_URL=$(echo "$STATUS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('claimUrl',''))" 2>/dev/null)
 if [ -n "$CLAIM_URL" ]; then
@@ -39,7 +73,7 @@ fi
 
 # Step 2: Check if Frontier is in the API yet (poll with timeout)
 echo ""
-echo "[2/6] Checking hackathons in API..."
+echo "[2/7] Checking hackathons in API..."
 FRONTIER_ID=""
 for i in 1 2 3 4 5 6; do
     HACKS=$(curl -s "${BASE}/hackathons")
@@ -78,7 +112,7 @@ fi
 
 # Step 3: Get current project or create new
 echo ""
-echo "[3/6] Checking existing project..."
+echo "[3/7] Checking existing project..."
 PROJECT=$(curl -s "${BASE}/my-project" -H "$AUTH_HEADER")
 PROJECT_ID=$(echo "$PROJECT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null)
 
@@ -105,7 +139,7 @@ fi
 
 # Step 4: Update with full submission fields (Feb-style — Frontier likely same schema)
 echo ""
-echo "[4/6] Updating project with full submission fields..."
+echo "[4/7] Updating project with full submission fields..."
 UPDATE_RESP=$(curl -s -X PUT "${BASE}/my-project" \
     -H "$AUTH_HEADER" \
     -H "Content-Type: application/json" \
@@ -133,7 +167,7 @@ fi
 
 # Step 5: Submit project (mark as complete — use dedicated submit endpoint)
 echo ""
-echo "[5/6] Submitting project..."
+echo "[5/7] Submitting project..."
 SUBMIT_RESP=$(curl -s -X POST "${BASE}/my-project/submit" \
     -H "$AUTH_HEADER")
 
@@ -146,8 +180,12 @@ fi
 
 # Step 6: Verify
 echo ""
-echo "[6/6] Final project state:"
+echo "[6/7] Final project state:"
 curl -s "${BASE}/my-project" -H "$AUTH_HEADER" | python3 -m json.tool 2>/dev/null
+
+# Step 7: Final summary
+echo ""
+echo "[7/7] Final summary:"
 
 echo ""
 echo "=== Submission Complete ==="
