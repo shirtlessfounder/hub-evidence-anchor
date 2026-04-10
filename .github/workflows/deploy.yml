@@ -31,7 +31,7 @@ jobs:
           cargo install --git https://github.com/coral-xyz/anchor --tag v0.32.1 anchor-cli || npm install -g @coral-xyz/anchor-cli@0.31.2
           echo "$(npm root -g)" >> $GITHUB_PATH
 
-      - name: Install Rust 1.82 (for lockfile v3 compatibility)
+      - name: Install Rust 1.82 (lockfile v3 compatible)
         run: |
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
@@ -100,13 +100,10 @@ jobs:
           export RUSTUP_HOME="/opt/rustup"
           export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
-          # Delete any existing Cargo.lock to avoid v4 lockfile issues
-          rm -f Cargo.lock
-          find . -name "Cargo.lock" -delete 2>/dev/null || true
           echo "=== Program ID in code ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           echo ""
-          echo "=== Building with cargo-build-sbf ==="
+          echo "=== Building with cargo-build-sbf (using existing Cargo.lock v3) ==="
           /tmp/solana-release/bin/cargo-build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
           echo ""
           echo "=== Verifying .so ==="
