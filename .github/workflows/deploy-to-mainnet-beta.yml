@@ -43,10 +43,12 @@ jobs:
           rustup toolchain install 1.89.0 2>&1 | tail -3 || echo "1.89 already installed"
           echo "=== Installed toolchains ==="
           rustup toolchain list
-          # Show where 1.89 cargo lives
-          RUST_189_CARGO=$(find ~/.rustup/toolchains -maxdepth 2 -name "cargo" -path "*1.89*" 2>/dev/null | head -1)
+          # Find 1.89 toolchain — use absolute path, NOT ~ (GITHUB_ENV doesn't expand ~)
+          RUST_189_CARGO=$(find "$HOME/.rustup/toolchains" -maxdepth 2 -name "cargo" -path "*1.89*" 2>/dev/null | head -1)
+          RUST_189_DIR=$(dirname "$RUST_189_CARGO")
           echo "Rust 1.89 cargo: $RUST_189_CARGO"
-          echo "RUST_189_CARGO=$RUST_189_CARGO" >> $GITHUB_ENV
+          echo "Rust 1.89 dir: $RUST_189_DIR"
+          echo "RUST_189_DIR=$RUST_189_DIR" >> $GITHUB_ENV
 
       - name: Install clang
         run: |
@@ -63,12 +65,17 @@ jobs:
           export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
 
-          # Rust 1.89 cargo path from previous step
-          RUST_189_CARGO="${RUST_189_CARGO:-$(find ~/.rustup/toolchains -maxdepth 2 -name "cargo" -path "*1.89*" 2>/dev/null | head -1)}"
-          RUST_189_DIR=$(dirname "$RUST_189_CARGO")
-          RUST_185_CARGO="$CARGO_HOME/bin/cargo"
+          # Rust 1.89 dir from previous step (RUST_189_DIR from GITHUB_ENV)
+          RUST_189_DIR="${RUST_189_DIR:-$(find "$HOME/.rustup/toolchains" -maxdepth 2 -name "cargo" -path "*1.89*" 2>/dev/null | head -1 | xargs dirname)}"
+          RUST_189_CARGO="$RUST_189_DIR/cargo"
+          echo "Using Rust 1.89 at: $RUST_189_DIR"
+          "$RUST_189_CARGO" --version || { echo "ERROR: Rust 1.89 not found"; exit 1; }
+
+          # Rust 1.85 at explicit path (NOT $CARGO_HOME/bin/cargo — that's the rustup proxy)
+          RUST_185_DIR=$(find /opt/rustup/toolchains -maxdepth 2 -name "cargo" -path "*1.85*" 2>/dev/null | head -1 | xargs dirname)
+          echo "Using Rust 1.85 at: $RUST_185_DIR"
           echo "Rust 1.89: $RUST_189_DIR"
-          echo "Rust 1.85: $RUST_185_CARGO"
+          echo "Rust 1.85: $RUST_185_DIR"
           "$RUST_189_CARGO" --version || { echo "ERROR: Rust 1.89 not found"; exit 1; }
 
           # Create wrapper: metadata → Rust 1.89, everything else → Rust 1.85
