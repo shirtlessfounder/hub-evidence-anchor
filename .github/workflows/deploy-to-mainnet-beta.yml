@@ -1,4 +1,6 @@
-name: Build and Deploy to Mainnet-Beta
+on:
+  push:
+  workflow_dispatch:
 
 on:
   workflow_dispatch:
@@ -24,10 +26,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Solana CLI
-        run: |
-          set -e
-          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/${{ env.SOLANA_CLI_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
 
           echo "Installed: $(/tmp/solana-release/bin/solana --version)"
 
@@ -35,8 +33,6 @@ jobs:
         run: |
           # Install Rust 1.89 (edition2024 deps like toml_datetime require 1.89)
           # Use default location so cargo is found via $HOME/.cargo/bin in subsequent steps
-          export CARGO_HOME="/opt/cargo"
-          export RUSTUP_HOME="/opt/rustup"
           export PATH="$CARGO_HOME/bin:$HOME/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
           rm -rf "$CARGO_HOME" "$RUSTUP_HOME" "$HOME/.cargo" "$HOME/.rustup"
           # CRITICAL: also remove settings.toml or it overrides --default-toolchain
@@ -62,17 +58,23 @@ jobs:
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
           export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-          # cargo-build-sbf downloads platform-tools on first build; prime it
-          echo "=== Priming platform-tools ==="
+          export HOME="/home/runner"
+          # cargo-build-sbf downloads platform-tools on first build; prime it with a real build
+          echo "=== Priming platform-tools (triggers download of SBF compiler) ==="
           mkdir -p /tmp/priming && cd /tmp/priming
-          /tmp/solana-release/bin/cargo-build-sbf --version 2>&1 || true
+          echo '[package] name = "prime"; version = "0.1"; edition = "2021"' > Cargo.toml
+          /tmp/solana-release/bin/cargo-build-sbf 2>&1 | tail -3 || true
+          cd /
           rm -rf /tmp/priming
-          PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -name "rustc" -path "*/platform-tools/*/rust/bin/rustc" 2>/dev/null | head -1 | xargs dirname 2>/dev/null | xargs dirname 2>/dev/null || true)
+          # Find the downloaded platform-tools
+          PLATFORM_TOOLS_RUST=$(find /home/runner/.cache/solana -name "rustc" -path "*/platform-tools/*/rust/bin/rustc" 2>/dev/null | head -1 | xargs dirname 2>/dev/null | xargs dirname 2>/dev/null || true)
           echo "Found platform-tools rust: $PLATFORM_TOOLS_RUST"
           if [ -n "$PLATFORM_TOOLS_RUST" ] && [ -d "$PLATFORM_TOOLS_RUST" ]; then
+            echo "Linking solana toolchain to platform-tools Rust"
             "$CARGO_HOME/bin/rustup" toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || true
           fi
           "$CARGO_HOME/bin/rustup" toolchain list || true
+          # Show cargo version in solana toolchain
           "$CARGO_HOME/bin/cargo" +solana --version 2>/dev/null || echo "solana toolchain link may have failed"
 
       - name: Decode wallet (base58 -> JSON keypair)
@@ -126,25 +128,35 @@ jobs:
           set -e
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
-          # RUSTUP_TOOLCHAIN forces ALL cargo invocations (including cargo-metadata
-          # subprocesses spawned by cargo build-sbf) to use 1.89 automatically
-          export RUSTUP_TOOLCHAIN=1.89
-          # Do NOT include $HOME/.cargo/bin — runner pre-installs Rust 1.81 there
-          export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-          export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
-          
-          echo "=== Rust version (should be 1.89) ==="
-          cargo --version
-          echo "=== RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN ==="
-          
+          export HOME="/home/runner"
+          export LD_LIBRARY_PATH="/opt/cargo/lib:$LD_LIBRARY_PATH"
+
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
-          echo ""
-          echo "=== Building with cargo-build-sbf (PATH=1.89 cargo, so cargo-build-sbf finds the right cargo) ==="
-          # cargo-build-sbf is in /tmp/solana-release/bin, cargo 1.89 is in /opt/cargo/bin
-          # Put cargo 1.89 FIRST so cargo-build-sbf finds it when it calls 'cargo' internally
-          export PATH="/opt/cargo/bin:/tmp/solana-release/bin:$PATH"
-          export RUSTUP_TOOLCHAIN=1.89
+
+          echo "=== Finding platform-tools cargo (v1.81, creates v3 lockfiles) ==="
+          # The platform-tools cargo (from Solana's bundled Rust) creates v3 lockfiles
+          # cargo-build-sbf uses Command::new("cargo") — PATH ordering is everything
+          PT_CARGO=$(find /home/runner/.cache/solana -name "cargo" 2>/dev/null | grep -v clippy | head -1)
+          echo "Platform-tools cargo: $PT_CARGO"
+          if [ -n "$PT_CARGO" ] && [ -x "$PT_CARGO" ]; then
+            $PT_CARGO --version || true
+            echo "Using platform-tools cargo (v1.81, v3 lockfiles)"
+            # Put platform-tools cargo FIRST in PATH so cargo-build-sbf uses it
+            export PATH="$(dirname $PT_CARGO):/tmp/solana-release/bin:/opt/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            # Link platform-tools rust as 'solana' toolchain for compilation
+            PT_RUST=$(dirname $(dirname $PT_CARGO))
+            "$CARGO_HOME/bin/rustup" toolchain link solana "$PT_RUST" 2>&1 || true
+            export RUSTUP_TOOLCHAIN=solana
+          else
+            echo "WARNING: platform-tools cargo not found — using Solana CLI cargo wrapper"
+            export PATH="/tmp/solana-release/bin:/opt/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          fi
+
+          echo "=== PATH first cargo: $(which cargo 2>/dev/null || echo 'not found') ==="
+          cargo --version || true
+          echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN"
+
           cargo build-sbf 2>&1
           echo ""
           echo "=== Verifying artifact ==="
