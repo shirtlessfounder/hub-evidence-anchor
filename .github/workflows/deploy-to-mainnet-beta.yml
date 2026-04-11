@@ -129,40 +129,34 @@ jobs:
           set -e
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
-          # CRITICAL: do NOT include $HOME/.cargo/bin — runner pre-installs Rust 1.81 there
-          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          # RUSTUP_TOOLCHAIN forces ALL cargo invocations (including cargo-metadata
+          # subprocesses spawned by cargo build-sbf) to use 1.85 automatically
+          export RUSTUP_TOOLCHAIN=1.85
+          # Do NOT include $HOME/.cargo/bin — runner pre-installs Rust 1.81 there
+          export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
           
-          # Create cargo wrapper: +1.85 for metadata, +solana for build
-          # Use cp not mv — cargo may be a symlink (cargo-build-sbf -> cargo), and mv
-          # of a symlink breaks the chain. cp preserves the actual binary.
-          mkdir -p /tmp/solana-release/bin
-          cp /tmp/solana-release/bin/cargo /tmp/solana-release/bin/cargo-real 2>/dev/null || true
-          cat > /tmp/solana-release/bin/cargo << 'WRAPPER'
-          #!/bin/bash
-          if [[ "$*" == *"metadata"* ]]; then
-            exec /opt/cargo/bin/cargo +1.85 "$@"
-          else
-            exec /tmp/solana-release/bin/cargo-real "$@"
-          fi
-          WRAPPER
-          chmod +x /tmp/solana-release/bin/cargo
-          chmod +x /tmp/solana-release/bin/cargo-real 2>/dev/null || true
-          ln -sf /opt/cargo/bin/cargo-metadata /tmp/solana-release/bin/cargo-metadata 2>/dev/null || true
+          echo "=== Rust version (should be 1.85) ==="
+          cargo --version
+          echo "=== RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN ==="
           
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
           echo ""
-          echo "=== Building with cargo-build-sbf (cargo wrapper) ==="
-          /tmp/solana-release/bin/cargo-build-sbf 2>&1
+          echo "=== Building with cargo build-sbf (RUSTUP_TOOLCHAIN=1.85) ==="
+          cargo build-sbf 2>&1
           echo ""
           echo "=== Verifying artifact ==="
-          if [ -f target/deploy/hub_evidence_anchor.so ]; then
+          SBF_OUT="target/sbpf-solana-solana/release/hub_evidence_anchor.so"
+          DEPLOY_OUT="target/deploy/hub_evidence_anchor.so"
+          mkdir -p target/deploy
+          if [ -f "$SBF_OUT" ]; then
+            cp "$SBF_OUT" "$DEPLOY_OUT"
             echo "BUILD SUCCESS"
-            ls -lh target/deploy/hub_evidence_anchor.so
+            ls -lh "$DEPLOY_OUT"
           else
             echo "BUILD FAILED: No .so found"
-            find . -name "*.so" 2>/dev/null | head -5
+            find . -name "hub_evidence_anchor.so" 2>/dev/null | head -5
             exit 1
           fi
 
