@@ -97,6 +97,14 @@ jobs:
               exit \$exit_code
             fi
           done
+          # Handle +solana: forward to rustup run solana (cargo-build-sbf uses this internally)
+          # shellcheck doesn't support 'declare' in heredoc heredoc delimiter
+          has_solana=$(echo "\$*" | grep -c '+solana' || true)
+          if [ "\$has_solana" -gt 0 ]; then
+            # Strip +solana from args and forward to rustup run solana
+            cleaned=\$(echo "\$*" | sed 's/+solana//g')
+            exec rustup run solana cargo \$cleaned
+          fi
           exec "$RUST_185_PATH/cargo" "\$@"
           WRAPPER
           chmod +x /tmp/solana-release/bin/cargo
