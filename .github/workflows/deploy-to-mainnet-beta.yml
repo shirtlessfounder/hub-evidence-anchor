@@ -65,28 +65,38 @@ jobs:
           export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
 
-          # Rust 1.89 dir from previous step (RUST_189_DIR from GITHUB_ENV)
-          RUST_189_CARGO="${RUST_189_DIR:+$RUST_189_DIR/cargo}"
-          if [ -z "$RUST_189_CARGO" ] || [ ! -f "$RUST_189_CARGO" ]; then
+          # Rust 1.89 toolchain location (set in previous step via GITHUB_ENV)
+          # RUST_189_DIR from env is the bin directory (e.g. .../1.89.0-x86_64-unknown-linux-gnu/bin)
+          if [ -n "$RUST_189_DIR" ] && [ -f "$RUST_189_DIR/cargo" ]; then
+            RUST_189_CARGO="$RUST_189_DIR/cargo"
+          else
+            # Fallback: query rustup directly for 1.89 cargo
             RUST_189_CARGO=$(RUSTUP_TOOLCHAIN=1.89.0 rustup which cargo 2>/dev/null || echo "")
           fi
-          RUST_189_DIR=$(dirname "$RUST_189_CARGO")
-          echo "Using Rust 1.89 at: $RUST_189_DIR"
+          echo "Using Rust 1.89 cargo: $RUST_189_CARGO"
           "$RUST_189_CARGO" --version || { echo "ERROR: Rust 1.89 not found"; exit 1; }
 
           # Rust 1.85 at explicit path (NOT $CARGO_HOME/bin/cargo — that's the rustup proxy)
-          RUST_185_DIR=$(find /opt/rustup/toolchains -maxdepth 2 -name "cargo" -path "*1.85*" 2>/dev/null | head -1 | xargs dirname)
+          RUST_185_CARGO=$(find /opt/rustup/toolchains -maxdepth 2 -name "cargo" -path "*1.85*" 2>/dev/null | head -1)
+          RUST_185_DIR=$(dirname "$RUST_185_CARGO")
           echo "Using Rust 1.85 at: $RUST_185_DIR"
-          echo "Rust 1.89: $RUST_189_DIR"
-          echo "Rust 1.85: $RUST_185_DIR"
-          "$RUST_189_CARGO" --version || { echo "ERROR: Rust 1.89 not found"; exit 1; }
 
           # Create wrapper: metadata → Rust 1.89, everything else → Rust 1.85
-          # Note: we must use the EXPLICIT binary path for 1.85, not $CARGO_HOME/bin/cargo
-          # because $CARGO_HOME/bin/cargo IS the rustup proxy (RUSTUP_TOOLCHAIN=1.85).
-          # exec'ing the proxy as a subcommand fails: "unknown proxy name cargo-real"
-          RUST_185_DIR=$(find /opt/rustup/toolchains -maxdepth 2 -name "cargo" -path "*1.85*" 2>/dev/null | head -1 | xargs dirname)
-          echo "Rust 1.85 dir: $RUST_185_DIR"
+          cat > /tmp/solana-release/bin/cargo << WRAPPER
+          #!/bin/bash
+          for arg in "$@"; do
+            if echo "$arg" | grep -q "metadata"; then
+              "$RUST_189_CARGO" "$@"
+              exit_code=$?
+              # v4 Cargo.lock was created by cargo +1.89 — delete it
+              # cargo build-sbf uses Rust 1.85 which can't read v4 lock format
+              rm -f Cargo.lock
+              exit $exit_code
+            fi
+          done
+          exec "$RUST_185_DIR/cargo" "$@"
+          WRAPPER
+          chmod +x /tmp/solana-release/bin/cargo
           cat > /tmp/solana-release/bin/cargo << WRAPPER
           #!/bin/bash
           for arg in "$@"; do
