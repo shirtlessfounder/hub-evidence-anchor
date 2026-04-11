@@ -33,10 +33,12 @@ jobs:
           export RUSTUP_HOME="/opt/rustup"
           export PATH="$CARGO_HOME/bin:$PATH"
           rm -rf "$CARGO_HOME" "$RUSTUP_HOME"
-          mkdir -p "$CARGO_HOME/bin"
+          mkdir -p "$CARGO_HOME/bin" "$RUSTUP_HOME"
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
             sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
+          # Remove settings.toml so it doesn't override toolchain in future runs
+          rm -f /opt/rustup/settings.toml
           echo "Installed:"
           "$CARGO_HOME/bin/rustup" toolchain list
 
