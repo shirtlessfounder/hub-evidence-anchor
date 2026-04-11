@@ -34,12 +34,13 @@ jobs:
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
 
-      - name: Setup Rust toolchain
+      - name: Setup Rust toolchain (1.85 + 1.89)
         run: |
           mkdir -p /opt/cargo /opt/rustup
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
             sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
+          /opt/cargo/bin/rustup toolchain install 1.89.0 --no-modify-path
 
       - name: Decode wallet (Python base58 → JSON array)
         env:
@@ -82,21 +83,21 @@ jobs:
           # Install v4.0.0 from crates.io using Rust 1.85
           # v4.0.0 uses Rust 1.85+ internally → can parse edition2024 crates
           # The Solana CLI bundled cargo-build-sbf (v1.72) can't parse v4 lockfiles
-          /opt/cargo/bin/cargo +1.85 install solana-cargo-build-sbf --version 4.0.0 2>&1 || \
-            /opt/cargo/bin/cargo +1.85 install solana-cargo-build-sbf 2>&1 || true
+          /opt/cargo/bin/cargo +1.89 install solana-cargo-build-sbf --version 4.0.0 2>&1 || \
+            /opt/cargo/bin/cargo +1.89 install solana-cargo-build-sbf 2>&1 || true
           echo "=== Installed cargo-build-sbf ==="
-          ~/.cargo/bin/cargo-build-sbf --version 2>&1 || echo "Install may have failed"
+          /opt/cargo/bin/cargo-build-sbf --version 2>&1 || echo "Install may have failed"
 
       - name: Build program
         run: |
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
           # Use the crates.io version (v4.0.0) which has Rust 1.85 internally
           echo "=== cargo-build-sbf version ==="
-          ~/.cargo/bin/cargo-build-sbf --version 2>&1 || echo "Using fallback"
+          /opt/cargo/bin/cargo-build-sbf --version 2>&1 || echo "Using fallback"
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
           echo "=== Building with solana-cargo-build-sbf v4 (Rust 1.85) ==="
-          ~/.cargo/bin/cargo-build-sbf 2>&1
+          /opt/cargo/bin/cargo-build-sbf 2>&1
           echo "=== Artifact ==="
           SBF_OUT="target/sbpf-solana-solana/release/hub_evidence_anchor.so"
           if [ -f "$SBF_OUT" ]; then
