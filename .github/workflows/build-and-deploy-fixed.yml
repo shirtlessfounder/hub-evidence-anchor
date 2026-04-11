@@ -41,7 +41,7 @@ jobs:
       - name: Decode wallet
         env:
           WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
-        run: |10
+        run: |
           # solana-keygen handles JSON array format natively
           echo "$WALLET_JSON" > /tmp/wallet_secret.txt
           if /tmp/solana-release/bin/solana-keygen pubkey /tmp/wallet_secret.txt > /tmp/program-pubkey.txt 2>&1; then

@@ -14,8 +14,6 @@ env:
   RUSTUP_HOME: /opt/rustup
   RUSTUP_TOOLCHAIN: "1.89"
   SOLANA_CLI_VERSION: "v1.18.6"
-  CARGO_HOME: /opt/cargo
-  RUSTUP_HOME: /opt/rustup
   PATH: /tmp/solana-release/bin:/opt/cargo/bin:/home/runner/.cargo/bin:/usr/local/bin:/usr/bin:/bin
 
 jobs:
