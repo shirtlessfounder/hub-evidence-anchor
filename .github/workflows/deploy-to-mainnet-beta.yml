@@ -13,11 +13,10 @@ env:
   CARGO_HOME: /opt/cargo
   RUSTUP_HOME: /opt/rustup
   RUSTUP_TOOLCHAIN: "1.85"
-  SOLANA_CLI_VERSION: "v1.18.6"
   PATH: /tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -29,70 +28,35 @@ jobs:
           curl -sSfL https://github.com/anza-xyz/agave/releases/download/v3.1.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2 | tar jx
           mv solana-release /tmp/solana-release
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
-          /tmp/solana-release/bin/solana --version
 
-      - name: Setup Rust toolchain
+      - name: Setup Rust 1.85
         run: |
           mkdir -p /opt/cargo /opt/rustup
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-            CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
-            sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
+          curl --proto =https --tlsv1.2 -sSf https://sh.rustup.rs |             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME"             sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
 
       - name: Install clang
         run: |
           sudo apt-get update && sudo apt-get install -y clang-format clang
-          clang --version
 
-      - name: Decode wallet (Python base58)
-        env:
-          WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
+      - name: Decode wallet
         run: |
-          python3 << 'PYEOF'
-          import os, sys, base64
-          ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-          secret = os.environ.get('WALLET_JSON', '').strip()
-          if len(secret) == 88:
-              n = 0
-              for c in secret:
-                  n = n * 58 + ALPHABET.index(c)
-              raw = n.to_bytes(64, 'big')
-              with open('/tmp/wallet.json', 'wb') as f:
-                  f.write(raw)
-              print('Wallet decoded (base58, 64 bytes)')
-          else:
-              with open('/tmp/wallet.json', 'wb') as f:
-                  f.write(base64.b64decode(secret))
-              print('Wallet decoded (base64)')
-          PYEOF
+          echo "$ANCHOR_WALLET_JSON" | base64 -d > /tmp/wallet.json
 
-      - name: Check balance and close buffers
+      - name: Check balance
         run: |
-          /tmp/solana-release/bin/solana program close --buffers --keypair /tmp/wallet.json --url mainnet-beta 2>&1 || echo "No buffers"
-          /tmp/solana-release/bin/solana balance --keypair /tmp/wallet.json --url mainnet-beta 2>&1 || echo "Balance check done"
+          /tmp/solana-release/bin/solana balance --keypair /tmp/wallet.json --url mainnet-beta
 
-      - name: Generate Cargo.lock with Rust 1.85
+      - name: Close buffers
         run: |
-          echo "=== cargo version ==="
-          cargo --version
+          /tmp/solana-release/bin/solana program close --buffers --keypair /tmp/wallet.json --url mainnet-beta || true
+
+      - name: Generate Cargo.lock
+        run: |
           cargo +1.85 generate-lockfile 2>&1 || true
-          head -1 Cargo.lock 2>/dev/null || echo "No Cargo.lock"
 
-      - name: Build program
+      - name: Build
         run: |
-          export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
-          echo "=== cargo-build-sbf version ==="
-          /tmp/solana-release/bin/cargo-build-sbf --version
-          echo "=== Program ID ==="
-          grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
-          echo "=== Building ==="
           /tmp/solana-release/bin/cargo-build-sbf 2>&1
-          SBF_OUT="target/sbpf-solana-solana/release/hub_evidence_anchor.so"
-          if [ -f "$SBF_OUT" ]; then
-            echo "BUILD SUCCESS: $(ls -lh $SBF_OUT)"
-          else
-            echo "BUILD FAILED"
-            exit 1
-          fi
 
       - name: Copy artifact
         run: |
@@ -100,16 +64,10 @@ jobs:
           cp target/sbpf-solana-solana/release/hub_evidence_anchor.so programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
           ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
 
-      - name: Deploy to mainnet-beta
+      - name: Deploy
         run: |
-          SO="programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so"
-          echo "=== Deploying $SO ==="
-          ls -lh "$SO"
-          /tmp/solana-release/bin/solana program deploy "$SO" \
-            --keypair /tmp/wallet.json \
-            --url mainnet-beta \
-            --skip-upgrade-authority-validation 2>&1
+          /tmp/solana-release/bin/solana program deploy             programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so             --keypair /tmp/wallet.json --url mainnet-beta             --skip-upgrade-authority-validation 2>&1
 
-      - name: Verify deployment
+      - name: Verify
         run: |
-          /tmp/solana-release/bin/solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url mainnet-beta 2>&1 || echo "Done"
+          /tmp/solana-release/bin/solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url mainnet-beta
