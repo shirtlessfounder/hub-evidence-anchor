@@ -41,7 +41,7 @@ jobs:
       - name: Decode wallet
         env:
           WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
-        run: |
+        run: |10
           # solana-keygen handles JSON array format natively
           echo "$WALLET_JSON" > /tmp/wallet_secret.txt
           if /tmp/solana-release/bin/solana-keygen pubkey /tmp/wallet_secret.txt > /tmp/program-pubkey.txt 2>&1; then
@@ -93,7 +93,7 @@ jobs:
             print(f"Wallet: {addr}")
             with open("/tmp/program-pubkey.txt", "w") as f:
                 f.write(addr + "\n")
-            PYEOF
+          PYEOF
           fi
           echo "Wallet ready: $(cat /tmp/program-pubkey.txt)"
 
