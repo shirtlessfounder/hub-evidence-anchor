@@ -20,56 +20,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Solana CLI
+      - name: Install Solana CLI (v3.1.13 with platform-tools v1.52 / Rust 1.89)
         run: |
           set -e
           # Use GitHub URL to avoid SSL errors with release.solana.com
-          curl -L --proto '=https' --tlsv1.2 -f "https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2" -o /tmp/solana.tar.bz2
+          curl -L --proto '=https' --tlsv1.2 -f "https://github.com/anza-xyz/agave/releases/download/v3.1.13/solana-release-x86_64-unknown-linux-gnu.tar.bz2" -o /tmp/solana.tar.bz2
           tar jxf /tmp/solana.tar.bz2
           rm -f /tmp/solana.tar.bz2
           rm -rf /tmp/solana-release
           mv solana-release /tmp/solana-release
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
+          echo "=== cargo-build-sbf version ==="
+          /tmp/solana-release/bin/cargo-build-sbf --version
 
-      - name: Setup Rust toolchains (1.85 for build, 1.89 for metadata)
+      - name: Install Rust toolchains
         run: |
           mkdir -p /opt/cargo /opt/rustup
-          # Install Rust 1.85 (for cargo build-sbf) at custom CARGO_HOME/RUSTUP_HOME
+          # Install Rust 1.85 (needed for cargo build-sbf to run cargo as a subprocess)
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
             sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
-          # Install Rust 1.89 (for cargo metadata — parses edition 2024 crates)
-          RUSTUP_HOME=/opt/rustup rustup toolchain install 1.89.0 2>&1 | tail -3 || echo "1.89 already installed"
-          echo "=== Installed toolchains ==="
+          echo "=== Rust toolchains ==="
           rustup toolchain list
-
-      - name: Setup Solana rustup toolchain (for cargo +solana)
-        run: |
-          # cargo +solana (used internally by cargo build-sbf) needs a rustup toolchain named 'solana'
-          # cargo-build-sbf downloads platform-tools rust to ~/.cache/solana/
-          # We link that as a rustup toolchain named 'solana'
-          export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
-          export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
-
-          echo "=== Priming platform-tools (dummy build) ==="
-          mkdir -p /tmp/dummy-build
-          cd /tmp/dummy-build
-          /tmp/solana-release/bin/cargo-build-sbf --version 2>&1 || true
-          cd /home/runner/work/hub-evidence-anchor/hub-evidence-anchor
-          rm -rf /tmp/dummy-build
-
-          echo "=== Finding platform-tools rust in ~/.cache/solana/ ==="
-          # Find the platform-tools rust — has bin/cargo, bin/rustc, lib/rustlib/
-          PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -name "rustc" -path "*/platform-tools/*/rust/bin/rustc" 2>/dev/null | head -1 | xargs dirname 2>/dev/null | xargs dirname 2>/dev/null || true)
-          echo "Platform-tools rust: $PLATFORM_TOOLS_RUST"
-          if [ -n "$PLATFORM_TOOLS_RUST" ] && [ -d "$PLATFORM_TOOLS_RUST" ]; then
-            rustup toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || true
-          else
-            echo "WARNING: No platform-tools rust found — cargo build-sbf may fail"
-          fi
-          rustup toolchain list || true
-          cargo +solana --version 2>&1 || echo "cargo +solana not available (OK if using fixed workflow)"
 
       - name: Install clang
         run: |
@@ -81,70 +54,36 @@ jobs:
           echo $ANCHOR_WALLET_JSON | base64 -d > /tmp/wallet.json
           solana-keygen verify /tmp/wallet.json || echo "Wallet decode done"
 
-      - name: Create cargo wrapper (metadata → Rust 1.89, build → Rust 1.85)
+      - name: Install platform-tools Rust 1.89 (supports edition 2024)
         run: |
-          export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
-          export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
+          # platform-tools v1.52 (in v3.1.13) includes Rust 1.89 which supports edition 2024
+          # Use --install-only to download without building
+          # Unset RUSTC/CARGO so platform-tools installer can manage them freely
+          env -u RUSTC -u CARGO \
+            /tmp/solana-release/bin/cargo-build-sbf --install-only --force-tools-install 2>&1 | tail -5
 
-          # rustup toolchain list output:
-          #   1.85.0-x86_64-unknown-linux-gnu (default)
-          #   1.89.0-x86_64-unknown-linux-gnu
-          # Parse the full name (strip " (default)" suffix) and construct path
-          RUST_185_FULL=$(rustup toolchain list | grep "^1\.85\." | sed 's/ (default)//')
-          RUST_189_FULL=$(rustup toolchain list | grep "^1\.89\." | sed 's/ (default)//')
-          RUST_185_PATH="/opt/rustup/toolchains/${RUST_185_FULL}/bin"
-          RUST_189_PATH="/opt/rustup/toolchains/${RUST_189_FULL}/bin"
-          echo "Rust 1.85: $RUST_185_PATH"
-          echo "Rust 1.89: $RUST_189_PATH"
-          echo "Cargo 1.85 exists: $(test -f "$RUST_185_PATH/cargo" && echo YES || echo NO)"
-          echo "Cargo 1.89 exists: $(test -f "$RUST_189_PATH/cargo" && echo YES || echo NO)"
-
-          [ -n "$RUST_185_PATH" ] || { echo "ERROR: Rust 1.85 not found"; exit 1; }
-          [ -n "$RUST_189_PATH" ] || { echo "ERROR: Rust 1.89 not found"; exit 1; }
-          [ -f "$RUST_185_PATH/cargo" ] || { echo "ERROR: Rust 1.85 cargo missing at $RUST_185_PATH/cargo"; ls -la "/opt/rustup/toolchains/${RUST_185_FULL}/" 2>/dev/null || echo "toolchain dir not found"; exit 1; }
-          [ -f "$RUST_189_PATH/cargo" ] || { echo "ERROR: Rust 1.89 cargo missing at $RUST_189_PATH/cargo"; exit 1; }
-
-          "$RUST_189_PATH/cargo" --version
-          "$RUST_185_PATH/cargo" --version
-
-          # Create wrapper at /tmp/solana-release/bin/cargo:
-          # metadata → Rust 1.89 (parses edition 2024 Cargo.toml)
-          # all other → Rust 1.85 (cargo build-sbf compatible)
-          # NOTE: must use EXPLICIT binary paths, NOT $CARGO_HOME/bin/cargo
-          # because $CARGO_HOME/bin/cargo IS the rustup proxy for 1.85
-          cat > /tmp/solana-release/bin/cargo << WRAPPER
-          #!/bin/bash
-          # Add CARGO_HOME/bin so rustup is available at runtime for +solana routing
-          export PATH="$CARGO_HOME/bin:$PATH"
-          for arg in "\$@"; do
-            if echo "\$arg" | grep -q "metadata"; then
-              "$RUST_189_PATH/cargo" "\$@"
-              exit_code=\$?
-              # v4 Cargo.lock was created by cargo +1.89 — delete it
-              # cargo build-sbf (Rust 1.85) can't read v4 lock format
-              rm -f Cargo.lock
-              exit \$exit_code
-            fi
-          done
-          # Handle +solana: call Solana rustup toolchain cargo directly
-          # (rustup toolchain link fails because agave has a FILE at lib/ not a dir)
-          # Solana cargo is at: ~/.local/share/solana/install/active_release/bin/cargo
-          has_solana=$(echo "\$*" | grep -c '+solana' || true)
-          if [ "\$has_solana" -gt 0 ]; then
-            # Strip +solana from args and call Solana cargo directly
-            cleaned=$(echo "$@" | sed "s/+solana//g")
-            exec /home/runner/.local/share/solana/install/active_release/bin/cargo $cleaned
+          # Find the installed platform-tools rust
+          PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -maxdepth 3 -name "rustc" -path "*/platform-tools/*/bin/rustc" 2>/dev/null | head -1 | xargs dirname 2>/dev/null | xargs dirname 2>/dev/null || echo "")
+          echo "Platform-tools rust: $PLATFORM_TOOLS_RUST"
+          if [ -z "$PLATFORM_TOOLS_RUST" ] || [ ! -f "$PLATFORM_TOOLS_RUST/bin/rustc" ]; then
+            echo "ERROR: Platform-tools rust not found"
+            ls -la "$HOME/.cache/solana/" 2>/dev/null || echo "No cache"
+            exit 1
           fi
-          exec "$RUST_185_PATH/cargo" "\$@"
-          WRAPPER
-          chmod +x /tmp/solana-release/bin/cargo
+          echo "Rustc: $($PLATFORM_TOOLS_RUST/bin/rustc --version)"
 
-          echo "=== Test: cargo metadata (routes to Rust 1.89) ==="
-          /tmp/solana-release/bin/cargo metadata --format-version 1 2>&1 | head -3
+          # Link platform-tools rust as rustup toolchain 'solana'
+          # cargo +solana is used internally by cargo-build-sbf for the actual program compilation
+          rustup toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || echo "link may exist"
+          echo "=== Toolchains ==="
+          rustup toolchain list
+          echo "=== Test cargo +solana ==="
+          cargo +solana --version 2>&1 || echo "cargo +solana test done"
 
-      - name: Generate Cargo.lock
+      - name: Generate Cargo.lock (with edition 2024 deps)
         run: |
-          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
+          # Generate lockfile with Rust 1.85 (parses edition 2024)
+          export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           echo "=== cargo version ==="
           cargo --version
           echo "=== Generating Cargo.lock ==="
@@ -153,21 +92,13 @@ jobs:
 
       - name: Build program
         run: |
-          export CARGO_HOME="/opt/cargo"
-          export RUSTUP_HOME="/opt/rustup"
-          # RUSTUP_TOOLCHAIN forces all cargo invocations (including subprocesses
-          # spawned by cargo build-sbf) to use Rust 1.85
-          export RUSTUP_TOOLCHAIN=1.85
-          export PATH="/opt/cargo/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
+          export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
-          echo "=== Toolchain check ==="
-          cargo --version
-          cargo build-sbf --version 2>&1 || echo "build-sbf version done"
-          rustup toolchain list
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
           echo "=== Building with cargo build-sbf ==="
-          cargo build-sbf 2>&1
+          # cargo-build-sbf internally calls cargo +solana which uses platform-tools Rust 1.89
+          /tmp/solana-release/bin/cargo-build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
 
       - name: Check artifact
         run: |
