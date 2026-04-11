@@ -129,13 +129,13 @@ jobs:
           
           echo ""
           echo "=== Toolchain check ==="
-          /opt/cargo/bin/cargo +solana --version 2>&1 || echo "solana toolchain check failed"
+          /opt/cargo/bin/cargo build-sbf --version 2>&1 || echo "build-sbf check done"
           /opt/cargo/bin/rustup toolchain list 2>&1
           which cargo || echo "CARGO NOT IN PATH"
           
           echo ""
-          echo "=== Building with cargo +solana build-sbf ==="
-          /opt/cargo/bin/cargo +solana build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
+          echo "=== Building with cargo build-sbf ==="
+          /opt/cargo/bin/cargo build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
           
           echo ""
           echo "=== Copy .so to expected path ==="
