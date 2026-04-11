@@ -151,7 +151,7 @@ jobs:
 
       - name: Deploy to mainnet-beta
         run: |
-          SO_FILE="programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so"
+          SO_FILE="programs/hub-evidence-anchor/hub_evidence_anchor.so"
           if [ ! -f "$SO_FILE" ]; then
             echo "ERROR: No .so found at $SO_FILE — set skip_build=false or push a built .so"
             exit 1
