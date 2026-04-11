@@ -38,9 +38,9 @@ jobs:
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
             sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
 
-      - name: Install clang
+      - name: Install system deps (bzip2 + clang)
         run: |
-          sudo apt-get update && sudo apt-get install -y clang-format clang
+          sudo apt-get update && sudo apt-get install -y bzip2 clang
           clang --version
 
       - name: Decode wallet (Python base58 → JSON array)
