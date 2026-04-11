@@ -31,9 +31,9 @@ jobs:
 
           echo "Installed: $(/tmp/solana-release/bin/solana --version)"
 
-      - name: Install Rust 1.85 toolchain
+      - name: Install Rust 1.89 toolchain
         run: |
-          # Install Rust 1.85 (edition2024 deps like toml_datetime require 1.85)
+          # Install Rust 1.89 (edition2024 deps like toml_datetime require 1.89)
           # Use default location so cargo is found via $HOME/.cargo/bin in subsequent steps
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
@@ -42,10 +42,10 @@ jobs:
           # CRITICAL: also remove settings.toml or it overrides --default-toolchain
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
-            sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
-          # Verify cargo resolves to 1.85 (settings.toml can override default)
+            sh -s -- -y --default-toolchain 1.89.0 --no-modify-path
+          # Verify cargo resolves to 1.89 (settings.toml can override default)
           "$CARGO_HOME/bin/rustup" set profile minimal
-          "$CARGO_HOME/bin/rustup" default 1.85.0
+          "$CARGO_HOME/bin/rustup" default 1.89.0
           echo "=== Toolchains installed ==="
           "$CARGO_HOME/bin/rustup" toolchain list
           echo "=== Cargo version ==="
@@ -111,7 +111,7 @@ jobs:
           echo "=== Current slot ==="
           /tmp/solana-release/bin/solana slot --url $RPC_URL
 
-      - name: Generate Cargo.lock with Rust 1.85
+      - name: Generate Cargo.lock with Rust 1.89
         if: inputs.skip_build != 'true'
         run: |
           set -e
@@ -122,7 +122,7 @@ jobs:
           echo "=== Verify correct cargo ==="
           which cargo
           cargo --version
-          echo "=== Generating Cargo.lock with cargo 1.85 ==="
+          echo "=== Generating Cargo.lock with cargo 1.89 ==="
           cargo generate-lockfile 2>&1 || true
           echo "=== Cargo.lock generated ==="
           ls -la Cargo.lock 2>/dev/null || echo "No Cargo.lock"
@@ -134,24 +134,24 @@ jobs:
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
           # RUSTUP_TOOLCHAIN forces ALL cargo invocations (including cargo-metadata
-          # subprocesses spawned by cargo build-sbf) to use 1.85 automatically
-          export RUSTUP_TOOLCHAIN=1.85
+          # subprocesses spawned by cargo build-sbf) to use 1.89 automatically
+          export RUSTUP_TOOLCHAIN=1.89
           # Do NOT include $HOME/.cargo/bin — runner pre-installs Rust 1.81 there
           export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
           
-          echo "=== Rust version (should be 1.85) ==="
+          echo "=== Rust version (should be 1.89) ==="
           cargo --version
           echo "=== RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN ==="
           
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
           echo ""
-          echo "=== Building with cargo-build-sbf (PATH=1.85 cargo, so cargo-build-sbf finds the right cargo) ==="
-          # cargo-build-sbf is in /tmp/solana-release/bin, cargo 1.85 is in /opt/cargo/bin
-          # Put cargo 1.85 FIRST so cargo-build-sbf finds it when it calls 'cargo' internally
+          echo "=== Building with cargo-build-sbf (PATH=1.89 cargo, so cargo-build-sbf finds the right cargo) ==="
+          # cargo-build-sbf is in /tmp/solana-release/bin, cargo 1.89 is in /opt/cargo/bin
+          # Put cargo 1.89 FIRST so cargo-build-sbf finds it when it calls 'cargo' internally
           export PATH="/opt/cargo/bin:/tmp/solana-release/bin:$PATH"
-          export RUSTUP_TOOLCHAIN=1.85
+          export RUSTUP_TOOLCHAIN=1.89
           cargo build-sbf 2>&1
           echo ""
           echo "=== Verifying artifact ==="
