@@ -8,8 +8,9 @@ on:
 env:
   SOLANA_CLI_VERSION: "v1.18.6"
   PROGRAM_ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
-  # cargo-build-sbf needs cargo in PATH
-  PATH: /tmp/solana-release/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+  CARGO_HOME: /opt/cargo
+  RUSTUP_HOME: /opt/rustup
+  PATH: /tmp/solana-release/bin:/opt/cargo/bin:/usr/local/bin:/usr/bin:/bin
 
 jobs:
   build-and-deploy:
@@ -26,19 +27,27 @@ jobs:
 
       - name: Install Rust + Solana toolchain
         run: |
-          if ! command -v cargo &>/dev/null; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          fi
-          source "$HOME/.cargo/env" 2>/dev/null || true
+          export CARGO_HOME="/opt/cargo"
+          export RUSTUP_HOME="/opt/rustup"
+          export PATH="$CARGO_HOME/bin:$PATH"
+          rm -rf "$CARGO_HOME" "$RUSTUP_HOME"
+          mkdir -p "$CARGO_HOME/bin" "$RUSTUP_HOME"
+          # Remove settings.toml BEFORE rustup runs — it overrides --default-toolchain
+          rm -f /opt/rustup/settings.toml
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+            CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
+            sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
+          echo "Installed:"
+          "$CARGO_HOME/bin/rustup" toolchain list
           # cargo-build-sbf uses 'cargo +solana' internally — link to platform-tools rust
           PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -name "rustc" -path "*/platform-tools/*/rust/bin/rustc" 2>/dev/null | head -1 | xargs dirname 2>/dev/null | xargs dirname 2>/dev/null || true)
           echo "Found platform-tools rust: $PLATFORM_TOOLS_RUST"
           if [ -n "$PLATFORM_TOOLS_RUST" ] && [ -d "$PLATFORM_TOOLS_RUST" ]; then
-            rustup toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || true
+            "$CARGO_HOME/bin/rustup" toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || true
           else
-            echo "WARNING: No platform-tools rust found — using embedded rust in cargo-build-sbf"
+            echo "WARNING: No platform-tools rust found — cargo-build-sbf may use embedded rust"
           fi
-          rustup toolchain list || true
+          "$CARGO_HOME/bin/rustup" toolchain list || true
           cargo +solana --version 2>/dev/null || echo "solana toolchain link may have failed"
 
       - name: Decode wallet
@@ -72,15 +81,41 @@ jobs:
 
       - name: Build program
         run: |
+          export CARGO_HOME="/opt/cargo"
+          export RUSTUP_HOME="/opt/rustup"
+          export RUSTUP_TOOLCHAIN=1.85
+          export PATH="/opt/cargo/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
+          export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
+          echo "=== Toolchain check ==="
+          cargo --version
+          cargo build-sbf --version 2>&1 || echo "build-sbf check done"
+          "$CARGO_HOME/bin/rustup" toolchain list 2>&1
+          which cargo || echo "CARGO NOT IN PATH"
+          echo ""
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           echo ""
-          echo "=== Cleaning ==="
-          rm -f Cargo.lock
-          find . -name "Cargo.lock" -delete 2>/dev/null || true
-          echo ""
           echo "=== Building ==="
-          cargo-build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
+          cargo build-sbf 2>&1
+          echo ""
+          echo "=== Copy .so to expected path ==="
+          SBF_OUT="programs/hub-evidence-anchor/target/sbpf-solana-solana/release/hub_evidence_anchor.so"
+          DEPLOY_DIR="programs/hub-evidence-anchor/target/deploy"
+          mkdir -p "$DEPLOY_DIR"
+          if [ -f "$SBF_OUT" ]; then
+            cp "$SBF_OUT" "$DEPLOY_DIR/hub_evidence_anchor.so"
+            echo "Copied .so to $DEPLOY_DIR/"
+          else
+            SBF_ROOT="target/sbpf-solana-solana/release/hub_evidence_anchor.so"
+            if [ -f "$SBF_ROOT" ]; then
+              cp "$SBF_ROOT" "$DEPLOY_DIR/hub_evidence_anchor.so"
+              echo "Copied .so from workspace root to $DEPLOY_DIR/"
+            else
+              echo "BUILD FAILED: No .so found"
+              find . -name "hub_evidence_anchor.so" 2>/dev/null
+              exit 1
+            fi
+          fi
           echo ""
           echo "=== Build artifacts ==="
           if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then
@@ -88,7 +123,6 @@ jobs:
             ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
           else
             echo "BUILD FAILED: No .so found"
-            find programs/hub-evidence-anchor/target -name "*.so" 2>/dev/null || echo "No .so files"
             exit 1
           fi
 

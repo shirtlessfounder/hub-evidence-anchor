@@ -26,19 +26,16 @@ jobs:
 
       - name: Install Rust 1.85 toolchain
         run: |
-          # Install Rust 1.85 to /opt/cargo (needed for cargo-build-sbf to find cargo)
-          # GitHub Actions runners have cargo pre-installed — we still need to install
-          # to /opt/cargo so the build step's PATH finds it there.
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
           export PATH="$CARGO_HOME/bin:$PATH"
           rm -rf "$CARGO_HOME" "$RUSTUP_HOME"
           mkdir -p "$CARGO_HOME/bin" "$RUSTUP_HOME"
+          # Remove settings.toml BEFORE rustup runs — it overrides --default-toolchain
+          rm -f /opt/rustup/settings.toml
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
             sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
-          # Remove settings.toml so it doesn't override toolchain in future runs
-          rm -f /opt/rustup/settings.toml
           echo "Installed:"
           "$CARGO_HOME/bin/rustup" toolchain list
 
