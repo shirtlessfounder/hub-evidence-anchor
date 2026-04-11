@@ -39,12 +39,90 @@ jobs:
         run: |
           python3 << 'PYEOF'
           import os, json, base64
+          
           secret = os.environ.get('ANCHOR_WALLET_JSON', '').strip()
-          decoded = base64.b64decode(secret)
-          key = list(decoded)
-          with open('/tmp/wallet.json', 'w') as f:
-              json.dump(key, f)
-          print('Wallet decoded')
+          print(f"Secret length: {len(secret)}")
+          
+          # Try to figure out what format the secret is in
+          if len(secret) == 0:
+            raise Exception("ANCHOR_WALLET_JSON is empty!")
+          
+          # Format 1: raw 88-char base58 keypair → base64 encoded
+          # Format 2: base64 of base58 string
+          # Format 3: already the raw base58 string
+          
+          # Try: raw base58 → bytes → base64.b64decode → base58.b58decode → 64 bytes
+          try:
+            # First: is the secret itself base58 (88 chars)?
+            if len(secret) >= 80:
+              candidate = secret[:88] if len(secret) > 88 else secret
+              if all(c in '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz' for c in candidate):
+                import base58
+                try:
+                  decoded = base58.b58decode(candidate)
+                  if len(decoded) == 64:
+                    print(f"Format: raw base58 ({len(decoded)} bytes)")
+                    key = list(decoded)
+                    with open('/tmp/wallet.json', 'w') as f:
+                      json.dump(key, f)
+                    print(f"Wallet written: {len(key)} elements")
+                    with open('/tmp/wallet.json') as f:
+                      content = f.read()
+                    print(f"JSON length: {len(content)}, starts: {content[:50]}")
+                    exit(0)
+                except:
+                  pass
+          except ImportError:
+            pass
+          
+          # Format 2: base64 encoded base58 string
+          try:
+            decoded = base64.b64decode(secret)
+            print(f"After base64.b64decode: {len(decoded)} bytes, first byte: {decoded[0] if decoded else None}")
+            
+            # Try base58 decode
+            import base58
+            try:
+              b58_decoded = base58.b58decode(decoded)
+              if len(b58_decoded) == 64:
+                print(f"Format: base64(base58) → {len(b58_decoded)} bytes")
+                key = list(b58_decoded)
+                with open('/tmp/wallet.json', 'w') as f:
+                  json.dump(key, f)
+                print(f"Wallet written: {len(key)} elements")
+                exit(0)
+            except:
+              pass
+              
+            # Maybe it's base64 of JSON array?
+            try:
+              json_arr = json.loads(decoded)
+              if isinstance(json_arr, list) and len(json_arr) == 64:
+                print(f"Format: base64(JSON array) → {len(json_arr)} elements")
+                with open('/tmp/wallet.json', 'w') as f:
+                  json.dump(json_arr, f)
+                exit(0)
+            except:
+              pass
+              
+            # Maybe base64 of base58 key, try treating as ASCII base58
+            try:
+              b58_str = decoded.decode('ascii')
+              if all(c in '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz' for c in b58_str.strip()):
+                import base58
+                b58_bytes = base58.b58decode(b58_str.strip())
+                if len(b58_bytes) == 64:
+                  print(f"Format: base64(base58_str) → {len(b58_bytes)} bytes")
+                  key = list(b58_bytes)
+                  with open('/tmp/wallet.json', 'w') as f:
+                    json.dump(key, f)
+                  exit(0)
+            except Exception as e:
+              print(f"ASCII decode failed: {e}")
+          except Exception as e:
+            print(f"base64 decode failed: {e}")
+          
+          raise Exception("Could not decode wallet - unknown format")
           PYEOF
 
       - name: Check balance
