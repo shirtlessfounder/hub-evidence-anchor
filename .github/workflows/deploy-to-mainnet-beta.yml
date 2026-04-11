@@ -40,7 +40,7 @@ jobs:
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
             sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
           # Install Rust 1.89 at DEFAULT ~/.rustup (NOT our custom CARGO_HOME)
-          rustup toolchain install 1.89.0 2>&1 | tail -3 || echo "1.89 already installed"
+          RUSTUP_HOME=/opt/rustup rustup toolchain install 1.89.0 2>&1 | tail -3 || echo "1.89 already installed"
           echo "=== Installed toolchains ==="
           rustup toolchain list
           # Find 1.89 cargo using rustup which (reliable regardless of RUSTUP_HOME vs actual home)
