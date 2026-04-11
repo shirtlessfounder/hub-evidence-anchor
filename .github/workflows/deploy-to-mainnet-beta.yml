@@ -93,6 +93,8 @@ jobs:
           # because $CARGO_HOME/bin/cargo IS the rustup proxy for 1.85
           cat > /tmp/solana-release/bin/cargo << WRAPPER
           #!/bin/bash
+          # Add CARGO_HOME/bin so rustup is available at runtime for +solana routing
+          export PATH="$CARGO_HOME/bin:$PATH"
           for arg in "\$@"; do
             if echo "\$arg" | grep -q "metadata"; then
               "$RUST_189_PATH/cargo" "\$@"
