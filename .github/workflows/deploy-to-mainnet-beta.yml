@@ -67,11 +67,18 @@ jobs:
           cp "$CARGO_HOME/bin/cargo" /tmp/solana-release/bin/cargo-real
 
           # Create wrapper: metadata → Rust 1.89, everything else → Rust 1.85
+          # Key fix: after metadata runs (creates v4 Cargo.lock), auto-delete it
+          # so cargo build/sbf doesn't try to read an incompatible lock file
           cat > /tmp/solana-release/bin/cargo << WRAPPER
           #!/bin/bash
           for arg in "$@"; do
             if echo "$arg" | grep -q "metadata"; then
-              exec "$RUST_189_PATH/cargo" "$@"
+              "$RUST_189_PATH/cargo" "$@"
+              exit_code=$?
+              # v4 Cargo.lock was created by cargo +1.89 — delete it
+              # cargo build-sbf uses the solana toolchain which can't read v4
+              rm -f Cargo.lock
+              exit $exit_code
             fi
           done
           exec /tmp/solana-release/bin/cargo-real "$@"
@@ -85,16 +92,8 @@ jobs:
           echo "=== Test: cargo metadata (should route to Rust 1.89) ==="
           /tmp/solana-release/bin/cargo metadata --format-version 1 2>&1 | head -3
 
-      - name: Delete v4 Cargo.lock (incompatible with cargo-build-sbf solana toolchain)
-        run: |
-          if [ -f Cargo.lock ]; then
-            head -3 Cargo.lock
-            rm -f Cargo.lock
-            echo "Deleted v4 Cargo.lock"
-          else
-            echo "No Cargo.lock"
-          fi
-
+      # NOTE: v4 Cargo.lock deletion is handled automatically by the cargo wrapper
+      # (wrapper deletes Cargo.lock after every cargo +1.89 metadata call)
       - name: Generate Cargo.lock
         run: |
           export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
