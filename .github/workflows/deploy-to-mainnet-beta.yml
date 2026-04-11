@@ -54,6 +54,15 @@ jobs:
           # This is needed for cargo +solana (cargo-build-sbf uses this internally)
           echo "=== Installing Solana toolchain via agave-install-init ==="
           RUSTUP_HOME=/opt/rustup /tmp/agave-install-init v1.18.6 2>&1 | tail -10
+
+          # agave-install-init installs to /home/runner/.local/share/solana/, NOT into $RUSTUP_HOME/toolchains
+          # rustup run solana cargo needs a "solana" toolchain in rustup — create it as a symlink
+          SOLANA_TOOLCHAIN_PATH="/home/runner/.local/share/solana/install/active_release"
+          SOLANA_TOOLCHAIN_DIR="$RUSTUP_HOME/toolchains/solana-x86_64-unknown-linux-gnu"
+          mkdir -p "$RUSTUP_HOME/toolchains"
+          ln -sfn "$SOLANA_TOOLCHAIN_PATH" "$SOLANA_TOOLCHAIN_DIR"
+          echo "=== Solana toolchain symlinked to rustup ==="
+          ls -la "$SOLANA_TOOLCHAIN_DIR/bin/cargo" 2>&1 || echo "ERROR: cargo not found"
           echo "=== Verifying Solana toolchain ==="
           RUSTUP_HOME=/opt/rustup rustup toolchain list
 
