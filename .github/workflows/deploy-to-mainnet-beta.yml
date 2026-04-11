@@ -1,6 +1,7 @@
 on:
   push:
   workflow_dispatch:
+  workflow_dispatch:
 
 name: Build and Deploy to Mainnet-Beta
 
@@ -8,6 +9,12 @@ permissions:
   contents: read
   attestations: write
   id-token: write
+
+inputs:
+  skip_build:
+    description: Skip build and deploy the committed .so
+    default: 'false'
+    type: boolean
 
 env:
   CARGO_HOME: /opt/cargo
@@ -101,6 +108,7 @@ jobs:
           ls -la Cargo.lock 2>/dev/null && echo "Cargo.lock created" || echo "No Cargo.lock"
 
       - name: Build program
+        if: inputs.skip_build != 'true'
         run: |
           export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
@@ -121,6 +129,19 @@ jobs:
             find . -name "hub_evidence_anchor.so" 2>/dev/null | head -5
             exit 1
           fi
+
+      - name: Deploy pre-built .so
+        if: inputs.skip_build == 'true'
+        run: |
+          echo "Deploying committed .so"
+          SO="programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so"
+          ls -lh "$SO" || SO="programs/hub-evidence-anchor/hub_evidence_anchor.so"
+          ls -lh "$SO"
+          solana program deploy "$SO" \
+            --keypair /tmp/wallet.json \
+            --url mainnet-beta \
+            --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf \
+            --skip-upgrade-authority-validation 2>&1
 
       - name: Deploy to mainnet-beta
         run: |
