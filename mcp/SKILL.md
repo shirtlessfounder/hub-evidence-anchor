@@ -18,7 +18,7 @@ verify_trust(agent_id: string, threshold?: number, format?: string)
 **Parameters:**
 - `agent_id` (required): The agent ID to verify (e.g., `"quadricep"`)
 - `threshold` (optional): Minimum resolution rate (0.0–1.0). Default: `0.5`
-- `format` (optional): Output format — `"text"` (human-readable, default) or `"json"` (machine-readable structured data)
+- `format` (optional): Output format — `"text"` (human-readable, default) or `"json"` (machine-readable)
 
 **Example (text format, default):**
 ```
@@ -27,7 +27,26 @@ verify_trust(agent_id="quadricep", threshold=0.75)
   Trust Score: 85.7%
   Obligations: 6/7 resolved
   Failed: 1
+  Evidence Hash: sha256:abc123...
+  Authority: DKucjkYxpePQzLrg2PBL1YC3hHn8Yyr1CBY4qb7GobBw
   This agent meets the trust threshold.
+```
+
+**Example (JSON format — for programmatic use):**
+```
+verify_trust(agent_id="quadricep", threshold=0.75, format="json")
+→ {
+    "agent_id": "quadricep",
+    "found": true,
+    "approved": true,
+    "resolution_rate": 0.857,
+    "obligations": { "resolved": 6, "failed": 1, "total": 7 },
+    "evidence_hash": "sha256:...",
+    "authority": "DKucjk...",
+    "threshold_used": 0.75,
+    "last_updated_unix": 1743810000,
+    "last_updated_iso": "2026-04-04T20:00:00.000Z"
+  }
 ```
 
 #### `get_network_status`
@@ -45,55 +64,74 @@ get_network_status()
   Network: devnet
   Size: 305.1 KB
 ```
+
+#### `check_rpc_health`
+Verifies connectivity and latency to the Solana RPC endpoint.
+
+```
+check_rpc_health()
 ```
 
-**Example (JSON format — for programmatic use):**
+**Example:**
 ```
-verify_trust(agent_id="quadricep", threshold=0.75, format="json")
+check_rpc_health()
+→ RPC: https://api.devnet.solana.com
+  Network: devnet
+  Slot: 454011953
+  Latency: 142ms
+  Status: ✅ Connected
+```
+
+#### `batch_verify_trust`
+Verifies trust scores for multiple agents in a single call.
+
+```
+batch_verify_trust(agents: string, threshold?: number)
+```
+
+**Parameters:**
+- `agents` (required): Comma-separated list of agent IDs (e.g. `"quadricep,brain,testy"`)
+- `threshold` (optional): Minimum resolution rate. Default: `0.5`
+
+**Example:**
+```
+batch_verify_trust(agents="quadricep,brain,testy", threshold=0.5)
 → {
-    "agent_id": "quadricep",
-    "found": true,
-    "approved": true,
-    "resolution_rate": 0.857,
-    "obligations": {
-      "resolved": 6,
-      "failed": 1,
-      "total": 7
-    },
-    "evidence_hash": "sha256:...",
-    "threshold_used": 0.75,
-    "last_updated_unix": 1743810000,
-    "last_updated_iso": "2026-04-04T20:00:00.000Z"
+    "network": "devnet",
+    "threshold": 0.5,
+    "results": [
+      { "agent_id": "quadricep", "found": true, "approved": true, "resolution_rate": 0.857 },
+      { "agent_id": "brain", "found": true, "approved": true, "resolution_rate": 0.91 },
+      { "agent_id": "testy", "found": false, "approved": false, "resolution_rate": 0 }
+    ]
   }
 ```
-
-**Use JSON format when:**
-- Automating trust-gated workflows
-- Building agent-to-agent trust verification pipelines
-- Populating dashboards or trust leaderboards
-
-**Thresholds:**
-| Threshold | Use Case |
-|-----------|----------|
-| 0.0 | Anyone |
-| 0.5 | Micro-payments (<$10) |
-| 0.75 | Escrow contracts |
-| 0.9 | High-value transactions |
-| 0.95 | Admin powers |
 
 #### `list_trust_thresholds`
 Returns the standard trust threshold reference table.
 
-### Installation
+```
+list_trust_thresholds()
+```
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SOLANA_NETWORK` | `devnet` | Solana network: `devnet` or `mainnet-beta` |
+| `SOLANA_RPC` | auto | RPC URL (overrides `SOLANA_NETWORK`) |
+| `PROGRAM_ID` | spJAH8... | Hub Evidence Anchor program ID |
+
+**Production (mainnet):**
+```bash
+SOLANA_NETWORK=mainnet-beta npx tsx hub-evidence-anchor-mcp.ts
+```
+
+## Installation
 
 ```bash
 cd hub-evidence-anchor/mcp
 npm install
-npm run dev
-```
-
-Or run directly:
-```bash
 npx tsx hub-evidence-anchor-mcp.ts
 ```
 
@@ -106,7 +144,7 @@ npx tsx hub-evidence-anchor-mcp.ts
 ## Live Program
 
 - **Devnet**: `spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf` (deployed)
-- **Mainnet**: TBD
+- **Mainnet**: TBD (pending wallet funding)
 - **RPC**: `https://api.devnet.solana.com` (free tier)
 
 ## Data Source

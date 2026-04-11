@@ -38,40 +38,42 @@ interface HubEvidence {
   resolutionRate: number;
   evidenceHash: string;
   lastUpdated: number;
+  authority: string;
 }
 
 function parseHubEvidence(data: Buffer): HubEvidence {
-  let offset = 8; // skip discriminator
+  let offset = 8; // skip 8-byte Anchor discriminator
 
+  // agent_id: 4-byte length + UTF-8 string (max 64)
   const agentIdLen = data.readUInt32LE(offset);
   offset += 4;
   const agentId = data.subarray(offset, offset + agentIdLen).toString("utf8");
   offset += agentIdLen;
 
-  offset += 128; // hub_endpoint (skipped)
-
-  const obligationCount = data.readUInt32LE(offset);
+  // hub_endpoint: 4-byte length + UTF-8 string (max 128)
+  const hubEndpointLen = data.readUInt32LE(offset);
   offset += 4;
-  const resolvedCount = data.readUInt32LE(offset);
+  offset += hubEndpointLen;
+
+  // obligation_count, resolved_count, failed_count: u32 each
+  const obligationCount = data.readUInt32LE(offset); offset += 4;
+  const resolvedCount = data.readUInt32LE(offset); offset += 4;
+  const failedCount = data.readUInt32LE(offset); offset += 4;
+
+  // evidence_hash: 4-byte length + UTF-8 string (max 128)
+  const evidenceHashLen = data.readUInt32LE(offset);
   offset += 4;
-  const failedCount = data.readUInt32LE(offset);
-  offset += 4;
+  const evidenceHash = data.subarray(offset, offset + evidenceHashLen).toString("utf8");
+  offset += evidenceHashLen;
 
-  offset += 128; // evidence_hash string (not parsed here)
+  // resolution_rate: f64, last_updated: i64
+  const resolutionRate = data.readFloat64LE(offset); offset += 8;
+  const lastUpdated = Number(data.readBigInt64LE(offset)); offset += 8;
 
-  const resolutionRate = data.readFloat64LE(offset);
-  offset += 8;
-  const lastUpdated = data.readBigInt64LE(offset);
+  // authority: Pubkey (32 bytes)
+  const authority = new PublicKey(data.subarray(offset, offset + 32)).toBase58();
 
-  return {
-    agentId,
-    obligationCount,
-    resolvedCount,
-    failedCount,
-    resolutionRate,
-    evidenceHash: "(hash not parsed)",
-    lastUpdated: Number(lastUpdated),
-  };
+  return { agentId, obligationCount, resolvedCount, failedCount, resolutionRate, evidenceHash, lastUpdated, authority };
 }
 
 // Derive PDA for an agent
@@ -85,8 +87,8 @@ function deriveHubEvidencePDA(agentId: string): PublicKey {
 // Create MCP server
 const server = new McpServer({
   name: "Hub Evidence Anchor",
-  version: "0.2.0",
-  description: "On-chain behavioral trust oracle for Solana agents — now with structured JSON output",
+  version: "0.3.0",
+  description: "On-chain behavioral trust oracle for Solana agents — structured JSON, batch verification, RPC health check",
 });
 
 // Tool: verify_trust
@@ -156,6 +158,7 @@ server.tool(
           total: evidence.obligationCount,
         },
         evidence_hash: evidence.evidenceHash,
+        authority: evidence.authority,
         threshold_used: threshold,
         last_updated_unix: lastUpdatedUnix,
         last_updated_iso: lastUpdatedIso,
@@ -180,8 +183,9 @@ Trust Score: ${score}%
 Threshold: ${(threshold * 100).toFixed(0)}%
 Obligations: ${evidence.resolvedCount}/${evidence.obligationCount} resolved
 Failed: ${evidence.failedCount}
-Last Updated: ${lastUpdatedIso} (Unix: ${lastUpdatedUnix})
 Evidence Hash: ${evidence.evidenceHash}
+Authority: ${evidence.authority}
+Last Updated: ${lastUpdatedIso} (Unix: ${lastUpdatedUnix})
 
 ${approved ? "This agent meets the trust threshold." : "This agent does not meet the trust threshold."}`,
           },
@@ -240,6 +244,94 @@ Lamports: ${lamports ? (lamports / 1e9).toFixed(4) + " SOL" : "N/A"}` }],
     } catch (error) {
       return {
         content: [{ type: "text", text: `Error checking network status: ${error instanceof Error ? error.message : String(error)}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Tool: check_rpc_health
+server.tool(
+  "check_rpc_health",
+  "Checks connectivity to the Solana RPC endpoint",
+  {},
+  async () => {
+    const start = Date.now();
+    try {
+      const slot = await connection.getSlot();
+      const latencyMs = Date.now() - start;
+      return {
+        content: [{
+          type: "text",
+          text: `RPC: ${SOLANA_RPC}\nNetwork: ${SOLANA_NETWORK}\nSlot: ${slot}\nLatency: ${latencyMs}ms\nStatus: ✅ Connected`,
+        }],
+        isError: false,
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `RPC: ${SOLANA_RPC}\nNetwork: ${SOLANA_NETWORK}\nStatus: ❌ Unreachable\nError: ${error instanceof Error ? error.message : String(error)}`,
+        }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Tool: batch_verify_trust
+server.tool(
+  "batch_verify_trust",
+  "Verifies trust scores for multiple agents at once",
+  {
+    agents: {
+      type: "string",
+      description: "Comma-separated list of agent IDs to verify (e.g. 'quadricep,brain,testy')",
+    },
+    threshold: {
+      type: "number",
+      description: "Minimum resolution rate (0.0-1.0) for approval",
+      default: 0.5,
+    },
+  },
+  async ({ agents, threshold = 0.5 }) => {
+    try {
+      const agentIds = agents.split(",").map((a: string) => a.trim()).filter(Boolean);
+      const results = await Promise.allSettled(
+        agentIds.map(async (agentId: string) => {
+          const pda = deriveHubEvidencePDA(agentId);
+          const accountInfo = await connection.getAccountInfo(pda);
+          if (!accountInfo) return { agent_id: agentId, found: false, approved: false, resolution_rate: 0 };
+          const evidence = parseHubEvidence(accountInfo.data);
+          return {
+            agent_id: agentId,
+            found: true,
+            approved: evidence.resolutionRate >= threshold,
+            resolution_rate: parseFloat(evidence.resolutionRate.toFixed(4)),
+            obligations: {
+              resolved: evidence.resolvedCount,
+              failed: evidence.failedCount,
+              total: evidence.obligationCount,
+            },
+          };
+        })
+      );
+
+      const parsed = results.map((r, i) => {
+        if (r.status === "fulfilled") return r.value;
+        return { agent_id: agentIds[i], found: false, error: "RPC error" };
+      });
+
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({ network: SOLANA_NETWORK, threshold, results: parsed }, null, 2),
+        }],
+        isError: false,
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: `Batch verification failed: ${error instanceof Error ? error.message : String(error)}` }],
         isError: true,
       };
     }
