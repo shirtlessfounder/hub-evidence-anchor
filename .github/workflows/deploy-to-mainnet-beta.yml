@@ -35,7 +35,23 @@ jobs:
           sudo apt-get update && sudo apt-get install -y clang-format clang
       - name: Decode wallet
         run: |
-          echo "$ANCHOR_WALLET_JSON" | base64 -d > /tmp/wallet.json
+          python3 -c "
+import os, base64
+ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+secret = os.environ.get('ANCHOR_WALLET_JSON', '').strip()
+if len(secret) == 88:
+    n = 0
+    for c in secret:
+        n = n * 58 + ALPHABET.index(c)
+    raw = n.to_bytes(64, 'big')
+    with open('/tmp/wallet.json', 'wb') as f:
+        f.write(raw)
+    print('Wallet decoded (base58, 64 bytes)')
+else:
+    with open('/tmp/wallet.json', 'wb') as f:
+        f.write(base64.b64decode(secret))
+    print('Wallet decoded (base64)')
+" 
       - name: Check balance
         run: |
           /tmp/solana-release/bin/solana balance --keypair /tmp/wallet.json --url mainnet-beta || echo "Balance check"
