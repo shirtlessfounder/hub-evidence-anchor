@@ -48,52 +48,8 @@ jobs:
             echo "Wallet via solana-keygen: $(cat /tmp/program-pubkey.txt)"
             cp /tmp/wallet_secret.txt /tmp/wallet.json
           else
-            echo "solana-keygen failed — manual decode"
-            python3 << 'PYEOF'
-            import os, base64, json
-            ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-            secret = os.environ.get("WALLET_JSON", "").strip()
-            raw = None
-            # Try JSON array [1,2,3,...]
-            if secret.startswith('['):
-                arr = json.loads(secret)
-                raw = bytes(arr)
-                print(f"JSON array: {len(raw)} bytes")
-            # Try base58 (88-char Solana keypair)
-            elif len(secret) == 88:
-                try:
-                    n = 0
-                    for c in secret:
-                        n = n * 58 + ALPHABET.index(c)
-                    raw = n.to_bytes(64, 'big')
-                    print(f"Base58: {len(raw)} bytes")
-                except ValueError:
-                    pass
-            # Try base64 → then parse as JSON
-            if raw is None:
-                decoded = base64.b64decode(secret)
-                try:
-                    arr = json.loads(decoded)
-                    raw = bytes(arr)
-                    print(f"Base64+JSON: {len(raw)} bytes")
-                except:
-                    raw = decoded
-                    print(f"Base64 raw: {len(raw)} bytes")
-            if raw is None or len(raw) != 64:
-                print(f"ERROR: got {len(raw) if raw else 0} bytes, need 64")
-                exit(1)
-            with open("/tmp/wallet.json", "w") as f:
-                json.dump([int(b) for b in raw], f)
-            pub = raw[32:]
-            n = int.from_bytes(pub, 'big')
-            addr = ''
-            while n > 0:
-                n, rem = divmod(n, 58)
-                addr = ALPHABET[rem] + addr
-            print(f"Wallet: {addr}")
-            with open("/tmp/program-pubkey.txt", "w") as f:
-                f.write(addr + "\n")
-          PYEOF
+            echo "solana-keygen failed — decode wallet via scripts/decode_wallet.py"
+            python3 scripts/decode_wallet.py
           fi
           echo "Wallet ready: $(cat /tmp/program-pubkey.txt)"
 
