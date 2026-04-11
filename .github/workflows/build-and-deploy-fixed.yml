@@ -135,7 +135,7 @@ jobs:
           
           echo ""
           echo "=== Building with cargo build-sbf ==="
-          /opt/cargo/bin/cargo build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
+          /opt/cargo/bin/cargo +solana build-sbf 2>&1
           
           echo ""
           echo "=== Copy .so to expected path ==="
