@@ -59,14 +59,14 @@ jobs:
           export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
 
-          # rustup toolchain list gives clean one-per-line output:
+          # rustup toolchain list output:
           #   1.85.0-x86_64-unknown-linux-gnu (default)
           #   1.89.0-x86_64-unknown-linux-gnu
-          # Parse it to get the toolchain prefix, then get the full path via rustup which
-          RUST_185_NAME=$(rustup toolchain list | grep "^1\.85" | sed 's/ (.*//')
-          RUST_189_NAME=$(rustup toolchain list | grep "^1\.89" | sed 's/ (.*//')
-          RUST_185_PATH=$(rustup which --toolchain "$RUST_185_NAME" cargo 2>/dev/null | xargs dirname)
-          RUST_189_PATH=$(rustup which --toolchain "$RUST_189_NAME" cargo 2>/dev/null | xargs dirname)
+          # Parse the full name (strip " (default)" suffix) and construct path
+          RUST_185_FULL=$(rustup toolchain list | grep "^1\.85" | sed 's/ (default)//')
+          RUST_189_FULL=$(rustup toolchain list | grep "^1\.89" | sed 's/ (default)//')
+          RUST_185_PATH="/opt/rustup/toolchains/${RUST_185_FULL}/bin"
+          RUST_189_PATH="/opt/rustup/toolchains/${RUST_189_FULL}/bin"
           echo "Rust 1.85: $RUST_185_PATH"
           echo "Rust 1.89: $RUST_189_PATH"
 
