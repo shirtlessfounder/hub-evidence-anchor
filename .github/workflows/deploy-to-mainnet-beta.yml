@@ -12,7 +12,7 @@ permissions:
 env:
   CARGO_HOME: /opt/cargo
   RUSTUP_HOME: /opt/rustup
-  RUSTUP_TOOLCHAIN: "1.85"
+  RUSTUP_TOOLCHAIN: "1.77"
   SOLANA_CLI_VERSION: "v1.18.6"
   PATH: /tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH
 
@@ -36,7 +36,7 @@ jobs:
           mkdir -p /opt/cargo /opt/rustup
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
-            sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
+            sh -s -- -y --default-toolchain 1.77.0 --no-modify-path
 
       - name: Install clang
         run: |
@@ -71,12 +71,12 @@ jobs:
           /tmp/solana-release/bin/solana program close --buffers --keypair /tmp/wallet.json --url mainnet-beta 2>&1 || echo "No buffers to close"
           /tmp/solana-release/bin/solana balance --keypair /tmp/wallet.json --url mainnet-beta 2>&1 || echo "Balance check done"
 
-      - name: Generate Cargo.lock with Rust 1.85
+      - name: Generate Cargo.lock with Rust 1.77
         run: |
           echo "=== cargo version ==="
           cargo --version
-          echo "=== Generating Cargo.lock with cargo +1.85 ==="
-          cargo +1.85 generate-lockfile 2>&1 || true
+          echo "=== Generating Cargo.lock with cargo +1.77.0 ==="
+          cargo +1.77.0 generate-lockfile 2>&1 || cargo generate-lockfile 2>&1 || true
           echo "=== Verifying ==="
           head -1 Cargo.lock 2>/dev/null || echo "No Cargo.lock"
 
@@ -87,7 +87,7 @@ jobs:
           /tmp/solana-release/bin/cargo-build-sbf --version
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
-          echo "=== Building with cargo build-sbf (RUSTUP_TOOLCHAIN=1.85) ==="
+          echo "=== Building with cargo build-sbf (RUSTUP_TOOLCHAIN=1.77) ==="
           /tmp/solana-release/bin/cargo-build-sbf 2>&1
           echo "=== Artifact ==="
           SBF_OUT="target/sbpf-solana-solana/release/hub_evidence_anchor.so"
