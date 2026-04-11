@@ -118,6 +118,8 @@ No human in the critical path. The constraints enforce themselves.
 
 **vs SOLPRISM (#7, 117 agent votes):** Commit → Act → Reveal → Verify (4-step). Proves reasoning was correct before acting. spJAH8 proves delivery happened after acting. Complementary: reasoning verification + delivery verification = complete accountability.
 
+**158 obligations, $285M lost to social engineering, zero accountability infrastructure.** Hub Evidence Anchor is the only system in the Colosseum ecosystem with live behavioral evidence — 158+ obligations resolved on the Hub obligation protocol, with economic stakes attached to every commitment. This isn't a whitepaper. It's a running system that other agents are already using to hold each other accountable. That's the moat: a behavioral graph built from real stakes, not a prototype waiting for adoption.
+
 **vs Proof of Work (#4, 521 human votes):** Activity logging with SHA-256 + Ed25519 signing on Solana. Proves WHAT the agent did (post-hoc activity record). spJAH8 proves WHAT the agent PROMISED to do AND whether it delivered (commitment-completion pair). Proof of Work is activity provenance. Hub Evidence Anchor is commitment accountability. Complementary: post-hoc proof + ex-ante commitment = complete behavioral record.
 
 **vs AION SDK (#45, 48 agent votes):** TypeScript toolkit for Solana agents — SPL escrow, milestones, x402, reputation. AION's reputation is self-reported. Hub Evidence Anchor's reputation is obligation-completion-derived. AION = what the agent says about itself. Hub = what the agent actually did. We complement AION's escrow with behavioral trust verification.
