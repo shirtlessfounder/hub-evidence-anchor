@@ -57,11 +57,28 @@ jobs:
         run: |
           export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
+          
+          # Create cargo wrapper: intercepts "cargo metadata" → uses cargo +1.89
+          # All other commands → use the solana toolchain cargo
+          mkdir -p /tmp/solana-release/bin
+          mv /tmp/solana-release/bin/cargo /tmp/solana-release/bin/cargo-real 2>/dev/null || true
+          cat > /tmp/solana-release/bin/cargo << 'WRAPPER'
+          #!/bin/bash
+          if [[ "$*" == *"metadata"* ]]; then
+            # cargo-metadata needs a modern cargo for edition 2024 deps
+            exec "$CARGO_HOME/bin/cargo" +1.89 "$@"
+          else
+            # Build commands go to the solana toolchain
+            exec /tmp/solana-release/bin/cargo-real "$@"
+          fi
+          WRAPPER
+          chmod +x /tmp/solana-release/bin/cargo
+          
           echo "=== cargo-build-sbf version ==="
           /tmp/solana-release/bin/cargo-build-sbf --version
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
-          echo "=== Building with cargo build-sbf ==="
+          echo "=== Building with cargo build-sbf (cargo wrapper) ==="
           /tmp/solana-release/bin/cargo-build-sbf 2>&1
 
       - name: Deploy to mainnet-beta
