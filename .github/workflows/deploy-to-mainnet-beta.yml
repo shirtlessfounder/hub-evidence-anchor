@@ -38,25 +38,40 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.89.0 --no-modify-path
 
       - name: Decode wallet
+        env:
+          WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
           python3 << 'PYEOF'
           import os, json, base64
-          ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-          secret = os.environ.get('ANCHOR_WALLET_JSON', '').strip()
+          secret = os.environ.get('WALLET_JSON', '').strip()
+          print(f'DEBUG: secret len={len(secret)}, first10={secret[:10]!r}')
           if len(secret) == 88:
+              ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
               n = 0
               for c in secret:
                   n = n * 58 + ALPHABET.index(c)
               raw = n.to_bytes(64, 'big')
+              print(f'DEBUG: decoded {len(raw)} bytes')
               key = list(raw)
-              print('Decoded base58')
+              print(f'DEBUG: key list len={len(key)}, first3={key[:3]}')
+              with open('/tmp/wallet.json', 'w') as f:
+                  json.dump(key, f)
+              print('Decoded (base58 -> JSON array)')
+          elif secret.startswith('['):
+              key = json.loads(secret)
+              with open('/tmp/wallet.json', 'w') as f:
+                  json.dump(key, f)
+              print('Parsed JSON array directly')
           else:
               raw = base64.b64decode(secret)
               key = list(raw)
-              print('Decoded base64')
-          with open('/tmp/wallet.json', 'w') as f:
-              json.dump(key, f)
-          print('Written JSON array')
+              print(f'DEBUG: base64 decoded {len(key)} bytes')
+              with open('/tmp/wallet.json', 'w') as f:
+                  json.dump(key, f)
+              print('Decoded (base64 -> JSON array)')
+          with open('/tmp/wallet.json') as f:
+              written = json.load(f)
+              print(f'DEBUG: written {len(written)} elements')
           PYEOF
 
       - name: Check balance
