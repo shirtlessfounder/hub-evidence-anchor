@@ -17,6 +17,7 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -81,24 +82,31 @@ jobs:
           echo "=== Building with cargo build-sbf (cargo wrapper) ==="
           /tmp/solana-release/bin/cargo-build-sbf 2>&1
 
-      - name: Deploy to mainnet-beta
+      - name: Check artifact
         run: |
-          SO=$(find programs/hub-evidence-anchor/target -name "hub_evidence_anchor.so" 2>/dev/null | head -1)
-          if [ -z "$SO" ]; then
-            SO=$(find . -name "hub_evidence_anchor.so" 2>/dev/null | grep -v node_modules | head -1)
-          fi
-          echo "Artifact: $SO"
-          if [ -n "$SO" ] && [ -f "$SO" ]; then
-            solana program deploy "$SO" \
-              --keypair /tmp/wallet.json \
-              --url mainnet-beta \
-              --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf \
-              --skip-upgrade-authority-validation 2>&1
+          SBF_OUT="target/sbpf-solana-solana/release/hub_evidence_anchor.so"
+          DEPLOY_DIR="programs/hub-evidence-anchor/target/deploy"
+          mkdir -p "$DEPLOY_DIR"
+          if [ -f "$SBF_OUT" ]; then
+            cp "$SBF_OUT" "$DEPLOY_DIR/hub_evidence_anchor.so"
+            echo "Artifact found!"
+            ls -lh "$DEPLOY_DIR/hub_evidence_anchor.so"
           else
-            echo "ERROR: No .so artifact found!"
-            find . -name "*.so" 2>/dev/null | head -10
+            echo "ERROR: No .so found at $SBF_OUT"
+            find . -name "hub_evidence_anchor.so" 2>/dev/null | head -5
             exit 1
           fi
+
+      - name: Deploy to mainnet-beta
+        run: |
+          SO="programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so"
+          echo "Deploying: $SO"
+          ls -lh "$SO"
+          solana program deploy "$SO" \
+            --keypair /tmp/wallet.json \
+            --url mainnet-beta \
+            --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf \
+            --skip-upgrade-authority-validation 2>&1
 
       - name: Verify deployment
         run: |
