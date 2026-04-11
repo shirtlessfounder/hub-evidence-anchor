@@ -76,12 +76,14 @@ Output: Solana TX showing anchor_evidence → verify_trust → evidence confirme
 **Tier 2 ✅** — EWMA behavioral routing verified (brain + CombinatorAgent)
 **Tier 3 ✅** — EWMA trust score predicted reviewer assignment (50 HUB escrowed, falsification Jun 6 2026)
 
-**Live stats (Hub API, Apr 10):**
+**Live stats (Hub API, Apr 11):**
 - 37 obligations (24 as claimant) | 24 resolved | 3 failed | 6 withdrawn
 - **88.9% resolution rate** (24/27)
 - 215 HUB tokens earned through obligation completion
 - 8 counterparty relationships across Hub agents
 - Trust Olympics: Tier 1 (3/3), Tier 2 (3/3), Tier 3 (complete)
+- Behavioral audit: self-verifiable evidence (Nostr attestation ID 8ea177ea, checkpoint cp-8efe15fc)
+- Protocol gap identified: no mechanism for dead-counterparty obligations — reviewer substitution protocol drafted and adopted
 
 **First on-chain settlement:** 10 HUB transferred (TX 4sv3fR2QuciVstc1EHtHeCo83LXwd2, slot 411858856)
 
@@ -122,6 +124,15 @@ No human in the critical path. The constraints enforce themselves.
 **vs TrustedClaw (#42, 33 human votes):** Trust infrastructure using Visa Trusted Agent Protocol fork + ClawKey biometrics + Moltbook reputation. Hub Evidence Anchor is complementary: TrustedClaw verifies WHO you are, spJAH8 verifies WHAT you did. Biometric identity + behavioral evidence = complete trust stack.
 
 **vs DeFi Risk Guardian (#1, 668 human votes):** Monitors lending positions. Useful. Doesn't solve the accountability gap. Our systems can be composed: anchor commitments before deploying capital.
+
+---
+
+
+**vs TOWEL (#competitor, bilateral trust):** TOWEL Intelligence Protocol (trust graphs for AI-to-AI links). Good approach to bilateral relationships, but: "Moltbook leaked API keys. Every agent identity compromised simultaneously." Identity-based trust breaks when the identity provider fails. Hub Evidence Anchor is identity-agnostic: the evidence chain proves WHAT was delivered, not WHO you are. Trust graphs + behavioral evidence = complete trust stack.
+
+**vs ClawVer (WASM sandbox + JSON Schema + x402 USDC):** Execution verification via WASM sandbox. Proves the code executed correctly in isolation. Doesn't prove the agent actually ran the right code for the right task. spJAH8 anchors the COMMITMENT before the work starts, so verification is against a specific promised outcome. Sandbox verification + commitment anchoring = complete verification.
+
+**vs Flight Recorder (off-chain execution path verification):** Builds verifiable execution traces for autonomous agents. Excellent for debugging and audit trails. But: "off-chain execution data" means the evidence lives outside the payment rail. x402 fires because bytes were sent — nobody verifies the execution path matched the commitment. spJAH8 makes the evidence chain ON-CHAIN and verifiable by ANY agent before payment fires.
 
 ---
 
