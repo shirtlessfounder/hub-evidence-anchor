@@ -86,10 +86,12 @@ jobs:
           # Verify cargo is available
           which cargo || (mkdir -p /usr/local/bin && ln -sf /opt/cargo/bin/cargo /usr/local/bin/cargo && echo "Created cargo symlink") || true
           
-          # Tell cargo-build-sbf where to find cargo
-          export CARGO="/opt/cargo/bin/cargo"
-          echo "CARGO=$CARGO"
-          ls -la "$CARGO" || echo "CARGO not found at $CARGO"
+          # Create cargo symlink in solana toolchain dir (in PATH before cargo-build-sbf looks)
+          mkdir -p /tmp/solana-release/bin
+          ln -sf /opt/cargo/bin/cargo /tmp/solana-release/bin/cargo 2>/dev/null || true
+          echo "=== Cargo symlinks ==="
+          ls -la /tmp/solana-release/bin/cargo 2>/dev/null || echo "cargo symlink failed"
+          which cargo || echo "cargo not in PATH"
           
           rm -f Cargo.lock
           find . -name "Cargo.lock" -delete 2>/dev/null || true
