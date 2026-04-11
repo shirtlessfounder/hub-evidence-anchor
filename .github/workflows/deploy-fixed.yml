@@ -96,8 +96,13 @@ jobs:
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           echo ""
           echo "=== Cleaning ==="
-          rm -f Cargo.lock
+          # Delete ALL Cargo.lock files (root + nested member workspaces)
+          # Lock file v4 requires Rust nightly with -Znext-lockfile-bump to parse;
+          # stable 1.85 cannot read it — delete everything so cargo regenerates.
           find . -name "Cargo.lock" -delete 2>/dev/null || true
+          rm -f Cargo.lock programs/hub-evidence-anchor/Cargo.lock
+          echo "Cleaned. Remaining lock files:"
+          find . -name "Cargo.lock" 2>/dev/null || echo "none"
           echo ""
           echo "=== Building ==="
           cargo build-sbf 2>&1
