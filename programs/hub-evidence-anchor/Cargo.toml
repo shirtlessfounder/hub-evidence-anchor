@@ -20,4 +20,8 @@ serde_json = "1.0"
 lto = true
 opt-level = 3
 
+# Downgrade block-buffer to avoid edition 2024 requirement in 0.12
+[patch.crates-io]
+block-buffer = { version = "=0.10.4" }
+
 

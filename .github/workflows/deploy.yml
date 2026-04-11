@@ -102,8 +102,9 @@ jobs:
           export RUSTUP_TOOLCHAIN=1.85
           export PATH="/opt/cargo/bin:$PATH"
           echo "=== Generating Cargo.lock with Rust 1.85 ==="
-          cargo +1.85 generate-lockfile --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1 || true
-          ls -la programs/hub-evidence-anchor/Cargo.lock 2>/dev/null || echo "No Cargo.lock generated"
+          # Use workspace root manifest (Cargo.toml) so patches apply correctly
+          cargo +1.85 generate-lockfile 2>&1
+          ls -la Cargo.lock 2>/dev/null || echo "No Cargo.lock generated"
       - name: Build program
         run: |
           set -e
