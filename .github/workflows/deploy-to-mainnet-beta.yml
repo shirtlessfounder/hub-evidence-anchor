@@ -46,32 +46,30 @@ jobs:
 
       - name: Setup Solana rustup toolchain (for cargo +solana)
         run: |
-          # cargo +solana (used internally by cargo-build-sbf) needs a rustup toolchain named 'solana'
-          # Solution: cargo-build-sbf downloads platform-tools rust to ~/.cache/solana/
+          # cargo +solana (used internally by cargo build-sbf) needs a rustup toolchain named 'solana'
+          # cargo-build-sbf downloads platform-tools rust to ~/.cache/solana/
           # We link that as a rustup toolchain named 'solana'
           export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
 
-          echo "=== Priming platform-tools (runs cargo-build-sbf to download rust) ==="
-          # cargo-build-sbf downloads platform-tools rust to ~/.cache/solana/ even on failure
-          # Run it on our actual project — even if build fails, it caches the toolchain
-          /tmp/solana-release/bin/cargo-build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1 | tail -5 || true
+          echo "=== Priming platform-tools (dummy build) ==="
+          mkdir -p /tmp/dummy-build
+          cd /tmp/dummy-build
+          /tmp/solana-release/bin/cargo-build-sbf --version 2>&1 || true
+          cd /home/runner/work/hub-evidence-anchor/hub-evidence-anchor
+          rm -rf /tmp/dummy-build
 
           echo "=== Finding platform-tools rust in ~/.cache/solana/ ==="
           # Find the platform-tools rust — has bin/cargo, bin/rustc, lib/rustlib/
-          PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -name "rustc" -path "*/platform-tools/*/rust/bin/rustc" 2>/dev/null | head -1 | xargs dirname 2>/dev/null | xargs dirname 2>/dev/null || echo "")
+          PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -name "rustc" -path "*/platform-tools/*/rust/bin/rustc" 2>/dev/null | head -1 | xargs dirname 2>/dev/null | xargs dirname 2>/dev/null || true)
           echo "Platform-tools rust: $PLATFORM_TOOLS_RUST"
           if [ -n "$PLATFORM_TOOLS_RUST" ] && [ -d "$PLATFORM_TOOLS_RUST" ]; then
-            echo "=== Linking platform-tools as rustup toolchain 'solana' ==="
-            rustup toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || echo "link done"
+            rustup toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || true
           else
-            echo "WARNING: No platform-tools rust found in ~/.cache/solana/"
-            ls -la "$HOME/.cache/solana/" 2>/dev/null || echo "cache dir not found"
+            echo "WARNING: No platform-tools rust found — cargo build-sbf may fail"
           fi
-          echo "=== Verifying toolchains ==="
-          rustup toolchain list
-          echo "=== Testing cargo +solana ==="
-          cargo +solana --version 2>&1 || echo "cargo +solana failed"
+          rustup toolchain list || true
+          cargo +solana --version 2>&1 || echo "cargo +solana not available (OK if using fixed workflow)"
 
       - name: Install clang
         run: |
@@ -155,14 +153,21 @@ jobs:
 
       - name: Build program
         run: |
-          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
+          export CARGO_HOME="/opt/cargo"
+          export RUSTUP_HOME="/opt/rustup"
+          # RUSTUP_TOOLCHAIN forces all cargo invocations (including subprocesses
+          # spawned by cargo build-sbf) to use Rust 1.85
+          export RUSTUP_TOOLCHAIN=1.85
+          export PATH="/opt/cargo/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
-          echo "=== cargo-build-sbf version ==="
-          /tmp/solana-release/bin/cargo-build-sbf --version
+          echo "=== Toolchain check ==="
+          cargo --version
+          cargo build-sbf --version 2>&1 || echo "build-sbf version done"
+          rustup toolchain list
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
           echo "=== Building with cargo build-sbf ==="
-          /tmp/solana-release/bin/cargo-build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
+          cargo build-sbf 2>&1
 
       - name: Check artifact
         run: |
