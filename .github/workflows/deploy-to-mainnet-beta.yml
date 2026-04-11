@@ -30,13 +30,26 @@ jobs:
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
 
-      - name: Decode wallet
+      - name: Decode wallet (Python)
         env:
           WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
-          echo "$WALLET_JSON" | base64 -d > /tmp/wallet.json
-          PUBKEY=$(/tmp/solana-release/bin/solana-keygen pubkey /tmp/wallet.json)
-          echo "Wallet: $PUBKEY"
+          python3 -c "import os, base64
+ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+secret = os.environ.get('WALLET_JSON', '').strip()
+if len(secret) == 88:
+    n = 0
+    for c in secret:
+        n = n * 58 + ALPHABET.index(c)
+    raw = n.to_bytes(64, 'big')
+    with open('/tmp/wallet.json', 'wb') as f:
+        f.write(raw)
+    print('Decoded base58')
+else:
+    with open('/tmp/wallet.json', 'wb') as f:
+        f.write(base64.b64decode(secret))
+    print('Decoded base64')
+"""
 
       - name: Close stale buffers
         run: |
