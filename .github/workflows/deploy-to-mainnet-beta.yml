@@ -53,20 +53,9 @@ jobs:
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
 
           echo "=== Priming platform-tools (runs cargo-build-sbf to download rust) ==="
-          # Create dummy project to prime platform-tools without building our actual code
-          python3 -c "
-          import os
-          d = '/tmp/dummy-solana-prime'
-          os.makedirs(d + '/src', exist_ok=True)
-          with open(d + '/Cargo.toml', 'w') as f:
-              f.write('[package]\nname = \"dummy\"\nversion = \"0.1.0\"\nedition = \"2021\"\n')
-          with open(d + '/src/main.rs', 'w') as f:
-              f.write('fn main() {}\n')
-          "
-          cd /tmp/dummy-solana-prime
-          /tmp/solana-release/bin/cargo-build-sbf 2>&1 | tail -3 || true
-          cd /home/runner/work/hub-evidence-anchor/hub-evidence-anchor
-          rm -rf /tmp/dummy-solana-prime
+          # cargo-build-sbf downloads platform-tools rust to ~/.cache/solana/ even on failure
+          # Run it on our actual project — even if build fails, it caches the toolchain
+          /tmp/solana-release/bin/cargo-build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1 | tail -5 || true
 
           echo "=== Finding platform-tools rust in ~/.cache/solana/ ==="
           # Find the platform-tools rust — has bin/cargo, bin/rustc, lib/rustlib/
