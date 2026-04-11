@@ -1,7 +1,11 @@
 on:
   push:
   workflow_dispatch:
-  workflow_dispatch:
+    inputs:
+      skip_build:
+        description: Skip build and deploy the committed .so
+        default: 'false'
+        type: boolean
 
 name: Build and Deploy to Mainnet-Beta
 
@@ -9,12 +13,6 @@ permissions:
   contents: read
   attestations: write
   id-token: write
-
-inputs:
-  skip_build:
-    description: Skip build and deploy the committed .so
-    default: 'false'
-    type: boolean
 
 env:
   CARGO_HOME: /opt/cargo
