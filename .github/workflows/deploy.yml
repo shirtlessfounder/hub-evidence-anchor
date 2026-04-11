@@ -35,69 +35,35 @@ jobs:
       - name: Install clang
         run: sudo apt-get update && sudo apt-get install -y clang
 
-      - name: Decode wallet (tries ANCHOR then PROGRAM)
+      - name: Decode wallet
+        env:
+          WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
-          python3 << 'PYEOF'
-          import os, json, base64
-          
-          B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-          
-          def b58decode(s):
-              n = 0
-              for c in s.strip():
-                  n = n * 58 + B58.index(c)
-              result = []
-              while n > 0:
-                  result.append(n & 255)
-              return bytes(result)
-          
-          # Try ANCHOR_WALLET_JSON first, then PROGRAM_WALLET_JSON
-          secret = os.environ.get('ANCHOR_WALLET_JSON', os.environ.get('PROGRAM_WALLET_JSON', '')).strip()
-          print(f"Secret source: ANCHOR or PROGRAM", flush=True)
-          print(f"Secret length: {len(secret)}", flush=True)
-          
-          if len(secret) == 0:
-            raise Exception("Both ANCHOR_WALLET_JSON and PROGRAM_WALLET_JSON are empty!")
-          
-          key_bytes = None
-          
-          # Try: raw 88-char base58 keypair → 64 bytes
-          if len(secret) >= 80 and all(c in B58 for c in secret):
-              try:
-                  key_bytes = b58decode(secret)
-                  if len(key_bytes) == 64:
-                      print(f"Format: raw base58 ({len(key_bytes)} bytes)", flush=True)
-              except:
-                  pass
-          
-          # Try: base64 of base58 string
-          if key_bytes is None or len(key_bytes) != 64:
-              try:
-                  decoded = base64.b64decode(secret)
-                  b58_str = decoded.decode('ascii').strip()
-                  if all(c in B58 for c in b58_str):
-                      key_bytes = b58decode(b58_str)
-                      print(f"Format: base64(base58_str) → {len(key_bytes)} bytes", flush=True)
-              except:
-                  pass
-          
-          # Try: base64 of 64 raw bytes
-          if key_bytes is None or len(key_bytes) != 64:
-              try:
-                  decoded = base64.b64decode(secret)
-                  if len(decoded) == 64:
-                      key_bytes = decoded
-                      print(f"Format: base64(64_bytes) → {len(key_bytes)} bytes", flush=True)
-              except:
-                  pass
-          
-          if key_bytes is None or len(key_bytes) != 64:
-              raise Exception(f"Could not decode wallet! Secret starts: {secret[:20]}")
-          
-          with open('/tmp/wallet.json', 'w') as f:
-              json.dump(list(key_bytes), f)
-          print(f"Wallet written: {len(key_bytes)} bytes", flush=True)
-          PYEOF
+          echo "$WALLET_JSON" > /tmp/wallet_secret.txt
+          if /tmp/solana-release/bin/solana-keygen pubkey /tmp/wallet_secret.txt > /tmp/program-pubkey.txt 2>&1; then
+            echo "Wallet: $(cat /tmp/program-pubkey.txt)"
+            cp /tmp/wallet_secret.txt /tmp/wallet.json
+          else
+            echo "solana-keygen failed — manual decode"
+            python3 -c "
+import os,base64,json
+secret=os.environ.get('WALLET_JSON','').strip()
+try:
+    k=json.loads(secret)
+    open('/tmp/wallet.json','w').write(json.dumps(k))
+    pub=bytes(k)[32:]
+    open('/tmp/program-pubkey.txt','w').write(pub.hex()+chr(10))
+    print('Wallet:',pub.hex()[:8]+'...')
+except:
+    try:
+        raw=base64.b64decode(secret)
+    except:
+        raw=bytes(json.loads(secret))
+    open('/tmp/wallet.json','wb').write(raw)
+    open('/tmp/program-pubkey.txt','w').write(raw[32:].hex()+chr(10))
+    print('Wallet:',raw[32:].hex()[:8]+'...')
+"
+          fi
 
       - name: Check balance
         run: /tmp/solana-release/bin/solana balance --keypair /tmp/wallet.json --url devnet

@@ -71,7 +71,7 @@ jobs:
       - name: Generate Cargo.lock
         run: |
           echo "=== Generate Cargo.lock ==="
-          bash -lc 'cat > /tmp/gen_lock.py' << '''PYEOF'''
+          python3 - << 'PYEOF'
 import subprocess, json, sys
 try:
     result = subprocess.run(["cargo", "+1.89", "generate-lockfile", "--manifest-path", "programs/hub-evidence-anchor/Cargo.toml"],
@@ -85,7 +85,6 @@ try:
             print("Lockfile format:", first.strip())
     else:
         print("FAILED: cargo generate-lockfile returned", result.returncode)
-        # Try workspace-level lockfile
         r2 = subprocess.run(["cargo", "+1.89", "generate-lockfile"],
                            capture_output=True, text=True, timeout=120)
         if r2.returncode == 0:
@@ -97,7 +96,6 @@ except Exception as e:
     print(f"ERROR: {e}")
     sys.exit(1)
 PYEOF
-          python3 /tmp/gen_lock.py
 
       - name: Build program
         run: |
