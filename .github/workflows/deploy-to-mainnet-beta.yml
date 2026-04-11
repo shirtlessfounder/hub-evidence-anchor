@@ -55,7 +55,7 @@ jobs:
           ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
       - name: Deploy
         run: |
-          /tmp/solana-release/bin/solana program deploy             programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so             --keypair /tmp/wallet.json --url mainnet-beta             --skip-upgrade-authority-validation 2>&1
+          /tmp/solana-release/bin/solana program deploy             programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so             --keypair /tmp/wallet.json --url mainnet-beta             2>&1
       - name: Verify
         run: |
           /tmp/solana-release/bin/solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url mainnet-beta || echo "Done"
