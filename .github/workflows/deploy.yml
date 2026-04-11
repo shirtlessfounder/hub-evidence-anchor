@@ -56,9 +56,6 @@ jobs:
       - name: Airdrop SOL
         run: /tmp/solana-release/bin/solana airdrop 2 --keypair /tmp/wallet.json --url devnet || echo "Airdrop done"
 
-      - name: Check balance after airdrop
-        run: /tmp/solana-release/bin/solana balance --keypair /tmp/wallet.json --url devnet
-
       - name: Generate Cargo.lock
         run: cargo +1.85 generate-lockfile 2>&1 || true
 
