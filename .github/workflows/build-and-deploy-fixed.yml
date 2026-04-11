@@ -86,6 +86,11 @@ jobs:
           # Verify cargo is available
           which cargo || (mkdir -p /usr/local/bin && ln -sf /opt/cargo/bin/cargo /usr/local/bin/cargo && echo "Created cargo symlink") || true
           
+          # Tell cargo-build-sbf where to find cargo
+          export CARGO="/opt/cargo/bin/cargo"
+          echo "CARGO=$CARGO"
+          ls -la "$CARGO" || echo "CARGO not found at $CARGO"
+          
           rm -f Cargo.lock
           find . -name "Cargo.lock" -delete 2>/dev/null || true
           
