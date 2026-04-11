@@ -113,13 +113,13 @@ jobs:
           set -e
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
-          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
-          echo "=== Installing Rust 1.85 ==="
-          rustup install 1.85 --profile minimal 2>&1 | tail -3
-          rustup default 1.85
-          rustup target add sbf --toolchain 1.85 2>/dev/null || true
+          # CRITICAL: do NOT include $HOME/.cargo/bin — runner pre-installs Rust 1.81 there
+          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          echo "=== Verify correct cargo ==="
+          which cargo
+          cargo --version
           echo "=== Generating Cargo.lock with cargo 1.85 ==="
-          cargo +1.85 generate-lockfile 2>&1 || true
+          cargo generate-lockfile 2>&1 || true
           echo "=== Cargo.lock generated ==="
           ls -la Cargo.lock 2>/dev/null || echo "No Cargo.lock"
 
@@ -129,7 +129,8 @@ jobs:
           set -e
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
-          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
+          # CRITICAL: do NOT include $HOME/.cargo/bin — runner pre-installs Rust 1.81 there
+          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
           
           # Create cargo wrapper: +1.85 for metadata, +solana for build
