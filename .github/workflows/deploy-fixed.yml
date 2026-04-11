@@ -36,7 +36,7 @@ jobs:
           rm -f /opt/rustup/settings.toml
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
-            sh -s -- -y --default-toolchain 1.89.0 --no-modify-path
+            sh -s -- -y --default-toolchain 1.89.0 
           echo "Installed:"
           "$CARGO_HOME/bin/rustup" toolchain list
           # cargo-build-sbf uses 'cargo +solana' internally — link to platform-tools rust
