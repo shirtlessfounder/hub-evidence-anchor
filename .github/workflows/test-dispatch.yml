@@ -2,9 +2,16 @@ name: Test Dispatch
 
 on:
   workflow_dispatch:
+    inputs:
+      skip_build:
+        description: Skip build
+        default: 'false'
+
+permissions:
+  contents: read
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Dispatch works!"
+      - run: echo "Test passed"
