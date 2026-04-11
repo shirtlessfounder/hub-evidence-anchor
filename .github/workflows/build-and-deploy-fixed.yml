@@ -42,7 +42,7 @@ jobs:
           cargo +1.89 install solana-cargo-build-sbf --version 4.0.0 2>&1 || \
             cargo +1.89 install solana-cargo-build-sbf 2>&1 || true
           echo "=== Installed cargo-build-sbf ==="
-          ~/.cargo/bin/cargo-build-sbf --version 2>&1 || echo "Install may have failed"
+          $HOME/.cargo/bin/cargo-build-sbf --version 2>&1 || echo "Install may have failed"
 
       - name: Install clang for BPF compilation
         run: |
@@ -121,7 +121,7 @@ jobs:
           
           echo "=== Toolchain check ==="
           cargo --version
-          ~/.cargo/bin/cargo-build-sbf --version 2>&1 || cargo build-sbf --version 2>&1 || echo "build-sbf version check done"
+          $HOME/.cargo/bin/cargo-build-sbf --version 2>&1 || cargo build-sbf --version 2>&1 || echo "build-sbf version check done"
           rustup toolchain list 2>&1
           
           echo ""
@@ -130,7 +130,7 @@ jobs:
           
           echo ""
           echo "=== Building with solana-cargo-build-sbf v4 (Rust 1.89) ==="
-          ~/.cargo/bin/cargo-build-sbf 2>&1
+          $HOME/.cargo/bin/cargo-build-sbf 2>&1
           
           echo ""
           echo "=== Copy .so to expected path ==="
