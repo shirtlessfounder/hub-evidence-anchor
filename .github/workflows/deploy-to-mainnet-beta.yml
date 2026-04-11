@@ -96,48 +96,17 @@ jobs:
           cp target/sbpf-solana-solana/release/hub_evidence_anchor.so programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
           ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
 
-      - name: Decode program keypair
-        env:
-          PROGRAM_KEYPAIR_JSON: ${{ secrets.PROGRAM_KEYPAIR_JSON }}
+      - name: Set program ID
         run: |
-          python3 << 'PYEOF'
-          import os, json, base64
-          secret = os.environ.get('PROGRAM_KEYPAIR_JSON', '').strip()
-          if not secret:
-              print('ERROR: PROGRAM_KEYPAIR_JSON secret not set — required for initial deployment')
-              exit(1)
-          if secret.startswith('['):
-              key = json.loads(secret)
-              with open('/tmp/program-keypair.json', 'w') as f:
-                  json.dump(key, f)
-              print('Parsed program keypair from JSON array')
-          elif len(secret) == 88:
-              ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-              n = 0
-              for c in secret:
-                  n = n * 58 + ALPHABET.index(c)
-              raw = n.to_bytes(64, 'big')
-              with open('/tmp/program-keypair.json', 'w') as f:
-                  json.dump(list(raw), f)
-              print('Decoded program keypair from base58')
-          else:
-              raw = base64.b64decode(secret)
-              with open('/tmp/program-keypair.json', 'w') as f:
-                  json.dump(list(raw), f)
-              print('Decoded program keypair from base64')
-          print('Program keypair written to /tmp/program-keypair.json')
-          # Verify the pubkey matches expected program ID
-          import subprocess
-          result = subprocess.run(['/tmp/solana-release/bin/solana', 'keypair', '/tmp/program-keypair.json'], capture_output=True, text=True)
-          print(f'Program pubkey: {result.stdout.strip()}')
-          PYEOF
+          echo "Program ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"
+          echo "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf" > /tmp/program-id.txt
 
       - name: Deploy
         run: |
           /tmp/solana-release/bin/solana program deploy \
             programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/wallet.json \
-            --program-id /tmp/program-keypair.json \
+            --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf \
             --url mainnet-beta 2>&1
 
       - name: Verify

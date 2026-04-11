@@ -93,7 +93,7 @@ try:
 except Exception as e:
     print(f"ERROR: {e}")
     sys.exit(1)
-PYEOF'
+PYEOF
           python3 /tmp/gen_lock.py
 
       - name: Build program
