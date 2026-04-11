@@ -107,31 +107,59 @@ jobs:
           echo "=== Current slot ==="
           /tmp/solana-release/bin/solana slot --url $RPC_URL
 
+      - name: Generate Cargo.lock with Rust 1.85
+        if: inputs.skip_build != 'true'
+        run: |
+          set -e
+          export CARGO_HOME="/opt/cargo"
+          export RUSTUP_HOME="/opt/rustup"
+          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
+          echo "=== Installing Rust 1.85 ==="
+          rustup install 1.85 --profile minimal 2>&1 | tail -3
+          rustup default 1.85
+          rustup target add sbf --toolchain 1.85 2>/dev/null || true
+          echo "=== Generating Cargo.lock with cargo 1.85 ==="
+          cargo +1.85 generate-lockfile 2>&1 || true
+          echo "=== Cargo.lock generated ==="
+          ls -la Cargo.lock 2>/dev/null || echo "No Cargo.lock"
+
       - name: Build program
         if: inputs.skip_build != 'true'
         run: |
-          # Explicitly source cargo env so cargo is in PATH for cargo-build-sbf
-          [ -f /home/runner/.cargo/env ] && source /home/runner/.cargo/env
-          [ -f /opt/cargo/env ] && source /opt/cargo/env || true
-          export PATH="/tmp/solana-release/bin:/home/runner/.cargo/bin:/opt/cargo/bin:$PATH"
-          echo "=== cargo found: $(which cargo 2>/dev/null || echo 'NOT FOUND') ==="
-          cargo --version 2>&1 || echo "cargo not in PATH"
+          set -e
+          export CARGO_HOME="/opt/cargo"
+          export RUSTUP_HOME="/opt/rustup"
+          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
+          export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
+          
+          # Create cargo wrapper: +1.85 for metadata, +solana for build
+          mkdir -p /tmp/solana-release/bin
+          mv /tmp/solana-release/bin/cargo /tmp/solana-release/bin/cargo-real 2>/dev/null || true
+          cat > /tmp/solana-release/bin/cargo << 'WRAPPER'
+          #!/bin/bash
+          if [[ "$*" == *"metadata"* ]]; then
+            exec /opt/cargo/bin/cargo +1.85 "$@"
+          else
+            exec /tmp/solana-release/bin/cargo-real "$@"
+          fi
+          WRAPPER
+          chmod +x /tmp/solana-release/bin/cargo
+          chmod +x /tmp/solana-release/bin/cargo-real 2>/dev/null || true
+          ln -sf /opt/cargo/bin/cargo-metadata /tmp/solana-release/bin/cargo-metadata 2>/dev/null || true
+          
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
           echo ""
-          echo "=== Cleaning lockfiles ==="
-          find . -name "Cargo.lock" -delete 2>/dev/null || true
-          echo ""
-          echo "=== Building with cargo-build-sbf ==="
-          /tmp/solana-release/bin/cargo-build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
+          echo "=== Building with cargo-build-sbf (cargo wrapper) ==="
+          /tmp/solana-release/bin/cargo-build-sbf 2>&1
           echo ""
           echo "=== Verifying artifact ==="
-          if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then
+          if [ -f target/deploy/hub_evidence_anchor.so ]; then
             echo "BUILD SUCCESS"
-            ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
+            ls -lh target/deploy/hub_evidence_anchor.so
           else
             echo "BUILD FAILED: No .so found"
-            find programs/hub-evidence-anchor/target -name "*.so" 2>/dev/null || echo "No .so files"
+            find . -name "*.so" 2>/dev/null | head -5
             exit 1
           fi
 
@@ -151,7 +179,7 @@ jobs:
 
       - name: Deploy to mainnet-beta
         run: |
-          SO_FILE="programs/hub-evidence-anchor/hub_evidence_anchor.so"
+          SO_FILE="target/deploy/hub_evidence_anchor.so"
           if [ ! -f "$SO_FILE" ]; then
             echo "ERROR: No .so found at $SO_FILE — set skip_build=false or push a built .so"
             exit 1
