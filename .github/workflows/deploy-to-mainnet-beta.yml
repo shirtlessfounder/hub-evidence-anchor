@@ -1,1 +1,191 @@
+name: Deploy to Mainnet-Beta
+
 on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DEPLOY_TIMEOUT: "300"
+  PROGRAM_ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Solana CLI
+        run: |
+          set -e
+          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/v3.1.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xjf - -C /tmp
+          echo "PATH=/tmp/solana-release/bin:$PATH" >> $GITHUB_ENV
+
+      - name: Install Rust 1.85 toolchain
+        run: |
+          set -e
+          export CARGO_HOME="/opt/cargo"
+          export RUSTUP_HOME="/opt/rustup"
+          export PATH="$CARGO_HOME/bin:$PATH"
+          rm -rf "$CARGO_HOME" "$RUSTUP_HOME"
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+            CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
+            sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
+          echo "Installed:"
+          "$CARGO_HOME/bin/rustup" toolchain list
+
+      - name: Install system deps for BPF compilation
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev pkg-config clang-14 llvm
+
+      - name: Setup cargo env for RUSTUP_TOOLCHAIN
+        run: |
+          # RUSTUP_TOOLCHAIN makes ALL cargo invocations (including subprocesses)
+          # use the specified toolchain automatically, without needing +toolchain suffix
+          echo "RUSTUP_TOOLCHAIN=1.85" >> $GITHUB_ENV
+          echo "CARGO_HOME=/opt/cargo" >> $GITHUB_ENV
+          echo "RUSTUP_HOME=/opt/rustup" >> $GITHUB_ENV
+          echo "PATH=/opt/cargo/bin:/tmp/solana-release/bin:$PATH" >> $GITHUB_ENV
+      - name: Decode program wallet
+        env:
+          PROGRAM_WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
+        run: |
+          python3 << 'PYEOF'
+          import os, base64, json
+          ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+          secret = os.environ.get("PROGRAM_WALLET_JSON", "").strip()
+          if len(secret) == 88:
+              # Base58 decode
+              n = 0
+              for c in secret:
+                  n = n * 58 + ALPHABET.index(c)
+              raw = n.to_bytes(64, 'big')
+          elif secret.startswith('['):
+              raw = bytes(json.loads(secret))
+          else:
+              raw = base64.b64decode(secret)
+          with open("/tmp/program-wallet.json", "w") as f:
+              json.dump([int(b) for b in raw], f)
+          pub = raw[32:]
+          n = int.from_bytes(pub, 'big')
+          addr = ''
+          while n > 0: n, rem = divmod(n, 58); addr = ALPHABET[rem] + addr
+          print(f"Wallet: {addr}")
+          with open("/tmp/program-pubkey.txt", "w") as f:
+              f.write(addr + "\n")
+          PYEOF
+
+      - name: Check balance and close buffers
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+        run: |
+          export PATH="/tmp/solana-release/bin:$PATH"
+          RECIPIENT=$(cat /tmp/program-pubkey.txt 2>/dev/null | tr -d '\n' || echo "")
+          echo "Wallet: $RECIPIENT"
+          solana balance "$RECIPIENT" --url mainnet-beta
+          solana program close --buffers --keypair /tmp/program-wallet.json --url mainnet-beta || true
+          # Try Helius faucet if key available
+          if [ -n "$HELIUS_API_KEY" ]; then
+            echo "Using Helius faucet..."
+            curl -s -X POST "https://devnet.helius-rpc.com/?api-key=$HELIUS_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"requestAirdrop\",\"params\":[\"$RECIPIENT\", 2000000000]}" | grep -q "result" && echo "Airdrop succeeded" || echo "Airdrop failed"
+          fi
+          echo "Balance:"
+          solana balance "$RECIPIENT" --url mainnet-beta
+          echo "Ready to deploy"
+
+      - name: Generate Cargo.lock with Rust 1.85 (avoids edition 2024 metadata failure)
+        run: |
+          export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+          echo "=== CARGO_HOME: $CARGO_HOME ==="
+          set -e
+          export RUSTUP_TOOLCHAIN=1.85
+          export PATH="/opt/cargo/bin:$PATH"
+          echo "=== Generating Cargo.lock with Rust 1.85 ==="
+          # Use workspace root manifest (Cargo.toml) so patches apply correctly
+          cargo generate-lockfile 2>&1
+          ls -la Cargo.lock 2>/dev/null || echo "No Cargo.lock generated"
+      - name: Build program
+        run: |
+          set -e
+          export CARGO_HOME="/opt/cargo"
+          export RUSTUP_HOME="/opt/rustup"
+          # RUSTUP_TOOLCHAIN forces 1.85 for ALL cargo invocations,
+          # including subprocesses spawned by cargo-build-sbf
+          export RUSTUP_TOOLCHAIN=1.85
+          export PATH="/opt/cargo/bin:/tmp/solana-release/bin:/usr/local/bin:$PATH"
+          export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
+          
+          echo "=== Rust toolchain ==="
+          rustup toolchain list 2>&1
+          cargo --version || echo "cargo failed"
+          which cargo
+          
+          echo "=== Program ID in code ==="
+          grep declare_id programs/hub-evidence-anchor/src/lib.rs
+          
+          echo ""
+          echo "=== Building with cargo build-sbf ==="
+          cargo build-sbf 2>&1
+          
+          echo ""
+          echo "=== Copy .so to deploy path ==="
+          SBF_OUT="target/sbpf-solana-solana/release/hub_evidence_anchor.so"
+          DEPLOY_DIR="programs/hub-evidence-anchor/target/deploy"
+          mkdir -p "$DEPLOY_DIR"
+          if [ -f "$SBF_OUT" ]; then
+            cp "$SBF_OUT" "$DEPLOY_DIR/hub_evidence_anchor.so"
+            echo "Copied .so to $DEPLOY_DIR/"
+          else
+            SBF_ROOT="target/sbpf-solana-solana/release/hub_evidence_anchor.so"
+            if [ -f "$SBF_ROOT" ]; then
+              cp "$SBF_ROOT" "$DEPLOY_DIR/hub_evidence_anchor.so"
+              echo "Copied .so from workspace root to $DEPLOY_DIR/"
+            else
+              echo "BUILD FAILED: No .so found at $SBF_OUT or $SBF_ROOT"
+              find . -name "hub_evidence_anchor.so" 2>/dev/null
+              exit 1
+            fi
+          fi
+          
+          echo ""
+          echo "=== Verifying .so ==="
+          if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then
+            echo "BUILD SUCCESS: $(ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so)"
+          else
+            echo "BUILD FAILED"
+            find programs/hub-evidence-anchor/target -name "*.so" 2>/dev/null
+            exit 1
+          fi
+
+      - name: Deploy program
+        id: deploy
+        run: |
+          export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
+          WALLET=$(cat /tmp/program-pubkey.txt | tr -d '\n')
+          echo "Deploying from wallet: $WALLET"
+          echo "Program ID: $PROGRAM_ID"
+          # Generate ephemeral buffer keypair (non-interactive deploy)
+          solana-keygen new --no-passphrase -o /tmp/buffer-keypair.json 2>/dev/null
+          solana program deploy \
+            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
+            --keypair /tmp/program-wallet.json \
+            --buffer /tmp/buffer-keypair.json \
+            --program-id $PROGRAM_ID \
+            --url mainnet-beta > /tmp/deploy-output.txt 2>&1 || true
+          echo "=== Deploy output ==="
+          cat /tmp/deploy-output.txt
+          DEPLOY_SIG=$(grep -o '[A-Za-z0-9]\{44,\}' /tmp/deploy-output.txt | grep -v "Error\|error" | tail -1)
+          echo "Deploy signature: $DEPLOY_SIG"
+          if grep -qi "Error\|error" /tmp/deploy-output.txt; then
+            echo "Deploy had errors - check above"
+            exit 1
+          fi
+          echo "DEPLOY_SIG=$DEPLOY_SIG" >> $GITHUB_OUTPUT || true
+
+      - name: Verify
+        run: |
+          export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
+          echo "Verifying program: $PROGRAM_ID"
+          solana program show "$PROGRAM_ID" --url mainnet-beta
