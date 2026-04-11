@@ -66,8 +66,12 @@ jobs:
           echo "=== Creating rustup-compatible Solana toolchain ==="
           mkdir -p "$SOLANA_TOOLCHAIN"
           # Copy Solana bin/ contents (cargo, rustc, etc.)
+          # IMPORTANT: don't use "bin/*" — Solana has a FILE named "bin" which
+          # would overwrite the bin/ directory itself!
           if [ -d "$SOLANA_ACTIVE/bin" ]; then
-            cp -r "$SOLANA_ACTIVE/bin/"* "$SOLANA_TOOLCHAIN/"
+            for f in "$SOLANA_ACTIVE/bin/"*; do
+              cp "$f" "$SOLANA_TOOLCHAIN/" 2>/dev/null && echo "Copied: $(basename $f)" || true
+            done
             echo "Copied Solana binaries"
           fi
           # Create minimal lib/ directory structure (rustup needs this)
