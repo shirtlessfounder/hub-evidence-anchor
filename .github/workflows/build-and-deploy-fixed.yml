@@ -42,7 +42,10 @@ jobs:
         env:
           WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
-          # solana-keygen handles JSON array format natively
+          if [ -z "$WALLET_JSON" ]; then
+            echo "ERROR: ANCHOR_WALLET_JSON secret is empty! Check GitHub repo → Settings → Secrets → Actions."
+            exit 1
+          fi
           echo "$WALLET_JSON" > /tmp/wallet_secret.txt
           if /tmp/solana-release/bin/solana-keygen pubkey /tmp/wallet_secret.txt > /tmp/program-pubkey.txt 2>&1; then
             echo "Wallet via solana-keygen: $(cat /tmp/program-pubkey.txt)"
