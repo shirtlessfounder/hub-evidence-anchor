@@ -74,7 +74,7 @@ jobs:
           
           echo "=== Building with cargo-build-sbf ==="
           echo "SBF_TOOLCHAIN=$SBF_SOLANA_TOOLCHAIN_PATH"
-          /tmp/solana-release/bin/cargo-build-sbf --locked \
+          /tmp/solana-release/bin/cargo-build-sbf -- --locked \
             2>&1 | tail -30
           
           echo ""
