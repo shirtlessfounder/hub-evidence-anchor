@@ -141,7 +141,7 @@ jobs:
           has_solana=$(echo "\$*" | grep -c '+solana' || true)
           if [ "\$has_solana" -gt 0 ]; then
             # Strip +solana from args and call Solana cargo directly
-            cleaned=\$(echo "\$*" | sed 's/+solana//g')
+            cleaned=$(echo "$@" | sed "s/+solana//g")
             exec /home/runner/.local/share/solana/install/active_release/bin/cargo \$cleaned
           fi
           exec "$RUST_185_PATH/cargo" "\$@"
