@@ -6,9 +6,3 @@ resolver = "2"
 
 [profile.release]
 overflow-checks = true
-
-# Downgrade block-buffer to avoid Rust edition 2024 requirement in 0.12
-# block-buffer 0.12 requires edition 2024 which older cargo can't parse
-[patch.crates-io]
-block-buffer = { version = "=0.10.4" }
-
