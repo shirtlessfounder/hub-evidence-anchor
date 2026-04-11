@@ -95,6 +95,10 @@ jobs:
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           echo ""
+          echo "=== Cleaning ==="
+          rm -f Cargo.lock
+          find . -name "Cargo.lock" -delete 2>/dev/null || true
+          echo ""
           echo "=== Building ==="
           cargo build-sbf 2>&1
           echo ""
