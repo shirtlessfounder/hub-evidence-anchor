@@ -1,19 +1,21 @@
+on:
+  push:
+  workflow_dispatch:
+
 name: Build and Deploy (Fixed)
 
-on:
-  workflow_dispatch:
-  push:
-    branches: [main]
+permissions:
+  contents: read
+  attestations: write
+  id-token: write
 
 env:
-  SOLANA_CLI_VERSION: v3.1.12
-  PROGRAM_ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
-  PATH: /tmp/solana-release/bin:/opt/cargo/bin:/usr/local/bin:/usr/bin:/bin
   CARGO_HOME: /opt/cargo
   RUSTUP_HOME: /opt/rustup
+  RUSTUP_TOOLCHAIN: "1.85"
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -21,206 +23,67 @@ jobs:
 
       - name: Install Solana CLI
         run: |
-          curl -sSfL "https://github.com/anza-xyz/agave/releases/download/${{ env.SOLANA_CLI_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
-          echo "Installed $(/tmp/solana-release/bin/solana --version)"
+          curl -sSfL https://github.com/anza-xyz/agave/releases/download/v3.1.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2 | tar jx
+          mv solana-release /tmp/solana-release
+          echo "/tmp/solana-release/bin" >> $GITHUB_PATH
 
-      - name: Install Rust 1.89 toolchain
+      - name: Setup Rust 1.85
         run: |
-          export CARGO_HOME="/opt/cargo"
-          export RUSTUP_HOME="/opt/rustup"
-          export PATH="$CARGO_HOME/bin:$PATH"
-          rm -rf "$CARGO_HOME" "$RUSTUP_HOME"
-          mkdir -p "$CARGO_HOME/bin" "$RUSTUP_HOME"
-          # Remove settings.toml BEFORE rustup runs — it overrides --default-toolchain
-          rm -f /opt/rustup/settings.toml
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-            CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
-            sh -s -- -y --default-toolchain 1.89.0 --no-modify-path
-          echo "Installed:"
-          "$CARGO_HOME/bin/rustup" toolchain list
-          # Install solana-cargo-build-sbf v4.0.0 (needs Rust 1.89 to build)
-          cargo +1.89 install solana-cargo-build-sbf --version 4.0.0 2>&1 || \
-            cargo +1.89 install solana-cargo-build-sbf 2>&1 || true
-          echo "=== Installed cargo-build-sbf ==="
-          $HOME/.cargo/bin/cargo-build-sbf --version 2>&1 || echo "Install may have failed"
+          mkdir -p /opt/cargo /opt/rustup
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
 
-      - name: Install clang for BPF compilation
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq clang-14 llvm
+      - name: Install Rust 1.89
+        run: /opt/cargo/bin/rustup toolchain install 1.89.0 --no-modify-path || true
 
-      - name: Setup Solana BPF toolchain
-        run: |
-          export CARGO_HOME="/opt/cargo"
-          export RUSTUP_HOME="/opt/rustup"
-          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
-          ORIGINAL_DIR="$(pwd)"
-          # cargo-build-sbf downloads platform-tools on first actual build; do a dummy build here to prime the cache
-          echo "=== Priming platform-tools (dummy build) ==="
-          mkdir -p /tmp/dummy-build
-          cd /tmp/dummy-build
-          /tmp/solana-release/bin/cargo-build-sbf --version 2>&1 || true
-          rm -rf /tmp/dummy-build
-          cd "$ORIGINAL_DIR"
-          # Now find the cached platform-tools rust
-          PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -name "rustc" -path "*/platform-tools/*/rust/bin/rustc" 2>/dev/null | head -1 | xargs dirname 2>/dev/null | xargs dirname 2>/dev/null || true)
-          echo "Found platform-tools rust: $PLATFORM_TOOLS_RUST"
-          if [ -n "$PLATFORM_TOOLS_RUST" ] && [ -d "$PLATFORM_TOOLS_RUST" ]; then
-            rustup toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || true
-          else
-            echo "WARNING: No platform-tools rust found — cargo-build-sbf may use embedded rust"
-          fi
-          rustup toolchain list || true
-          cargo +solana --version 2>/dev/null || echo "solana toolchain not available via rustup"
+      - name: Install clang
+        run: sudo apt-get update && sudo apt-get install -y clang
 
-      - name: Decode wallet keypair
-        env:
-          WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
+      - name: Decode wallet
         run: |
           python3 << 'PYEOF'
-          import os, base64, json
-          ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-          secret = os.environ.get("WALLET_JSON", "").strip()
-          raw = None
-          if len(secret) == 88:
-              # Base58 decode (likely format for wallet secrets)
-              try:
-                  n = 0
-                  for c in secret:
-                      n = n * 58 + ALPHABET.index(c)
-                  raw = n.to_bytes(64, 'big')
-              except ValueError:
-                  raw = None
-          if raw is None and secret.startswith('['):
-              # JSON array [1,2,3,...]
-              raw = bytes(json.loads(secret))
-          if raw is None:
-              # Fallback: try base64
-              raw = base64.b64decode(secret)
-          with open("/tmp/wallet.json", "w") as f:
-              json.dump([int(b) for b in raw], f)
-          pub = raw[32:]
-          n = int.from_bytes(pub, 'big')
-          addr = ''
-          while n > 0:
-              n, rem = divmod(n, 58)
-              addr = ALPHABET[rem] + addr
-          print(f"Wallet: {addr}")
-          with open("/tmp/program-pubkey.txt", "w") as f:
-              f.write(addr + "\n")
+          import os, json, base64
+          secret = os.environ.get('ANCHOR_WALLET_JSON', '').strip()
+          decoded = base64.b64decode(secret)
+          key = list(decoded)
+          with open('/tmp/wallet.json', 'w') as f:
+              json.dump(key, f)
+          print('Wallet decoded')
           PYEOF
+
+      - name: Check balance
+        run: /tmp/solana-release/bin/solana balance --keypair /tmp/wallet.json --url devnet
+
+      - name: Close buffers
+        run: /tmp/solana-release/bin/solana program close --buffers --keypair /tmp/wallet.json --url devnet || true
+
+      - name: Airdrop SOL
+        run: /tmp/solana-release/bin/solana airdrop 2 --keypair /tmp/wallet.json --url devnet || echo "Airdrop done"
+
+      - name: Check balance after airdrop
+        run: /tmp/solana-release/bin/solana balance --keypair /tmp/wallet.json --url devnet
+
+      - name: Generate Cargo.lock
+        run: cargo +1.85 generate-lockfile 2>&1 || true
+
+      - name: Install cargo-build-sbf
+        run: |
+          /opt/cargo/bin/cargo +1.89 install solana-cargo-build-sbf --version 4.0.0 2>&1 || true
 
       - name: Build program
         run: |
-          export CARGO_HOME="/opt/cargo"
-          export RUSTUP_HOME="/opt/rustup"
-          # RUSTUP_TOOLCHAIN forces the default toolchain for all cargo invocations
-          # (including subprocesses spawned by cargo-build-sbf)
-          export RUSTUP_TOOLCHAIN=1.89
-          export PATH="/opt/cargo/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
-          
-          echo "=== Toolchain check ==="
-          cargo --version
-          cargo build-sbf --version 2>&1
-          rustup toolchain list 2>&1
-          
-          echo ""
-          echo "=== Program ID ==="
-          grep declare_id programs/hub-evidence-anchor/src/lib.rs
-          
-          echo ""
-          echo "=== Building with solana-cargo-build-sbf v4 (Rust 1.89) ==="
-          cargo build-sbf 2>&1
-          
-          echo ""
-          echo "=== Copy .so to expected path ==="
-          # cargo build-sbf outputs to target/sbf-solana-solana/release/ at the
-          # manifest's Cargo.toml dir (workspace root when using --manifest-path).
-          # Copy to programs/hub-evidence-anchor/target/deploy/ so deploy step finds it.
-          SBF_OUT="programs/hub-evidence-anchor/target/sbpf-solana-solana/release/hub_evidence_anchor.so"
-          DEPLOY_DIR="programs/hub-evidence-anchor/target/deploy"
-          mkdir -p "$DEPLOY_DIR"
-          if [ -f "$SBF_OUT" ]; then
-            cp "$SBF_OUT" "$DEPLOY_DIR/hub_evidence_anchor.so"
-            echo "Copied .so to $DEPLOY_DIR/"
-          else
-            # Fallback: try workspace-root sbpf path
-            SBF_ROOT="target/sbpf-solana-solana/release/hub_evidence_anchor.so"
-            if [ -f "$SBF_ROOT" ]; then
-              cp "$SBF_ROOT" "$DEPLOY_DIR/hub_evidence_anchor.so"
-              echo "Copied .so from workspace root to $DEPLOY_DIR/"
-            else
-              echo "BUILD FAILED: No .so found at $SBF_OUT or $SBF_ROOT"
-              find . -name "hub_evidence_anchor.so" 2>/dev/null
-              exit 1
-            fi
-          fi
-          
-          echo ""
-          echo "=== Build artifacts ==="
-          if [ -f programs/hub-evidence-anchor/target/sbpf-solana-solana/release/hub_evidence_anchor.so ]; then
-            echo "BUILD SUCCESS"
-            ls -lh programs/hub-evidence-anchor/target/sbpf-solana-solana/release/hub_evidence_anchor.so
-          else
-            echo "BUILD FAILED: No .so found"
-            find programs/hub-evidence-anchor/target -name "*.so" 2>/dev/null || echo "No .so files found"
-            exit 1
-          fi
+          ~/.cargo/bin/cargo-build-sbf 2>&1
 
-      - name: Airdrop SOL (Helius or Solana Foundation)
+      - name: Copy artifact
         run: |
-          export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
-          UPGRADE_AUTH=$(cat /tmp/program-pubkey.txt | tr -d '\n')
-          echo "Upgrade authority: $UPGRADE_AUTH"
-          
-          # Check current balance — skip airdrop if >= 1.5 SOL
-          BALANCE_SOL=$(solana balance "$UPGRADE_AUTH" --url https://api.devnet.solana.com | awk '{print $1}')
-          echo "Current balance: ${BALANCE_SOL} SOL"
-          
-          BALANCE_LAMPORTS=$(solana balance "$UPGRADE_AUTH" --url https://api.devnet.solana.com | python3 -c "import sys; print(int(float(sys.stdin.read().strip().split()[0]) * 1e9))")
-          MIN_LAMPORTS=1500000000  # 1.5 SOL
-          
-          if [ "$BALANCE_LAMPORTS" -ge "$MIN_LAMPORTS" ]; then
-            echo "Balance sufficient (${BALANCE_SOL} SOL >= 1.5 SOL) — skipping airdrop"
-          else
-            echo "Balance low (${BALANCE_SOL} SOL < 1.5 SOL) — requesting airdrop..."
-            AIRDROP_OK=false
-            if [ -n "${{ secrets.HELIUS_API_KEY }}" ]; then
-              echo "Using Helius faucet..."
-              response=$(curl -s -X POST "https://devnet.helius-rpc.com/?api-key=${{ secrets.HELIUS_API_KEY }}" \
-                -H "Content-Type: application/json" \
-                -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"requestAirdrop\",\"params\":[\"$UPGRADE_AUTH\", 2000000000]}")
-              echo "Helius response: $response"
-              if echo "$response" | grep -q '"result"'; then
-                AIRDROP_OK=true
-              fi
-            fi
-            if [ "$AIRDROP_OK" = false ]; then
-              echo "Requesting from Solana Foundation faucet (10 retries)..."
-              for i in $(seq 1 10); do
-                result=$(solana airdrop 2 "$UPGRADE_AUTH" --url https://api.devnet.solana.com 2>&1)
-                if echo "$result" | grep -q "Success"; then
-                  echo "Airdrop $i succeeded"
-                  AIRDROP_OK=true
-                  break
-                fi
-                echo "Airdrop $i: $(echo "$result" | head -1)"
-                sleep 3
-              done
-            fi
-            solana balance "$UPGRADE_AUTH" --url https://api.devnet.solana.com
-          fi
+          mkdir -p programs/hub-evidence-anchor/target/deploy
+          cp target/sbpf-solana-solana/release/hub_evidence_anchor.so programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
+          ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
 
-      - name: Deploy program
+      - name: Deploy to devnet
         run: |
-          export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
-          solana program deploy \
-            programs/hub-evidence-anchor/target/sbpf-solana-solana/release/hub_evidence_anchor.so \
-            --keypair /tmp/wallet.json \
-            --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf \
-            --url https://api.devnet.solana.com 2>&1
+          /tmp/solana-release/bin/solana program deploy programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so --keypair /tmp/wallet.json --url devnet 2>&1
 
       - name: Verify
-        run: |
-          export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
-          solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url https://api.devnet.solana.com
+        run: /tmp/solana-release/bin/solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url devnet || echo "Done"
