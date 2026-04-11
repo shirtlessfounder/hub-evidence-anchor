@@ -65,14 +65,42 @@ jobs:
           rustup toolchain list || true
           cargo +solana --version 2>/dev/null || echo "solana toolchain not available via rustup"
 
-      - name: Decode wallet keypair (base64)
+      - name: Decode wallet keypair
         env:
           WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
-          echo "$WALLET_JSON" | base64 -d > /tmp/wallet.json
-          PUBKEY=$(/tmp/solana-release/bin/solana-keygen pubkey /tmp/wallet.json)
-          echo "Wallet: $PUBKEY"
-          echo "$PUBKEY" > /tmp/program-pubkey.txt
+          python3 << 'PYEOF'
+          import os, base64, json
+          ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+          secret = os.environ.get("WALLET_JSON", "").strip()
+          raw = None
+          if len(secret) == 88:
+              # Base58 decode (likely format for wallet secrets)
+              try:
+                  n = 0
+                  for c in secret:
+                      n = n * 58 + ALPHABET.index(c)
+                  raw = n.to_bytes(64, 'big')
+              except ValueError:
+                  raw = None
+          if raw is None and secret.startswith('['):
+              # JSON array [1,2,3,...]
+              raw = bytes(json.loads(secret))
+          if raw is None:
+              # Fallback: try base64
+              raw = base64.b64decode(secret)
+          with open("/tmp/wallet.json", "w") as f:
+              json.dump([int(b) for b in raw], f)
+          pub = raw[32:]
+          n = int.from_bytes(pub, 'big')
+          addr = ''
+          while n > 0:
+              n, rem = divmod(n, 58)
+              addr = ALPHABET[rem] + addr
+          print(f"Wallet: {addr}")
+          with open("/tmp/program-pubkey.txt", "w") as f:
+              f.write(addr + "\n")
+          PYEOF
 
       - name: Build program
         run: |
