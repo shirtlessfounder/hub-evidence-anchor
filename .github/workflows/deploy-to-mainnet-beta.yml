@@ -35,20 +35,14 @@ jobs:
       - name: Setup Rust toolchains (1.85 for build, 1.89 for metadata)
         run: |
           mkdir -p /opt/cargo /opt/rustup
-          # Install Rust 1.85 (for cargo build-sbf) at custom CARGO_HOME
+          # Install Rust 1.85 (for cargo build-sbf) at custom CARGO_HOME/RUSTUP_HOME
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
             sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
-          # Install Rust 1.89 at DEFAULT ~/.rustup (NOT our custom CARGO_HOME)
+          # Install Rust 1.89 (for cargo metadata — parses edition 2024 crates)
           RUSTUP_HOME=/opt/rustup rustup toolchain install 1.89.0 2>&1 | tail -3 || echo "1.89 already installed"
           echo "=== Installed toolchains ==="
           rustup toolchain list
-          # Find 1.89 cargo using rustup which (reliable regardless of RUSTUP_HOME vs actual home)
-          RUST_189_CARGO=$(RUSTUP_TOOLCHAIN=1.89.0 rustup which cargo 2>/dev/null || echo "")
-          RUST_189_DIR=$(dirname "$RUST_189_CARGO")
-          echo "Rust 1.89 cargo: $RUST_189_CARGO"
-          echo "Rust 1.89 dir: $RUST_189_DIR"
-          echo "RUST_189_DIR=$RUST_189_DIR" >> $GITHUB_ENV
 
       - name: Install clang
         run: |
@@ -65,59 +59,47 @@ jobs:
           export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
 
-          # Rust 1.89 toolchain location (set in previous step via GITHUB_ENV)
-          # RUST_189_DIR from env is the bin directory (e.g. .../1.89.0-x86_64-unknown-linux-gnu/bin)
-          if [ -n "$RUST_189_DIR" ] && [ -f "$RUST_189_DIR/cargo" ]; then
-            RUST_189_CARGO="$RUST_189_DIR/cargo"
-          else
-            # Fallback: query rustup directly for 1.89 cargo
-            RUST_189_CARGO=$(RUSTUP_TOOLCHAIN=1.89.0 rustup which cargo 2>/dev/null || echo "")
-          fi
-          echo "Using Rust 1.89 cargo: $RUST_189_CARGO"
-          "$RUST_189_CARGO" --version || { echo "ERROR: Rust 1.89 not found"; exit 1; }
+          # Use rustup show to get the toolchain installation paths
+          # rustup show returns e.g. "/opt/rustup/toolchains/1.89.0-x86_64-unknown-linux-gnu"
+          get_toolchain_path() {
+            RUSTUP_TOOLCHAIN=$1 rustup show 2>/dev/null | grep "^$1" | awk '{print $2}'
+          }
 
-          # Rust 1.85 at explicit path (NOT $CARGO_HOME/bin/cargo — that's the rustup proxy)
-          RUST_185_CARGO=$(find /opt/rustup/toolchains -maxdepth 2 -name "cargo" -path "*1.85*" 2>/dev/null | head -1)
-          RUST_185_DIR=$(dirname "$RUST_185_CARGO")
-          echo "Using Rust 1.85 at: $RUST_185_DIR"
+          RUST_185_PATH=$(get_toolchain_path "1.85")
+          RUST_189_PATH=$(get_toolchain_path "1.89")
+          echo "Rust 1.85: $RUST_185_PATH"
+          echo "Rust 1.89: $RUST_189_PATH"
 
-          # Create wrapper: metadata → Rust 1.89, everything else → Rust 1.85
+          [ -n "$RUST_185_PATH" ] || { echo "ERROR: Rust 1.85 not found"; exit 1; }
+          [ -n "$RUST_189_PATH" ] || { echo "ERROR: Rust 1.89 not found"; exit 1; }
+          [ -f "$RUST_185_PATH/bin/cargo" ] || { echo "ERROR: Rust 1.85 cargo missing"; exit 1; }
+          [ -f "$RUST_189_PATH/bin/cargo" ] || { echo "ERROR: Rust 1.89 cargo missing"; exit 1; }
+
+          "$RUST_189_PATH/bin/cargo" --version
+          "$RUST_185_PATH/bin/cargo" --version
+
+          # Create wrapper at /tmp/solana-release/bin/cargo:
+          # metadata → Rust 1.89 (parses edition 2024 Cargo.toml)
+          # all other → Rust 1.85 (cargo build-sbf compatible)
+          # NOTE: must use EXPLICIT binary paths, NOT $CARGO_HOME/bin/cargo
+          # because $CARGO_HOME/bin/cargo IS the rustup proxy for 1.85
           cat > /tmp/solana-release/bin/cargo << WRAPPER
           #!/bin/bash
-          for arg in "$@"; do
-            if echo "$arg" | grep -q "metadata"; then
-              "$RUST_189_CARGO" "$@"
-              exit_code=$?
+          for arg in "\$@"; do
+            if echo "\$arg" | grep -q "metadata"; then
+              "$RUST_189_PATH/bin/cargo" "\$@"
+              exit_code=\$?
               # v4 Cargo.lock was created by cargo +1.89 — delete it
-              # cargo build-sbf uses Rust 1.85 which can't read v4 lock format
+              # cargo build-sbf (Rust 1.85) can't read v4 lock format
               rm -f Cargo.lock
-              exit $exit_code
+              exit \$exit_code
             fi
           done
-          exec "$RUST_185_DIR/cargo" "$@"
-          WRAPPER
-          chmod +x /tmp/solana-release/bin/cargo
-          cat > /tmp/solana-release/bin/cargo << WRAPPER
-          #!/bin/bash
-          for arg in "$@"; do
-            if echo "$arg" | grep -q "metadata"; then
-              "$RUST_189_CARGO" "$@"
-              exit_code=$?
-              # v4 Cargo.lock was created by cargo +1.89 — delete it
-              # cargo build-sbf uses Rust 1.85 which can't read v4 lock format
-              rm -f Cargo.lock
-              exit $exit_code
-            fi
-          done
-          exec "$RUST_185_DIR/cargo" "$@"
+          exec "$RUST_185_PATH/bin/cargo" "\$@"
           WRAPPER
           chmod +x /tmp/solana-release/bin/cargo
 
-          echo "=== Versions ==="
-          /tmp/solana-release/bin/cargo --version
-          "$RUST_189_CARGO" --version
-          echo ""
-          echo "=== Test: cargo metadata (should route to Rust 1.89) ==="
+          echo "=== Test: cargo metadata (routes to Rust 1.89) ==="
           /tmp/solana-release/bin/cargo metadata --format-version 1 2>&1 | head -3
 
       - name: Generate Cargo.lock
