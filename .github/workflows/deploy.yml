@@ -35,7 +35,7 @@ jobs:
       - name: Install clang
         run: sudo apt-get update && sudo apt-get install -y clang
 
-      - name: Decode wallet
+      - name: Decode wallet (tries ANCHOR then PROGRAM)
         run: |
           python3 << 'PYEOF'
           import os, json, base64
@@ -51,11 +51,13 @@ jobs:
                   result.append(n & 255)
               return bytes(result)
           
-          secret = os.environ.get('ANCHOR_WALLET_JSON', '').strip()
+          # Try ANCHOR_WALLET_JSON first, then PROGRAM_WALLET_JSON
+          secret = os.environ.get('ANCHOR_WALLET_JSON', os.environ.get('PROGRAM_WALLET_JSON', '')).strip()
+          print(f"Secret source: ANCHOR or PROGRAM", flush=True)
           print(f"Secret length: {len(secret)}", flush=True)
           
           if len(secret) == 0:
-            raise Exception("ANCHOR_WALLET_JSON is empty!")
+            raise Exception("Both ANCHOR_WALLET_JSON and PROGRAM_WALLET_JSON are empty!")
           
           key_bytes = None
           
@@ -90,7 +92,7 @@ jobs:
                   pass
           
           if key_bytes is None or len(key_bytes) != 64:
-              raise Exception(f"Could not decode wallet! Tried raw base58, base64(b58), base64(raw). Secret starts: {secret[:20]}")
+              raise Exception(f"Could not decode wallet! Secret starts: {secret[:20]}")
           
           with open('/tmp/wallet.json', 'w') as f:
               json.dump(list(key_bytes), f)
