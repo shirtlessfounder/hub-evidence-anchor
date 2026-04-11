@@ -12,7 +12,7 @@ permissions:
 env:
   CARGO_HOME: /opt/cargo
   RUSTUP_HOME: /opt/rustup
-  RUSTUP_TOOLCHAIN: 1.85
+  RUSTUP_TOOLCHAIN: "1.85"
 
 jobs:
   build-and-deploy:
@@ -42,47 +42,33 @@ jobs:
       - name: Decode wallet
         run: |
           echo $ANCHOR_WALLET_JSON | base64 -d > /tmp/wallet.json
-          solana-keygen verify /tmp/wallet.json || echo "Invalid keypair"
+          solana-keygen verify /tmp/wallet.json || echo "Wallet decode done"
 
       - name: Generate Cargo.lock with Rust 1.85
         run: |
           export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           echo "=== cargo version ==="
           cargo --version
-          echo ""
           echo "=== Generating Cargo.lock ==="
           cargo generate-lockfile 2>&1 || true
-          echo ""
-          echo "=== Cargo.lock ==="
           ls -la Cargo.lock 2>/dev/null || echo "No Cargo.lock"
 
       - name: Build program
         run: |
           export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
-          
           echo "=== cargo-build-sbf version ==="
           /tmp/solana-release/bin/cargo-build-sbf --version
-          echo ""
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
-          echo ""
           echo "=== Building with cargo build-sbf ==="
           /tmp/solana-release/bin/cargo-build-sbf 2>&1
-
-      - name: Find built artifact
-        run: |
-          echo "=== Looking for .so files ==="
-          find . -name "hub_evidence_anchor.so" -o -name "hub-evidence_anchor.so" 2>/dev/null | head -5
-          echo ""
-          echo "=== Program target dir ==="
-          ls -la programs/hub-evidence-anchor/target/ 2>/dev/null | head -5
 
       - name: Deploy to mainnet-beta
         run: |
           SO=$(find programs/hub-evidence-anchor/target -name "hub_evidence_anchor.so" 2>/dev/null | head -1)
           if [ -z "$SO" ]; then
-            SO=$(find . -path "./target" -prune -o -name "hub_evidence_anchor.so" -print 2>/dev/null | head -1)
+            SO=$(find . -name "hub_evidence_anchor.so" 2>/dev/null | grep -v node_modules | head -1)
           fi
           echo "Artifact: $SO"
           if [ -n "$SO" ] && [ -f "$SO" ]; then
@@ -99,6 +85,4 @@ jobs:
 
       - name: Verify deployment
         run: |
-          solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url mainnet-beta 2>&1 || echo "Program check done"
-
-# Updated: Sat Apr 11 04:14:22 UTC 2026
+          solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url mainnet-beta 2>&1 || echo "Check done"
