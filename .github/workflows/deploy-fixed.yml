@@ -125,9 +125,9 @@ jobs:
           fi
           echo ""
           echo "=== Build artifacts ==="
-          if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then
+          if [ -f target/deploy/hub_evidence_anchor.so ]; then
             echo "BUILD SUCCESS"
-            ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
+            ls -lh target/deploy/hub_evidence_anchor.so
           else
             echo "BUILD FAILED: No .so found"
             exit 1
@@ -150,7 +150,7 @@ jobs:
       - name: Deploy program
         run: |
           solana program deploy \
-            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
+            target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/wallet.json \
             --program-id $PROGRAM_ID \
             --url devnet 2>&1
