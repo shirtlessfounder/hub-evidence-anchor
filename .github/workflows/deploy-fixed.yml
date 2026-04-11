@@ -54,31 +54,15 @@ jobs:
         env:
           WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
         run: |
-          python3 << 'PYEOF'
-import os, base64, json
-ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-secret = os.environ.get("WALLET_JSON", "").strip()
-raw = None
-if len(secret) == 88:
-    n = 0
-    for c in secret:
-        n = n * 58 + ALPHABET.index(c)
-    raw = n.to_bytes(64, 'big')
-elif secret.startswith('['):
-    raw = bytes(json.loads(secret))
-else:
-    raw = base64.b64decode(secret)
-with open("/tmp/wallet.json", "w") as f:
-    json.dump([int(b) for b in raw], f)
-pub = raw[32:]
-n = int.from_bytes(pub, 'big')
-addr = ''
-while n > 0: n, rem = divmod(n, 58); addr = ALPHABET[rem] + addr
-print(f"Wallet: {addr}")
-with open("/tmp/program-pubkey.txt", "w") as f:
-    f.write(addr + "\n")
-PYEOF
-
+          echo "=== Decode wallet ==="
+          if /tmp/solana-release/bin/solana-keygen pubkey <(echo "$WALLET_JSON") > /tmp/program-pubkey.txt 2>&1; then
+            echo "Wallet: $(cat /tmp/program-pubkey.txt)"
+            echo "$WALLET_JSON" > /tmp/wallet.json
+          else
+            echo "solana-keygen failed — Python decode"
+            python3 -c "import os,json; k=json.loads(os.environ.get('WALLET_JSON','[]')); bytes(k).tofile(open('/tmp/wallet.json','wb')); open('/tmp/program-pubkey.txt','w').write(bytes(k)[32:].hex()+chr(10)); print('Wallet:',bytes(k)[32:].hex()[:8]+'...')"
+          fi
+          echo "Wallet decoded: $(head -c 8 /tmp/program-pubkey.txt)..."
       - name: Install solana-cargo-build-sbf v4.0.0 (Rust 1.89, supports edition2024 crates)
         run: |
           # Install v4.0.0 from crates.io — REQUIRES Rust 1.89 to build
