@@ -17,30 +17,31 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Solana CLI
         run: |
-          set -e
-          URL="https://github.com/anza-xyz/agave/releases/download/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
-          echo "Downloading Solana CLI from: $URL"
-          curl -L --proto '=https' --tlsv1.2 -f --progress-bar "$URL" -o /tmp/solana.tar.bz2
-          echo "Extracting..."
-          tar jxf /tmp/solana.tar.bz2
-          rm -f /tmp/solana.tar.bz2
-          rm -rf /tmp/solana-release
+          curl --proto '=https' --tlsv1.2 -sSfL https://release.solana.com/v1.18.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2 | tar jx
           mv solana-release /tmp/solana-release
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
 
-      - name: Setup Rust toolchain
+      - name: Setup Rust toolchains (1.85 for build, 1.89 for metadata)
         run: |
           mkdir -p /opt/cargo /opt/rustup
+          # Install Rust 1.85 (for cargo build-sbf)
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
             sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
+          # Install Rust 1.89 separately (for cargo metadata parsing edition 2024 crates)
+          /opt/cargo/bin/rustup toolchain install 1.89.0 2>&1 | tail -3
+          echo "=== Installed toolchains ==="
+          /opt/cargo/bin/rustup show
+          # Find the 1.89 toolchain path and expose it
+          RUST_189_PATH=$(find /opt/rustup/toolchains -maxdepth 2 -name "cargo" -path "*1.89*" 2>/dev/null | head -1 | xargs dirname 2>/dev/null || echo "")
+          echo "Rust 1.89 at: $RUST_189_PATH"
+          echo "RUST_189_PATH=$RUST_189_PATH" >> $GITHUB_ENV
 
       - name: Install clang
         run: |
@@ -52,61 +53,83 @@ jobs:
           echo $ANCHOR_WALLET_JSON | base64 -d > /tmp/wallet.json
           solana-keygen verify /tmp/wallet.json || echo "Wallet decode done"
 
-      - name: Generate Cargo.lock with Rust 1.85
-        run: |
-          export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
-          echo "=== cargo version ==="
-          cargo --version
-          echo "=== Generating Cargo.lock ==="
-          cargo generate-lockfile 2>&1 || true
-          ls -la Cargo.lock 2>/dev/null || echo "No Cargo.lock"
-
-      - name: Build program
+      - name: Create cargo wrapper (metadata → Rust 1.89, build → Rust 1.85)
         run: |
           export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
-          
-          # Create cargo wrapper: intercepts "cargo metadata" → uses cargo +1.89
-          # All other commands → use the solana toolchain cargo
-          mkdir -p /tmp/solana-release/bin
-          mv /tmp/solana-release/bin/cargo /tmp/solana-release/bin/cargo-real 2>/dev/null || true
-          cat > /tmp/solana-release/bin/cargo << 'WRAPPER'
+
+          # Rust 1.89 path from previous step
+          RUST_189_PATH="${RUST_189_PATH:-$(find /opt/rustup/toolchains -maxdepth 2 -name "cargo" -path "*1.89*" 2>/dev/null | head -1 | xargs dirname)}"
+          echo "Using Rust 1.89 at: $RUST_189_PATH"
+          "$RUST_189_PATH/cargo" --version || { echo "ERROR: Rust 1.89 not found"; exit 1; }
+
+          # Backup the real cargo (Rust 1.85) as cargo-real
+          cp "$CARGO_HOME/bin/cargo" /tmp/solana-release/bin/cargo-real
+
+          # Create wrapper: metadata → Rust 1.89, everything else → Rust 1.85
+          cat > /tmp/solana-release/bin/cargo << WRAPPER
           #!/bin/bash
-          if [[ "$*" == *"metadata"* ]]; then
-            # cargo-metadata needs a modern cargo for edition 2024 deps
-            exec "$CARGO_HOME/bin/cargo" +1.89 "$@"
-          else
-            # Build commands go to the solana toolchain
-            exec /tmp/solana-release/bin/cargo-real "$@"
-          fi
+          for arg in "$@"; do
+            if echo "$arg" | grep -q "metadata"; then
+              exec "$RUST_189_PATH/cargo" "$@"
+            fi
+          done
+          exec /tmp/solana-release/bin/cargo-real "$@"
           WRAPPER
           chmod +x /tmp/solana-release/bin/cargo
-          
+
+          echo "=== Versions ==="
+          /tmp/solana-release/bin/cargo --version
+          "$RUST_189_PATH/cargo" --version
+          echo ""
+          echo "=== Test: cargo metadata (should route to Rust 1.89) ==="
+          /tmp/solana-release/bin/cargo metadata --format-version 1 2>&1 | head -3
+
+      - name: Delete v4 Cargo.lock (incompatible with cargo-build-sbf solana toolchain)
+        run: |
+          if [ -f Cargo.lock ]; then
+            head -3 Cargo.lock
+            rm -f Cargo.lock
+            echo "Deleted v4 Cargo.lock"
+          else
+            echo "No Cargo.lock"
+          fi
+
+      - name: Generate Cargo.lock
+        run: |
+          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
+          echo "=== cargo version ==="
+          cargo --version
+          echo "=== Generating Cargo.lock ==="
+          cargo generate-lockfile 2>&1 | tail -5
+          ls -la Cargo.lock 2>/dev/null && echo "Cargo.lock created" || echo "No Cargo.lock"
+
+      - name: Build program
+        run: |
+          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
+          export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
           echo "=== cargo-build-sbf version ==="
           /tmp/solana-release/bin/cargo-build-sbf --version
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
-          echo "=== Building with cargo build-sbf (cargo wrapper) ==="
-          /tmp/solana-release/bin/cargo-build-sbf 2>&1
+          echo "=== Building with cargo build-sbf ==="
+          /tmp/solana-release/bin/cargo-build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
 
       - name: Check artifact
         run: |
-          SBF_OUT="target/sbpf-solana-solana/release/hub_evidence_anchor.so"
-          DEPLOY_DIR="programs/hub-evidence-anchor/target/deploy"
-          mkdir -p "$DEPLOY_DIR"
-          if [ -f "$SBF_OUT" ]; then
-            cp "$SBF_OUT" "$DEPLOY_DIR/hub_evidence_anchor.so"
+          SO=$(find programs/hub-evidence-anchor/target -name "hub_evidence_anchor.so" 2>/dev/null | head -1)
+          if [ -n "$SO" ] && [ -f "$SO" ]; then
             echo "Artifact found!"
-            ls -lh "$DEPLOY_DIR/hub_evidence_anchor.so"
+            ls -lh "$SO"
           else
-            echo "ERROR: No .so found at $SBF_OUT"
+            echo "ERROR: No .so found"
             find . -name "hub_evidence_anchor.so" 2>/dev/null | head -5
             exit 1
           fi
 
       - name: Deploy to mainnet-beta
         run: |
-          SO="programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so"
+          SO=$(find programs/hub-evidence-anchor/target -name "hub_evidence_anchor.so" 2>/dev/null | head -1)
           echo "Deploying: $SO"
           ls -lh "$SO"
           solana program deploy "$SO" \
@@ -118,4 +141,3 @@ jobs:
       - name: Verify deployment
         run: |
           solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url mainnet-beta 2>&1 || echo "Check done"
-# Updated: 1775881067
