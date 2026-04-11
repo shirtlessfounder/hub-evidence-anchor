@@ -36,20 +36,26 @@ jobs:
       - name: Decode wallet
         run: |
           python3 -c "
-import os, base64
+import os, json
 ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 secret = os.environ.get('ANCHOR_WALLET_JSON', '').strip()
 if len(secret) == 88:
     n = 0
     for c in secret:
         n = n * 58 + ALPHABET.index(c)
-    raw = n.to_bytes(64, 'big')
-    with open('/tmp/wallet.json', 'wb') as f:
-        f.write(raw)
-    print('Wallet decoded (base58, 64 bytes)')
+    key = list(n.to_bytes(64, 'big'))
+    with open('/tmp/wallet.json', 'w') as f:
+        json.dump(key, f)
+    print('Wallet decoded (base58, JSON array)')
 else:
-    with open('/tmp/wallet.json', 'wb') as f:
-        f.write(base64.b64decode(secret))
+    import base64
+    raw = base64.b64decode(secret)
+    key = list(raw) if len(raw) == 64 else raw
+    with open('/tmp/wallet.json', 'wb' if isinstance(key, bytes) else 'w') as f:
+        if isinstance(key, bytes):
+            f.write(key)
+        else:
+            json.dump(key, f)
     print('Wallet decoded (base64)')
 " 
       - name: Check balance
