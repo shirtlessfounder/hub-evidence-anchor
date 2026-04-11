@@ -143,8 +143,8 @@ jobs:
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
           echo ""
-          echo "=== Building with cargo build-sbf (RUSTUP_TOOLCHAIN=1.85) ==="
-          cargo build-sbf 2>&1
+          echo "=== Building with cargo build-sbf (forcing +1.85 toolchain) ==="
+          cargo +1.85 build-sbf 2>&1
           echo ""
           echo "=== Verifying artifact ==="
           SBF_OUT="target/sbpf-solana-solana/release/hub_evidence_anchor.so"
