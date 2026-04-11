@@ -19,3 +19,7 @@ serde_json = "1.0"
 [profile.release]
 lto = true
 opt-level = 3
+
+# Force older cmov to avoid Rust 2024 edition requirement
+[patch.crates-io]
+cmov = { version = "=0.1.1" }
