@@ -31,10 +31,6 @@ jobs:
           mv solana-release /tmp/solana-release
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
-          # Download agave-install-init for later (after Rust setup)
-          curl -L --proto '=https' --tlsv1.2 -f "https://github.com/anza-xyz/agave/releases/download/v1.18.6/agave-install-init-x86_64-unknown-linux-gnu" -o /tmp/agave-install-init
-          chmod +x /tmp/agave-install-init
-          echo "agave-install-init downloaded"
 
       - name: Setup Rust toolchains (1.85 for build, 1.89 for metadata)
         run: |
@@ -48,52 +44,46 @@ jobs:
           echo "=== Installed toolchains ==="
           rustup toolchain list
 
-      - name: Install Solana rustup toolchain
+      - name: Setup Solana rustup toolchain (for cargo +solana)
         run: |
-          # Install Solana toolchain AFTER Rust setup
-          # This is needed for cargo +solana (cargo-build-sbf uses this internally)
-          echo "=== Installing Solana toolchain via agave-install-init ==="
-          RUSTUP_HOME=/opt/rustup /tmp/agave-install-init v1.18.6 2>&1 || echo "agave-install-init done"
+          # cargo +solana (used internally by cargo-build-sbf) needs a rustup toolchain named 'solana'
+          # Solution: cargo-build-sbf downloads platform-tools rust to ~/.cache/solana/
+          # We link that as a rustup toolchain named 'solana'
+          export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
+          export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
 
-          # agave-install-init installs to ~/.local/share/solana/install/
-          # But it fails because lib/ is a FILE not directory
-          # Create a proper rustup toolchain manually:
-          # rustup expects: toolchains/solana-x86_64-unknown-linux-gnu/bin/cargo
-          # Solana has: ~/.local/share/solana/install/active_release/bin/cargo
-          SOLANA_INSTALL="$HOME/.local/share/solana/install"
-          SOLANA_ACTIVE="$SOLANA_INSTALL/active_release"
-          SOLANA_TOOLCHAIN="/opt/rustup/toolchains/solana-x86_64-unknown-linux-gnu"
-          echo "=== Creating rustup-compatible Solana toolchain ==="
-          mkdir -p "$SOLANA_TOOLCHAIN"
-          # Copy Solana bin/ contents (cargo, rustc, etc.)
-          # IMPORTANT: don't use "bin/*" glob — Solana has a FILE named "bin" which
-          # when copied to $SOLANA_TOOLCHAIN/ overwrites the bin/ directory!
-          if [ -d "$SOLANA_ACTIVE/bin" ]; then
-            for f in "$SOLANA_ACTIVE/bin/"*; do
-              fname=$(basename "$f")
-              if [ "$fname" = "bin" ]; then
-                echo "SKIP: 'bin' is a file, skipping to preserve dir"
-                continue
-              fi
-              cp "$f" "$SOLANA_TOOLCHAIN/" && echo "Copied: $fname" || echo "Failed: $fname"
-            done
-            echo "Done copying Solana binaries"
-          fi
-          # Verify bin/ directory still exists
-          if [ -d "$SOLANA_TOOLCHAIN/bin" ]; then
-            echo "bin/ dir OK: $(ls "$SOLANA_TOOLCHAIN/bin/" 2>/dev/null | tr '\n' ' ')"
+          echo "=== Priming platform-tools (runs cargo-build-sbf to download rust) ==="
+          # Create dummy project to prime platform-tools without building our actual code
+          mkdir -p /tmp/dummy-solana-prime
+          cd /tmp/dummy-solana-prime
+          cat > Cargo.toml << 'EOF'
+          [package]
+          name = "dummy"
+          version = "0.1.0"
+          edition = "2021"
+          EOF
+          cat > src/main.rs << 'EOF'
+          fn main() {}
+          EOF
+          /tmp/solana-release/bin/cargo-build-sbf 2>&1 | tail -3 || true
+          cd /home/runner/work/hub-evidence-anchor/hub-evidence-anchor
+          rm -rf /tmp/dummy-solana-prime
+
+          echo "=== Finding platform-tools rust in ~/.cache/solana/ ==="
+          # Find the platform-tools rust — has bin/cargo, bin/rustc, lib/rustlib/
+          PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -name "rustc" -path "*/platform-tools/*/rust/bin/rustc" 2>/dev/null | head -1 | xargs dirname 2>/dev/null | xargs dirname 2>/dev/null || echo "")
+          echo "Platform-tools rust: $PLATFORM_TOOLS_RUST"
+          if [ -n "$PLATFORM_TOOLS_RUST" ] && [ -d "$PLATFORM_TOOLS_RUST" ]; then
+            echo "=== Linking platform-tools as rustup toolchain 'solana' ==="
+            rustup toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || echo "link done"
           else
-            echo "ERROR: bin/ directory missing!"
+            echo "WARNING: No platform-tools rust found in ~/.cache/solana/"
+            ls -la "$HOME/.cache/solana/" 2>/dev/null || echo "cache dir not found"
           fi
-          # Create minimal lib/ directory structure (rustup needs this)
-          mkdir -p "$SOLANA_TOOLCHAIN/lib/rustlib"
-          echo "Created lib/rustlib structure"
-          # rustup run solana cargo needs a toolchain named "solana"
-          rustup toolchain link solana "$SOLANA_TOOLCHAIN" 2>&1 || echo "toolchain link done"
-          echo "=== Verifying Solana toolchain ==="
-          RUSTUP_HOME=/opt/rustup rustup toolchain list
-          echo "=== Testing rustup run solana cargo ==="
-          RUSTUP_HOME=/opt/rustup rustup run solana cargo --version 2>&1 || echo "rustup run solana failed"
+          echo "=== Verifying toolchains ==="
+          rustup toolchain list
+          echo "=== Testing cargo +solana ==="
+          cargo +solana --version 2>&1 || echo "cargo +solana failed"
 
       - name: Install clang
         run: |
