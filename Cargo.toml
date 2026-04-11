@@ -11,3 +11,8 @@ overflow-checks = true
 # NOTE: removed [patch.crates-io] - patches must point to a DIFFERENT source (git/path).
 # block-buffer 0.10.4 only exists on crates.io, so patch was invalid.
 # Cargo will resolve block-buffer based on direct dependency requirements.
+
+# Fix bytecode bloat: blake3 1.5+ uses digest 0.11 -> block-buffer 0.12 -> generic-array 1.0 (huge)
+# Patch blake3 to 1.4.x (last version using digest 0.10) via git tag
+[patch.crates-io]
+blake3 = { git = "https://github.com/BLAKE3-team/BLAKE3", tag = "blake3-1.4.0" }
