@@ -134,8 +134,10 @@ jobs:
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
           
           # Create cargo wrapper: +1.85 for metadata, +solana for build
+          # Use cp not mv — cargo may be a symlink (cargo-build-sbf -> cargo), and mv
+          # of a symlink breaks the chain. cp preserves the actual binary.
           mkdir -p /tmp/solana-release/bin
-          mv /tmp/solana-release/bin/cargo /tmp/solana-release/bin/cargo-real 2>/dev/null || true
+          cp /tmp/solana-release/bin/cargo /tmp/solana-release/bin/cargo-real 2>/dev/null || true
           cat > /tmp/solana-release/bin/cargo << 'WRAPPER'
           #!/bin/bash
           if [[ "$*" == *"metadata"* ]]; then
