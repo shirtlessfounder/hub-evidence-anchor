@@ -37,10 +37,9 @@ jobs:
       - name: Setup Rust toolchain (1.85 + 1.89)
         run: |
           mkdir -p /opt/cargo /opt/rustup
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-            CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
-            sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
-          /opt/cargo/bin/rustup toolchain install 1.89.0 --no-modify-path
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
+      - name: Install Rust 1.89
+        run: /opt/cargo/bin/rustup toolchain install 1.89.0 --no-modify-path
 
       - name: Decode wallet (Python base58 → JSON array)
         env:
