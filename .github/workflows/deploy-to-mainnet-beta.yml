@@ -39,22 +39,24 @@ jobs:
       - name: Decode wallet
         run: |
           python3 << 'PYEOF'
-          import os, json
-          ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+          import os, json, base64
           secret = os.environ.get('ANCHOR_WALLET_JSON', '').strip()
-          if len(secret) == 88:
-              n = 0
-              for c in secret:
-                  n = n * 58 + ALPHABET.index(c)
-              key = list(n.to_bytes(64, 'big'))
+          decoded = base64.b64decode(secret)
+          # Try to parse as JSON array first
+          try:
+              key_array = json.loads(decoded)
+              if isinstance(key_array, list):
+                  with open('/tmp/wallet.json', 'w') as f:
+                      json.dump(key_array, f)
+                  print('Wallet: JSON array (' + str(len(key_array)) + ' bytes)')
+              else:
+                  raise ValueError('Not a list')
+          except:
+              # Fallback: write raw bytes as JSON array
+              key = list(decoded)
               with open('/tmp/wallet.json', 'w') as f:
                   json.dump(key, f)
-              print('Decoded base58')
-          else:
-              import base64
-              with open('/tmp/wallet.json', 'wb') as f:
-                  f.write(base64.b64decode(secret))
-              print('Decoded base64')
+              print('Wallet: raw bytes as JSON (' + str(len(key)) + ' bytes)')
           PYEOF
 
       - name: Check balance
