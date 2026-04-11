@@ -43,8 +43,8 @@ jobs:
           rustup toolchain install 1.89.0 2>&1 | tail -3 || echo "1.89 already installed"
           echo "=== Installed toolchains ==="
           rustup toolchain list
-          # Find 1.89 toolchain — use absolute path, NOT ~ (GITHUB_ENV doesn't expand ~)
-          RUST_189_CARGO=$(find "/opt/rustup/toolchains" -maxdepth 2 -name "cargo" -path "*1.89*" 2>/dev/null | head -1)
+          # Find 1.89 cargo using rustup which (reliable regardless of RUSTUP_HOME vs actual home)
+          RUST_189_CARGO=$(RUSTUP_TOOLCHAIN=1.89.0 rustup which cargo 2>/dev/null || echo "")
           RUST_189_DIR=$(dirname "$RUST_189_CARGO")
           echo "Rust 1.89 cargo: $RUST_189_CARGO"
           echo "Rust 1.89 dir: $RUST_189_DIR"
@@ -66,8 +66,11 @@ jobs:
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
 
           # Rust 1.89 dir from previous step (RUST_189_DIR from GITHUB_ENV)
-          RUST_189_DIR="${RUST_189_DIR:-$(find "/opt/rustup/toolchains" -maxdepth 2 -name "cargo" -path "*1.89*" 2>/dev/null | head -1 | xargs dirname)}"
-          RUST_189_CARGO="$RUST_189_DIR/cargo"
+          RUST_189_CARGO="${RUST_189_DIR:+$RUST_189_DIR/cargo}"
+          if [ -z "$RUST_189_CARGO" ] || [ ! -f "$RUST_189_CARGO" ]; then
+            RUST_189_CARGO=$(RUSTUP_TOOLCHAIN=1.89.0 rustup which cargo 2>/dev/null || echo "")
+          fi
+          RUST_189_DIR=$(dirname "$RUST_189_CARGO")
           echo "Using Rust 1.89 at: $RUST_189_DIR"
           "$RUST_189_CARGO" --version || { echo "ERROR: Rust 1.89 not found"; exit 1; }
 
