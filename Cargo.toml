@@ -6,3 +6,7 @@ resolver = "2"
 
 [profile.release]
 overflow-checks = true
+
+# Patch transitive deps to avoid Rust 2024 edition requirements
+[patch.crates-io]
+cmov = { version = "=0.1.1" }
