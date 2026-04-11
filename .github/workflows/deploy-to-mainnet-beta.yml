@@ -1,6 +1,11 @@
 on:
   push:
   workflow_dispatch:
+    inputs:
+      skip_build:
+        description: Skip build and deploy the committed .so
+        default: 'false'
+        type: boolean
 
 name: Build and Deploy to Mainnet-Beta
 
@@ -20,28 +25,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Solana CLI (v3.1.13 with platform-tools v1.52 / Rust 1.89)
+      - name: Install Solana CLI (v3.1.12 with platform-tools v1.52 / Rust 1.89)
         run: |
           set -e
-          # Use GitHub URL to avoid SSL errors with release.solana.com
-          curl -L --proto '=https' --tlsv1.2 -f "https://github.com/anza-xyz/agave/releases/download/v3.1.13/solana-release-x86_64-unknown-linux-gnu.tar.bz2" -o /tmp/solana.tar.bz2
+          curl -L --proto '=https' --tlsv1.2 -f "https://github.com/anza-xyz/agave/releases/download/v3.1.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2" -o /tmp/solana.tar.bz2
           tar jxf /tmp/solana.tar.bz2
           rm -f /tmp/solana.tar.bz2
           rm -rf /tmp/solana-release
           mv solana-release /tmp/solana-release
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
-          echo "=== cargo-build-sbf version ==="
           /tmp/solana-release/bin/cargo-build-sbf --version
 
       - name: Install Rust toolchains
         run: |
           mkdir -p /opt/cargo /opt/rustup
-          # Install Rust 1.85 (needed for cargo build-sbf to run cargo as a subprocess)
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
             sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
-          echo "=== Rust toolchains ==="
           rustup toolchain list
 
       - name: Install clang
@@ -54,60 +55,61 @@ jobs:
           echo $ANCHOR_WALLET_JSON | base64 -d > /tmp/wallet.json
           solana-keygen verify /tmp/wallet.json || echo "Wallet decode done"
 
-      - name: Install platform-tools Rust 1.89 (supports edition 2024)
+      - name: Prime platform-tools download (triggers rust toolchain install)
         run: |
-          # platform-tools v1.52 (in v3.1.13) includes Rust 1.89 which supports edition 2024
-          # Use --install-only to download without building
-          # Unset RUSTC/CARGO so platform-tools installer can manage them freely
-          env -u RUSTC -u CARGO \
-            /tmp/solana-release/bin/cargo-build-sbf --install-only --force-tools-install 2>&1 | tail -5
+          # --install-only doesn't work on first run. Instead, build a minimal
+          # edition-2021 project to trigger the platform-tools download.
+          # cargo-build-sbf downloads tools on first real compile attempt.
+          mkdir -p /tmp/prime-solana-sbf/src
+          python3 -c "
+import os
+os.makedirs('/tmp/prime-solana-sbf/src', exist_ok=True)
+with open('/tmp/prime-solana-sbf/Cargo.toml', 'w') as f:
+    f.write('[package]\nname = \"prime\"\nversion = \"0.1.0\"\nedition = \"2021\"\n[lib]\npath = \"src/lib.rs\"\n')
+with open('/tmp/prime-solana-sbf/src/lib.rs', 'w') as f:
+    f.write('pub fn prime() {}\n')
+"
+          echo "=== Priming platform-tools (expect failure at compile) ==="
+          /tmp/solana-release/bin/cargo-build-sbf \
+            --manifest-path /tmp/prime-solana-sbf/Cargo.toml 2>&1 | tail -5 || echo "Priming done"
 
-          # Find the installed platform-tools rust (v1.52 has deeper nesting)
-          # Structure: ~/.cache/solana/v1.52/v1.52/platform-tools/v1.52/rust/bin/rustc
-          # Need to find the toolchain root containing bin/ and lib/ directories
-          # Use: find rustc, go up 3 levels to get to toolchain root
-          PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -maxdepth 8 -name "rustc" -path "*/platform-tools/*/bin/rustc" 2>/dev/null | head -1)
-          if [ -n "$PLATFORM_TOOLS_RUST" ]; then
-            PLATFORM_TOOLS_RUST=$(dirname "$PLATFORM_TOOLS_RUST")      # .../bin
-            PLATFORM_TOOLS_RUST=$(dirname "$PLATFORM_TOOLS_RUST")      # .../rust
-            PLATFORM_TOOLS_RUST=$(dirname "$PLATFORM_TOOLS_RUST")      # .../v1.52
+          echo "=== Inspecting cache ==="
+          find "$HOME/.cache/solana" -maxdepth 8 -name "rustc" -type f 2>/dev/null | head -5
+          ls -la "$HOME/.cache/solana/" 2>/dev/null || echo "No cache dir"
+
+          # Find the platform-tools rust root
+          RUSTC_PATH=$(find "$HOME/.cache/solana" -maxdepth 8 -name "rustc" -type f 2>/dev/null | head -1)
+          if [ -n "$RUSTC_PATH" ] && [ -f "$RUSTC_PATH" ]; then
+            echo "Found rustc: $RUSTC_PATH"
+            # rustc is at .../bin/rustc — go up to toolchain root
+            PLATFORM_TOOLS_ROOT=$(dirname "$RUSTC_PATH")
+            PLATFORM_TOOLS_ROOT=$(dirname "$PLATFORM_TOOLS_ROOT")
+            echo "Platform-tools root: $PLATFORM_TOOLS_ROOT"
+            echo "Rustc version: $($PLATFORM_TOOLS_ROOT/bin/rustc --version)"
           else
-            PLATFORM_TOOLS_RUST=""
-          fi
-          echo "Platform-tools rust: $PLATFORM_TOOLS_RUST"
-          if [ -z "$PLATFORM_TOOLS_RUST" ] || [ ! -f "$PLATFORM_TOOLS_RUST/bin/rustc" ]; then
-            echo "ERROR: Platform-tools rust not found"
-            ls -la "$HOME/.cache/solana/" 2>/dev/null || echo "No cache"
+            echo "ERROR: rustc not found in cache after priming"
             exit 1
           fi
-          echo "Rustc: $($PLATFORM_TOOLS_RUST/bin/rustc --version)"
 
-          # Link platform-tools rust as rustup toolchain 'solana'
-          # cargo +solana is used internally by cargo-build-sbf for the actual program compilation
-          rustup toolchain link solana "$PLATFORM_TOOLS_RUST" 2>&1 || echo "link may exist"
+          rustup toolchain link solana "$PLATFORM_TOOLS_ROOT" 2>&1 || echo "link may exist"
           echo "=== Toolchains ==="
           rustup toolchain list
-          echo "=== Test cargo +solana ==="
           cargo +solana --version 2>&1 || echo "cargo +solana test done"
 
-      - name: Generate Cargo.lock (with edition 2024 deps)
+      - name: Generate Cargo.lock (edition 2024 deps)
         run: |
-          # Generate lockfile with Rust 1.85 (parses edition 2024)
           export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           echo "=== cargo version ==="
           cargo --version
-          echo "=== Generating Cargo.lock ==="
           cargo generate-lockfile 2>&1 | tail -5
           ls -la Cargo.lock 2>/dev/null && echo "Cargo.lock created" || echo "No Cargo.lock"
 
       - name: Build program
+        if: inputs.skip_build != 'true'
         run: |
           export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
-          echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
-          echo "=== Building with cargo build-sbf ==="
-          # cargo-build-sbf internally calls cargo +solana which uses platform-tools Rust 1.89
           /tmp/solana-release/bin/cargo-build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
 
       - name: Check artifact
@@ -121,6 +123,19 @@ jobs:
             find . -name "hub_evidence_anchor.so" 2>/dev/null | head -5
             exit 1
           fi
+
+      - name: Deploy pre-built .so
+        if: inputs.skip_build == 'true'
+        run: |
+          echo "Deploying committed .so"
+          SO="programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so"
+          ls -lh "$SO" || SO="programs/hub-evidence-anchor/hub_evidence_anchor.so"
+          ls -lh "$SO"
+          solana program deploy "$SO" \
+            --keypair /tmp/wallet.json \
+            --url mainnet-beta \
+            --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf \
+            --skip-upgrade-authority-validation 2>&1
 
       - name: Deploy to mainnet-beta
         run: |
