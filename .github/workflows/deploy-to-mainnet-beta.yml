@@ -1,11 +1,6 @@
 on:
   push:
   workflow_dispatch:
-    inputs:
-      skip_build:
-        description: Skip build and deploy the committed .so
-        default: 'false'
-        type: boolean
 
 name: Build and Deploy to Mainnet-Beta
 
