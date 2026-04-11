@@ -1,6 +1,10 @@
 on:
   push: ~
-  workflow_dispatch: ~
+  workflow_dispatch:
+    inputs:
+      skip_build:
+        description: Skip build and deploy committed .so
+        default: 'false'
 
 name: Build and Deploy to Mainnet-Beta
 
