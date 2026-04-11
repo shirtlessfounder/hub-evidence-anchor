@@ -158,9 +158,9 @@ jobs:
           
           echo ""
           echo "=== Build artifacts ==="
-          if [ -f programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so ]; then
+          if [ -f programs/hub-evidence-anchor/target/sbpf-solana-solana/release/hub_evidence_anchor.so ]; then
             echo "BUILD SUCCESS"
-            ls -lh programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so
+            ls -lh programs/hub-evidence-anchor/target/sbpf-solana-solana/release/hub_evidence_anchor.so
           else
             echo "BUILD FAILED: No .so found"
             find programs/hub-evidence-anchor/target -name "*.so" 2>/dev/null || echo "No .so files found"
@@ -215,7 +215,7 @@ jobs:
         run: |
           export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           solana program deploy \
-            programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
+            programs/hub-evidence-anchor/target/sbpf-solana-solana/release/hub_evidence_anchor.so \
             --keypair /tmp/wallet.json \
             --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf \
             --url https://api.devnet.solana.com 2>&1
