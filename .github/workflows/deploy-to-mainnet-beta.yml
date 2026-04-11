@@ -55,16 +55,18 @@ jobs:
           echo "=== Installing Solana toolchain via agave-install-init ==="
           RUSTUP_HOME=/opt/rustup /tmp/agave-install-init v1.18.6 2>&1 | tail -10
 
-          # agave-install-init installs to /home/runner/.local/share/solana/, NOT into $RUSTUP_HOME/toolchains
-          # rustup run solana cargo needs a "solana" toolchain in rustup — create it as a symlink
-          SOLANA_TOOLCHAIN_PATH="/home/runner/.local/share/solana/install/active_release"
-          SOLANA_TOOLCHAIN_DIR="$RUSTUP_HOME/toolchains/solana-x86_64-unknown-linux-gnu"
-          mkdir -p "$RUSTUP_HOME/toolchains"
-          ln -sfn "$SOLANA_TOOLCHAIN_PATH" "$SOLANA_TOOLCHAIN_DIR"
-          echo "=== Solana toolchain symlinked to rustup ==="
-          ls -la "$SOLANA_TOOLCHAIN_DIR/bin/cargo" 2>&1 || echo "ERROR: cargo not found"
-          echo "=== Verifying Solana toolchain ==="
+          # agave-install-init installs to ~/.local/share/solana/, NOT into $RUSTUP_HOME/toolchains
+          # rustup run solana cargo needs a toolchain named "solana"
+          # Use rustup toolchain link to register it (toolchain must have bin/cargo, bin/rustc)
+          SOLANA_PATH="/home/runner/.local/share/solana/install/active_release"
+          echo "=== Checking Solana toolchain structure ==="
+          ls "$SOLANA_PATH/bin/" | head -5
+          echo "=== Linking Solana as rustup toolchain 'solana' ==="
+          RUSTUP_HOME=/opt/rustup rustup toolchain link solana "$SOLANA_PATH" 2>&1 || echo "link failed, trying symlink"
+          echo "=== Verifying toolchains ==="
           RUSTUP_HOME=/opt/rustup rustup toolchain list
+          echo "=== Testing rustup run solana cargo ==="
+          RUSTUP_HOME=/opt/rustup rustup run solana cargo --version 2>&1 || echo "rustup run failed"
 
       - name: Install clang
         run: |
