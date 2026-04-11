@@ -104,38 +104,27 @@ jobs:
 
       - name: Build program
         run: |
-          # SOURCE cargo env FIRST so cargo-build-sbf subprocess finds 'cargo metadata'
-          source "$HOME/.cargo/env" 2>/dev/null || true
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
-          export PATH="/opt/cargo/bin:$HOME/.cargo/bin:/tmp/solana-release/bin:$CARGO_HOME/bin:$PATH"
+          # RUSTUP_TOOLCHAIN forces the default toolchain for all cargo invocations
+          # (including subprocesses spawned by cargo-build-sbf)
+          export RUSTUP_TOOLCHAIN=1.85
+          export PATH="/opt/cargo/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
           
-          # Verify cargo is available
-          which cargo || (mkdir -p /usr/local/bin && ln -sf /opt/cargo/bin/cargo /usr/local/bin/cargo && echo "Created cargo symlink") || true
+          echo "=== Toolchain check ==="
+          cargo --version
+          cargo build-sbf --version 2>&1 || echo "build-sbf version check done"
+          rustup toolchain list 2>&1
+          which cargo || echo "CARGO NOT IN PATH"
           
-          # Create cargo symlink in solana toolchain dir (in PATH before cargo-build-sbf looks)
-          mkdir -p /tmp/solana-release/bin
-          ln -sf /opt/cargo/bin/cargo /tmp/solana-release/bin/cargo 2>/dev/null || true
-          echo "=== Cargo symlinks ==="
-          ls -la /tmp/solana-release/bin/cargo 2>/dev/null || echo "cargo symlink failed"
-          which cargo || echo "cargo not in PATH"
-          
-          rm -f Cargo.lock
-          find . -name "Cargo.lock" -delete 2>/dev/null || true
-          
+          echo ""
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           
           echo ""
-          echo "=== Toolchain check ==="
-          /opt/cargo/bin/cargo build-sbf --version 2>&1 || echo "build-sbf check done"
-          /opt/cargo/bin/rustup toolchain list 2>&1
-          which cargo || echo "CARGO NOT IN PATH"
-          
-          echo ""
           echo "=== Building with cargo build-sbf ==="
-          /opt/cargo/bin/cargo +solana build-sbf 2>&1
+          cargo build-sbf 2>&1
           
           echo ""
           echo "=== Copy .so to expected path ==="
@@ -202,7 +191,7 @@ jobs:
       - name: Deploy program
         run: |
           export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
-          /tmp/solana-release/bin/solana program deploy \
+          solana program deploy \
             programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so \
             --keypair /tmp/wallet.json \
             --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf \
@@ -210,4 +199,5 @@ jobs:
 
       - name: Verify
         run: |
-          /tmp/solana-release/bin/solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url https://api.devnet.solana.com
+          export PATH="/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
+          solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url https://api.devnet.solana.com
