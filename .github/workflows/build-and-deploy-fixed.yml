@@ -131,15 +131,15 @@ jobs:
           # cargo build-sbf outputs to target/sbf-solana-solana/release/ at the
           # manifest's Cargo.toml dir (workspace root when using --manifest-path).
           # Copy to programs/hub-evidence-anchor/target/deploy/ so deploy step finds it.
-          SBF_OUT="programs/hub-evidence-anchor/target/sbf-solana-solana/release/hub_evidence_anchor.so"
+          SBF_OUT="programs/hub-evidence-anchor/target/sbpf-solana-solana/release/hub_evidence_anchor.so"
           DEPLOY_DIR="programs/hub-evidence-anchor/target/deploy"
           mkdir -p "$DEPLOY_DIR"
           if [ -f "$SBF_OUT" ]; then
             cp "$SBF_OUT" "$DEPLOY_DIR/hub_evidence_anchor.so"
             echo "Copied .so to $DEPLOY_DIR/"
           else
-            # Fallback: try workspace-root sbf path
-            SBF_ROOT="target/sbf-solana-solana/release/hub_evidence_anchor.so"
+            # Fallback: try workspace-root sbpf path
+            SBF_ROOT="target/sbpf-solana-solana/release/hub_evidence_anchor.so"
             if [ -f "$SBF_ROOT" ]; then
               cp "$SBF_ROOT" "$DEPLOY_DIR/hub_evidence_anchor.so"
               echo "Copied .so from workspace root to $DEPLOY_DIR/"
