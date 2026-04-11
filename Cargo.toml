@@ -8,5 +8,6 @@ resolver = "2"
 overflow-checks = true
 
 # Pin block-buffer to 0.10.4 to avoid edition 2024 in 0.12 (saves ~69KB bytecode)
-[patch.crates-io]
-block-buffer = { version = "=0.10.4" }
+# NOTE: removed [patch.crates-io] - patches must point to a DIFFERENT source (git/path).
+# block-buffer 0.10.4 only exists on crates.io, so patch was invalid.
+# Cargo will resolve block-buffer based on direct dependency requirements.
