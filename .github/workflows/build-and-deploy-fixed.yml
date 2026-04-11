@@ -76,13 +76,15 @@ jobs:
 
       - name: Build program
         run: |
+          # SOURCE cargo env FIRST so cargo-build-sbf subprocess finds 'cargo metadata'
+          source "$HOME/.cargo/env" 2>/dev/null || true
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
-          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:$HOME/.cargo/bin:$PATH"
+          export PATH="/opt/cargo/bin:$HOME/.cargo/bin:/tmp/solana-release/bin:$CARGO_HOME/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
           
-          # SOURCE cargo env so cargo-build-sbf subprocess finds 'cargo metadata'
-          source "$HOME/.cargo/env" 2>/dev/null || true
+          # Verify cargo is available
+          which cargo || (mkdir -p /usr/local/bin && ln -sf /opt/cargo/bin/cargo /usr/local/bin/cargo && echo "Created cargo symlink") || true
           
           rm -f Cargo.lock
           find . -name "Cargo.lock" -delete 2>/dev/null || true
