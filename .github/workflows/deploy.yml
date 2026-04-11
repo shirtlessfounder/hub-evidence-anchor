@@ -35,46 +35,78 @@ jobs:
       - name: Install clang
         run: sudo apt-get update && sudo apt-get install -y clang
 
-      - name: Decode wallet (base58 raw keypair)
+      - name: Decode wallet (manual base58 decode)
         run: |
           python3 << 'PYEOF'
           import os, json, base64
-          import base58
+
+          # Manual base58 decode (no external library needed)
+          B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
           
+          def b58decode(s):
+              n = 0
+              for c in s.strip():
+                  n = n * 58 + B58.index(c)
+              result = []
+              while n > 0:
+                  result.append(n & 255)
+                  n >>= 8
+              return bytes(result)
+
           secret = os.environ.get('ANCHOR_WALLET_JSON', '').strip()
           print(f"Secret length: {len(secret)}")
           
-          # The GitHub secret is the raw 88-char base58 keypair (NOT base64)
-          # Decode base58 → 64 bytes → JSON array
-          key_bytes = base58.b58decode(secret)
-          print(f"Decoded to {len(key_bytes)} bytes")
+          if len(secret) == 0:
+            raise Exception("ANCHOR_WALLET_JSON is empty!")
           
-          if len(key_bytes) != 64:
-            # Try: maybe it's base64 encoded
-            try:
-              decoded = base64.b64decode(secret)
-              if len(decoded) == 64:
-                key_bytes = decoded
-                print(f"Format was base64: {len(key_bytes)} bytes")
-              else:
-                # Try base64 of base58 string
-                b58_str = decoded.decode('ascii')
-                key_bytes = base58.b58decode(b58_str)
-                print(f"Format was base64(base58): {len(key_bytes)} bytes")
-            except:
-              pass
+          if len(secret) < 80:
+            raise Exception(f"Secret too short ({len(secret)} chars): {secret[:20]}...")
           
-          if len(key_bytes) != 64:
-            raise Exception(f"Invalid key length: {len(key_bytes)}")
+          # Try manual base58 decode (raw keypair format)
+          try:
+            key_bytes = b58decode(secret)
+            print(f"Manual base58 decode: {len(key_bytes)} bytes")
+            if len(key_bytes) == 64:
+              key_list = list(key_bytes)
+              with open('/tmp/wallet.json', 'w') as f:
+                json.dump(key_list, f)
+              with open('/tmp/wallet.json') as f:
+                content = f.read()
+              print(f"Wallet: {len(content)} chars, {len(key_list)} elements")
+              print("SUCCESS!")
+              exit(0)
+          except Exception as e:
+            print(f"Manual b58decode failed: {e}")
           
-          key_list = list(key_bytes)
-          with open('/tmp/wallet.json', 'w') as f:
-            json.dump(key_list, f)
+          # Try base64 decode (if secret is base64-encoded keypair)
+          try:
+            decoded = base64.b64decode(secret)
+            print(f"base64 decode: {len(decoded)} bytes")
+            if len(decoded) == 64:
+              key_list = list(decoded)
+              with open('/tmp/wallet.json', 'w') as f:
+                json.dump(key_list, f)
+              print("SUCCESS (base64)!")
+              exit(0)
+          except Exception as e:
+            print(f"base64 decode failed: {e}")
           
-          with open('/tmp/wallet.json') as f:
-            content = f.read()
-          print(f"Wallet file: {len(content)} chars, first 50: {content[:50]}")
-          print("Wallet decoded successfully!")
+          # Try base64 of base58 string
+          try:
+            b64_decoded = base64.b64decode(secret)
+            b58_str = b64_decoded.decode('ascii').strip()
+            key_bytes = b58decode(b58_str)
+            print(f"base64→base58 decode: {len(key_bytes)} bytes")
+            if len(key_bytes) == 64:
+              key_list = list(key_bytes)
+              with open('/tmp/wallet.json', 'w') as f:
+                json.dump(key_list, f)
+              print("SUCCESS (b64→b58)!")
+              exit(0)
+          except Exception as e:
+            print(f"b64→b58 failed: {e}")
+          
+          raise Exception("All decode attempts failed!")
           PYEOF
 
       - name: Check balance
