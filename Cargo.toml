@@ -6,10 +6,3 @@ resolver = "2"
 
 [profile.release]
 overflow-checks = true
-
-# Patch transitive deps to avoid Rust 2024 edition requirements
-[patch.crates-io]
-cmov = { version = "=0.1.1" }
-
-# Also pin tiny-bip39 to avoid pulling in cmov 0.5.x
-tiny-bip39 = { version = "=0.8.0" }
