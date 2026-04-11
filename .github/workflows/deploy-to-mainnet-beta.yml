@@ -62,8 +62,18 @@ jobs:
           env -u RUSTC -u CARGO \
             /tmp/solana-release/bin/cargo-build-sbf --install-only --force-tools-install 2>&1 | tail -5
 
-          # Find the installed platform-tools rust
-          PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -maxdepth 3 -name "rustc" -path "*/platform-tools/*/bin/rustc" 2>/dev/null | head -1 | xargs dirname 2>/dev/null | xargs dirname 2>/dev/null || echo "")
+          # Find the installed platform-tools rust (v1.52 has deeper nesting)
+          # Structure: ~/.cache/solana/v1.52/v1.52/platform-tools/v1.52/rust/bin/rustc
+          # Need to find the toolchain root containing bin/ and lib/ directories
+          # Use: find rustc, go up 3 levels to get to toolchain root
+          PLATFORM_TOOLS_RUST=$(find "$HOME/.cache/solana" -maxdepth 8 -name "rustc" -path "*/platform-tools/*/bin/rustc" 2>/dev/null | head -1)
+          if [ -n "$PLATFORM_TOOLS_RUST" ]; then
+            PLATFORM_TOOLS_RUST=$(dirname "$PLATFORM_TOOLS_RUST")      # .../bin
+            PLATFORM_TOOLS_RUST=$(dirname "$PLATFORM_TOOLS_RUST")      # .../rust
+            PLATFORM_TOOLS_RUST=$(dirname "$PLATFORM_TOOLS_RUST")      # .../v1.52
+          else
+            PLATFORM_TOOLS_RUST=""
+          fi
           echo "Platform-tools rust: $PLATFORM_TOOLS_RUST"
           if [ -z "$PLATFORM_TOOLS_RUST" ] || [ ! -f "$PLATFORM_TOOLS_RUST/bin/rustc" ]; then
             echo "ERROR: Platform-tools rust not found"
