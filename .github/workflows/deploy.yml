@@ -63,8 +63,7 @@ jobs:
         run: cargo +1.85 generate-lockfile 2>&1 || true
 
       - name: Build program
-        run: |
-          /tmp/solana-release/bin/cargo-build-sbf 2>&1
+        run: /tmp/solana-release/bin/cargo-build-sbf 2>&1
 
       - name: Copy artifact
         run: |
