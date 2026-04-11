@@ -39,9 +39,13 @@ jobs:
           export RUSTUP_HOME="/opt/rustup"
           export PATH="$CARGO_HOME/bin:$HOME/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
           rm -rf "$CARGO_HOME" "$RUSTUP_HOME" "$HOME/.cargo" "$HOME/.rustup"
+          # CRITICAL: also remove settings.toml or it overrides --default-toolchain
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
             sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
+          # Verify cargo resolves to 1.85 (settings.toml can override default)
+          "$CARGO_HOME/bin/rustup" set profile minimal
+          "$CARGO_HOME/bin/rustup" default 1.85.0
           echo "=== Toolchains installed ==="
           "$CARGO_HOME/bin/rustup" toolchain list
           echo "=== Cargo version ==="
@@ -143,8 +147,12 @@ jobs:
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
           echo ""
-          echo "=== Building with cargo build-sbf (forcing +1.85 toolchain) ==="
-          cargo +1.85 build-sbf 2>&1
+          echo "=== Building with cargo-build-sbf (PATH=1.85 cargo, so cargo-build-sbf finds the right cargo) ==="
+          # cargo-build-sbf is in /tmp/solana-release/bin, cargo 1.85 is in /opt/cargo/bin
+          # Put cargo 1.85 FIRST so cargo-build-sbf finds it when it calls 'cargo' internally
+          export PATH="/opt/cargo/bin:/tmp/solana-release/bin:$PATH"
+          export RUSTUP_TOOLCHAIN=1.85
+          cargo build-sbf 2>&1
           echo ""
           echo "=== Verifying artifact ==="
           SBF_OUT="target/sbpf-solana-solana/release/hub_evidence_anchor.so"
