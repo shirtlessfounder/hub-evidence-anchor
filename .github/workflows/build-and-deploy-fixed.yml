@@ -30,10 +30,10 @@ jobs:
       - name: Setup Rust 1.85
         run: |
           mkdir -p /opt/cargo /opt/rustup
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.85.0 
 
       - name: Install Rust 1.89
-        run: /opt/cargo/bin/rustup toolchain install 1.89.0 --no-modify-path || true
+        run: /opt/cargo/bin/rustup toolchain install 1.89.0  || true
 
       - name: Install clang
         run: sudo apt-get update && sudo apt-get install -y clang

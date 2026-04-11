@@ -35,7 +35,7 @@ jobs:
       - name: Setup Rust 1.89
         run: |
           mkdir -p /opt/cargo /opt/rustup
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.89.0 --no-modify-path
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.89.0 
 
       - name: Decode wallet
         env:
