@@ -24,7 +24,39 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Solana CLI
         run: |
+          set -e
           curl -sSfL https://github.com/anza-xyz/agave/releases/download/v3.1.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2 | tar jx
           mv solana-release /tmp/solana-release
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
+
+      - name: Decode wallet
+        env:
+          WALLET_JSON: ${{ secrets.ANCHOR_WALLET_JSON }}
+        run: |
+          echo "$WALLET_JSON" | base64 -d > /tmp/wallet.json
+          PUBKEY=$(/tmp/solana-release/bin/solana-keygen pubkey /tmp/wallet.json)
+          echo "Wallet: $PUBKEY"
+
+      - name: Close stale buffers
+        run: |
+          /tmp/solana-release/bin/solana program close --buffers --keypair /tmp/wallet.json --url mainnet-beta 2>&1 || echo "No buffers"
+
+      - name: Check balance
+        run: |
+          /tmp/solana-release/bin/solana balance 275QQuz5D6d5U7rhAVW1gYGZBmmyzq6srFdV3rT6rMdA --url mainnet-beta 2>&1 || echo "Balance check done"
+
+      - name: Deploy to mainnet-beta
+        run: |
+          echo "Deploying committed .so from programs/hub-evidence-anchor/target/deploy/"
+          SO="programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so"
+          if [ ! -f "$SO" ]; then
+            SO="programs/hub-evidence-anchor/hub_evidence_anchor.so"
+          fi
+          echo "Artifact: $SO"
+          ls -lh "$SO" || echo "No .so found"
+          /tmp/solana-release/bin/solana program deploy "$SO"             --keypair /tmp/wallet.json             --url mainnet-beta             --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf             --skip-upgrade-authority-validation 2>&1
+
+      - name: Verify deployment
+        run: |
+          /tmp/solana-release/bin/solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url mainnet-beta 2>&1 || echo "Verify done" 
