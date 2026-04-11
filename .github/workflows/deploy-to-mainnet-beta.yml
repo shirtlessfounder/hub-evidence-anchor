@@ -111,21 +111,14 @@ jobs:
           echo "=== Current slot ==="
           /tmp/solana-release/bin/solana slot --url $RPC_URL
 
-      - name: Generate Cargo.lock with Rust 1.89
+      - name: Delete Cargo.lock (v4 is incompatible with cargo-build-sbf's bundled cargo)
         if: inputs.skip_build != 'true'
         run: |
           set -e
-          export CARGO_HOME="/opt/cargo"
-          export RUSTUP_HOME="/opt/rustup"
-          # CRITICAL: do NOT include $HOME/.cargo/bin — runner pre-installs Rust 1.81 there
-          export PATH="/tmp/solana-release/bin:$CARGO_HOME/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-          echo "=== Verify correct cargo ==="
-          which cargo
-          cargo --version
-          echo "=== Generating Cargo.lock with cargo 1.89 ==="
-          cargo generate-lockfile 2>&1 || true
-          echo "=== Cargo.lock generated ==="
-          ls -la Cargo.lock 2>/dev/null || echo "No Cargo.lock"
+          # v4 lockfile requires -Znext-lockfile-bump which cargo-build-sbf can't pass to its
+          # internal cargo invocation. The fix: delete it and let the build regenerate.
+          rm -f Cargo.lock
+          echo "=== Deleted Cargo.lock (was v4, incompatible with Solana's cargo) ==="
 
       - name: Build program
         if: inputs.skip_build != 'true'
