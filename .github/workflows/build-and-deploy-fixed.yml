@@ -24,7 +24,7 @@ jobs:
           curl -sSfL "https://github.com/anza-xyz/agave/releases/download/${{ env.SOLANA_CLI_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" | tar xj -C /tmp
           echo "Installed $(/tmp/solana-release/bin/solana --version)"
 
-      - name: Install Rust 1.77 toolchain
+      - name: Install Rust 1.85 toolchain
         run: |
           export CARGO_HOME="/opt/cargo"
           export RUSTUP_HOME="/opt/rustup"
@@ -35,9 +35,14 @@ jobs:
           rm -f /opt/rustup/settings.toml
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
-            sh -s -- -y --default-toolchain 1.77.0 --no-modify-path
+            sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
           echo "Installed:"
           "$CARGO_HOME/bin/rustup" toolchain list
+          # Install solana-cargo-build-sbf v4.0.0 (built with Rust 1.85)
+          cargo +1.85 install solana-cargo-build-sbf --version 4.0.0 2>&1 || \
+            cargo +1.85 install solana-cargo-build-sbf 2>&1 || true
+          echo "=== Installed cargo-build-sbf ==="
+          ~/.cargo/bin/cargo-build-sbf --version 2>&1 || echo "Install may have failed"
 
       - name: Install clang for BPF compilation
         run: |
@@ -110,23 +115,22 @@ jobs:
           export RUSTUP_HOME="/opt/rustup"
           # RUSTUP_TOOLCHAIN forces the default toolchain for all cargo invocations
           # (including subprocesses spawned by cargo-build-sbf)
-          export RUSTUP_TOOLCHAIN=1.77
+          export RUSTUP_TOOLCHAIN=1.85
           export PATH="/opt/cargo/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
           
           echo "=== Toolchain check ==="
           cargo --version
-          cargo build-sbf --version 2>&1 || echo "build-sbf version check done"
+          ~/.cargo/bin/cargo-build-sbf --version 2>&1 || cargo build-sbf --version 2>&1 || echo "build-sbf version check done"
           rustup toolchain list 2>&1
-          which cargo || echo "CARGO NOT IN PATH"
           
           echo ""
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           
           echo ""
-          echo "=== Building with cargo build-sbf ==="
-          cargo build-sbf 2>&1
+          echo "=== Building with solana-cargo-build-sbf v4 (Rust 1.85) ==="
+          ~/.cargo/bin/cargo-build-sbf 2>&1
           
           echo ""
           echo "=== Copy .so to expected path ==="
