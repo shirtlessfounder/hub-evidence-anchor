@@ -82,8 +82,8 @@ jobs:
           # Install v4.0.0 from crates.io using Rust 1.85
           # v4.0.0 uses Rust 1.85+ internally → can parse edition2024 crates
           # The Solana CLI bundled cargo-build-sbf (v1.72) can't parse v4 lockfiles
-          cargo +1.85 install solana-cargo-build-sbf --version 4.0.0 2>&1 || \
-            cargo +1.85 install solana-cargo-build-sbf 2>&1 || true
+          /opt/cargo/bin/cargo +1.85 install solana-cargo-build-sbf --version 4.0.0 2>&1 || \
+            /opt/cargo/bin/cargo +1.85 install solana-cargo-build-sbf 2>&1 || true
           echo "=== Installed cargo-build-sbf ==="
           ~/.cargo/bin/cargo-build-sbf --version 2>&1 || echo "Install may have failed"
 
