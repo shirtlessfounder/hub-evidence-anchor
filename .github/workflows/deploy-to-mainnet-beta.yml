@@ -31,6 +31,12 @@ jobs:
           mv solana-release /tmp/solana-release
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
+          # Install the Solana rustup toolchain (needed for cargo +solana from cargo-build-sbf)
+          # Uses the existing RUSTUP_HOME=/opt/rustup from env
+          curl -L --proto '=https' --tlsv1.2 -f "https://github.com/anza-xyz/agave/releases/download/v1.18.6/agave-install-init-x86_64-unknown-linux-gnu" -o /tmp/agave-install-init
+          chmod +x /tmp/agave-install-init
+          RUSTUP_HOME=/opt/rustup /tmp/agave-install-init --version v1.18.6 2>&1 | tail -5
+          rustup toolchain list
 
       - name: Setup Rust toolchains (1.85 for build, 1.89 for metadata)
         run: |
