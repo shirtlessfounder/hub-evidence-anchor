@@ -1,5 +1,7 @@
 on:
   push:
+    paths:
+      - '.github/workflows/ci-deploy.yml'
   workflow_dispatch:
 
 name: CI Deploy (No Buffer)
@@ -39,12 +41,62 @@ jobs:
         run: |
           python3 << 'PYEOF'
           import os, json, base64
+          
+          B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+          
+          def b58decode(s):
+              n = 0
+              for c in s.strip():
+                  n = n * 58 + B58.index(c)
+              result = []
+              while n > 0:
+                  result.append(n & 255)
+              return bytes(result)
+          
           secret = os.environ.get('ANCHOR_WALLET_JSON', '').strip()
-          decoded = base64.b64decode(secret)
-          key = list(decoded)
+          print(f"Secret length: {len(secret)}", flush=True)
+          
+          if len(secret) == 0:
+            raise Exception("ANCHOR_WALLET_JSON is empty!")
+          
+          key_bytes = None
+          
+          # Try: raw 88-char base58 keypair → 64 bytes
+          if len(secret) >= 80 and all(c in B58 for c in secret):
+              try:
+                  key_bytes = b58decode(secret)
+                  if len(key_bytes) == 64:
+                      print(f"Format: raw base58 ({len(key_bytes)} bytes)", flush=True)
+              except:
+                  pass
+          
+          # Try: base64 of base58 string
+          if key_bytes is None or len(key_bytes) != 64:
+              try:
+                  decoded = base64.b64decode(secret)
+                  b58_str = decoded.decode('ascii').strip()
+                  if all(c in B58 for c in b58_str):
+                      key_bytes = b58decode(b58_str)
+                      print(f"Format: base64(base58_str) → {len(key_bytes)} bytes", flush=True)
+              except:
+                  pass
+          
+          # Try: base64 of 64 raw bytes
+          if key_bytes is None or len(key_bytes) != 64:
+              try:
+                  decoded = base64.b64decode(secret)
+                  if len(decoded) == 64:
+                      key_bytes = decoded
+                      print(f"Format: base64(64_bytes) → {len(key_bytes)} bytes", flush=True)
+              except:
+                  pass
+          
+          if key_bytes is None or len(key_bytes) != 64:
+              raise Exception(f"Could not decode wallet! Tried raw base58, base64(b58), base64(raw). Secret starts: {secret[:20]}")
+          
           with open('/tmp/wallet.json', 'w') as f:
-              json.dump(key, f)
-          print('Wallet decoded')
+              json.dump(list(key_bytes), f)
+          print(f"Wallet written: {len(key_bytes)} bytes", flush=True)
           PYEOF
 
       - name: Check balance
