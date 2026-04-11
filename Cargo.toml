@@ -6,3 +6,7 @@ resolver = "2"
 
 [profile.release]
 overflow-checks = true
+
+# Pin block-buffer to 0.10.4 to avoid edition 2024 in 0.12 (saves ~69KB bytecode)
+[patch.crates-io]
+block-buffer = { version = "=0.10.4" }

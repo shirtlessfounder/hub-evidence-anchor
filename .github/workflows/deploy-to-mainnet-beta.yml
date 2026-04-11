@@ -63,20 +63,22 @@ jobs:
           #   1.85.0-x86_64-unknown-linux-gnu (default)
           #   1.89.0-x86_64-unknown-linux-gnu
           # Parse the full name (strip " (default)" suffix) and construct path
-          RUST_185_FULL=$(rustup toolchain list | grep "^1\.85" | sed 's/ (default)//')
-          RUST_189_FULL=$(rustup toolchain list | grep "^1\.89" | sed 's/ (default)//')
+          RUST_185_FULL=$(rustup toolchain list | grep "^1\.85\." | sed 's/ (default)//')
+          RUST_189_FULL=$(rustup toolchain list | grep "^1\.89\." | sed 's/ (default)//')
           RUST_185_PATH="/opt/rustup/toolchains/${RUST_185_FULL}/bin"
           RUST_189_PATH="/opt/rustup/toolchains/${RUST_189_FULL}/bin"
           echo "Rust 1.85: $RUST_185_PATH"
           echo "Rust 1.89: $RUST_189_PATH"
+          echo "Cargo 1.85 exists: $(test -f "$RUST_185_PATH/cargo" && echo YES || echo NO)"
+          echo "Cargo 1.89 exists: $(test -f "$RUST_189_PATH/cargo" && echo YES || echo NO)"
 
           [ -n "$RUST_185_PATH" ] || { echo "ERROR: Rust 1.85 not found"; exit 1; }
           [ -n "$RUST_189_PATH" ] || { echo "ERROR: Rust 1.89 not found"; exit 1; }
-          [ -f "$RUST_185_PATH/bin/cargo" ] || { echo "ERROR: Rust 1.85 cargo missing"; exit 1; }
-          [ -f "$RUST_189_PATH/bin/cargo" ] || { echo "ERROR: Rust 1.89 cargo missing"; exit 1; }
+          [ -f "$RUST_185_PATH/cargo" ] || { echo "ERROR: Rust 1.85 cargo missing at $RUST_185_PATH/cargo"; ls -la "/opt/rustup/toolchains/${RUST_185_FULL}/" 2>/dev/null || echo "toolchain dir not found"; exit 1; }
+          [ -f "$RUST_189_PATH/cargo" ] || { echo "ERROR: Rust 1.89 cargo missing at $RUST_189_PATH/cargo"; exit 1; }
 
-          "$RUST_189_PATH/bin/cargo" --version
-          "$RUST_185_PATH/bin/cargo" --version
+          "$RUST_189_PATH/cargo" --version
+          "$RUST_185_PATH/cargo" --version
 
           # Create wrapper at /tmp/solana-release/bin/cargo:
           # metadata → Rust 1.89 (parses edition 2024 Cargo.toml)
@@ -87,7 +89,7 @@ jobs:
           #!/bin/bash
           for arg in "\$@"; do
             if echo "\$arg" | grep -q "metadata"; then
-              "$RUST_189_PATH/bin/cargo" "\$@"
+              "$RUST_189_PATH/cargo" "\$@"
               exit_code=\$?
               # v4 Cargo.lock was created by cargo +1.89 — delete it
               # cargo build-sbf (Rust 1.85) can't read v4 lock format
@@ -95,7 +97,7 @@ jobs:
               exit \$exit_code
             fi
           done
-          exec "$RUST_185_PATH/bin/cargo" "\$@"
+          exec "$RUST_185_PATH/cargo" "\$@"
           WRAPPER
           chmod +x /tmp/solana-release/bin/cargo
 
