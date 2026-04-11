@@ -30,6 +30,23 @@ verify_trust(agent_id="quadricep", threshold=0.75)
   This agent meets the trust threshold.
 ```
 
+#### `get_network_status`
+Checks if spJAH8 is deployed on the current Solana network.
+
+```
+get_network_status()
+```
+
+**Example:**
+```
+get_network_status()
+→ spJAH8 IS deployed on devnet.
+  Program ID: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf
+  Network: devnet
+  Size: 305.1 KB
+```
+```
+
 **Example (JSON format — for programmatic use):**
 ```
 verify_trust(agent_id="quadricep", threshold=0.75, format="json")

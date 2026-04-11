@@ -13,12 +13,21 @@ import {
 } from "@solana/web3.js";
 
 // Configuration
-const SOLANA_RPC = process.env.SOLANA_RPC || "https://api.devnet.solana.com";
+// Set SOLANA_NETWORK=mainnet-beta for production, devnet for testing
+const SOLANA_NETWORK = process.env.SOLANA_NETWORK || "devnet";
+const SOLANA_RPC = process.env.SOLANA_RPC || (
+  SOLANA_NETWORK === "mainnet-beta"
+    ? "https://api.mainnet-beta.solana.com"
+    : "https://api.devnet.solana.com"
+);
 const PROGRAM_ID = new PublicKey(
   process.env.PROGRAM_ID || "spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf"
 );
 
-const connection = new Connection(SOLANA_RPC);
+const connection = new Connection(SOLANA_RPC, {
+  commitment: "confirmed",
+  confirmTransactionInitialTimeout: 60_000,
+});
 
 // Hub Evidence Anchor account parser
 interface HubEvidence {
@@ -83,7 +92,7 @@ const server = new McpServer({
 // Tool: verify_trust
 server.tool(
   "verify_trust",
-  "Verifies the trust score of an agent on Solana via Hub Evidence Anchor",
+  "Verifies the trust score of an agent on Solana via Hub Evidence Anchor. Network: " + SOLANA_NETWORK,
   {
     agent_id: {
       type: "string",
@@ -187,6 +196,50 @@ ${approved ? "This agent meets the trust threshold." : "This agent does not meet
             text: `Error verifying trust for '${agent_id}': ${error instanceof Error ? error.message : String(error)}`,
           },
         ],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Tool: get_network_status
+server.tool(
+  "get_network_status",
+  "Checks if spJAH8 is deployed on the current Solana network",
+  {},
+  async () => {
+    try {
+      const accountInfo = await connection.getAccountInfo(PROGRAM_ID);
+      const { lamports, owner, executable, data } = accountInfo ?? {};
+
+      if (!accountInfo) {
+        return {
+          content: [{ type: "text", text: `spJAH8 is NOT deployed on ${SOLANA_NETWORK}.
+
+Program ID: ${PROGRAM_ID.toBase58()}
+Network: ${SOLANA_NETWORK}
+RPC: ${SOLANA_RPC}
+
+To deploy: solana program deploy target/deploy/hub_evidence_anchor.so --url ${SOLANA_NETWORK}` }],
+          isError: false,
+        };
+      }
+
+      return {
+        content: [{ type: "text", text: `spJAH8 IS deployed on ${SOLANA_NETWORK}.
+
+Program ID: ${PROGRAM_ID.toBase58()}
+Network: ${SOLANA_NETWORK}
+RPC: ${SOLANA_RPC}
+Executable: ${executable}
+Owner: ${owner.toBase58()}
+Size: ${data ? (data.length / 1024).toFixed(1) + " KB" : "N/A"}
+Lamports: ${lamports ? (lamports / 1e9).toFixed(4) + " SOL" : "N/A"}` }],
+        isError: false,
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: `Error checking network status: ${error instanceof Error ? error.message : String(error)}` }],
         isError: true,
       };
     }
