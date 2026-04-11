@@ -121,7 +121,7 @@ jobs:
           
           echo "=== Toolchain check ==="
           cargo --version
-          $HOME/.cargo/bin/cargo-build-sbf --version 2>&1 || cargo build-sbf --version 2>&1 || echo "build-sbf version check done"
+          cargo build-sbf --version 2>&1
           rustup toolchain list 2>&1
           
           echo ""
@@ -130,7 +130,7 @@ jobs:
           
           echo ""
           echo "=== Building with solana-cargo-build-sbf v4 (Rust 1.89) ==="
-          $HOME/.cargo/bin/cargo-build-sbf 2>&1
+          cargo build-sbf 2>&1
           
           echo ""
           echo "=== Copy .so to expected path ==="

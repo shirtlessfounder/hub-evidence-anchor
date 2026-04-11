@@ -79,14 +79,14 @@ jobs:
               f.write(addr + "\n")
           PYEOF
 
-      - name: Install solana-cargo-build-sbf v4.0.0 (Rust 1.85, supports edition2024 crates)
+      - name: Install solana-cargo-build-sbf v4.0.0 (Rust 1.89, supports edition2024 crates)
         run: |
-          # Install v4.0.0 from crates.io using Rust 1.85
-          # Bundled cargo-build-sbf (Rust 1.72) can't parse edition2024 crates
+          # Install v4.0.0 from crates.io — REQUIRES Rust 1.89 to build
+          # Installs to /opt/cargo/bin/cargo-build-sbf (CARGO_HOME=/opt/cargo)
           cargo +1.89 install solana-cargo-build-sbf --version 4.0.0 2>&1 || \
             cargo +1.89 install solana-cargo-build-sbf 2>&1 || true
           echo "=== Installed cargo-build-sbf ==="
-          ~/.cargo/bin/cargo-build-sbf --version 2>&1 || echo "Install may have failed"
+          /opt/cargo/bin/cargo-build-sbf --version 2>&1 || echo "Install may have failed"
 
       - name: Build program
         run: |
@@ -95,27 +95,15 @@ jobs:
           export RUSTUP_TOOLCHAIN=1.89
           export PATH="/opt/cargo/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
-          echo "=== Toolchain check ==="
-          cargo --version
-          ~/.cargo/bin/cargo-build-sbf --version 2>&1 || cargo build-sbf --version 2>&1 || echo "build-sbf check done"
-          "$CARGO_HOME/bin/rustup" toolchain list 2>&1
+          echo "=== Rust toolchain ==="
+          cargo --version || echo "cargo failed"
+          which cargo
           echo ""
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs
           echo ""
-          echo "=== Cleaning ==="
-          # Repo is checked out to /home/runner/work/hub-evidence-anchor/hub-evidence-anchor/
-          # (runner workspace/repo-name). cargo build-sbf creates lock files at
-          # the nested path hub-evidence-anchor/Cargo.lock relative to repo root.
-          find . -name "Cargo.lock" -delete 2>/dev/null || true
-          rm -f Cargo.lock hub-evidence-anchor/Cargo.lock
-          echo "Cleaned. Remaining lock files:"
-          find . -name "Cargo.lock" 2>/dev/null || echo "none"
-          echo ""
-          echo "=== Building ==="
-          # Use crates.io v4.0.0 (Rust 1.85) instead of bundled v1.72
-          cd programs/hub-evidence-anchor
-          ~/.cargo/bin/cargo-build-sbf --manifest-path ./Cargo.toml 2>&1
+          echo "=== Building with cargo build-sbf (RUSTUP_TOOLCHAIN=1.89) ==="
+          cargo build-sbf 2>&1
           echo ""
           echo "=== Copy .so to expected path ==="
           SBF_OUT="target/sbpf-solana-solana/release/hub_evidence_anchor.so"
