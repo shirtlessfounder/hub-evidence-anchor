@@ -2,7 +2,7 @@ on:
   workflow_dispatch:
     inputs:
       skip_build:
-        description: Skip build and deploy committed .so
+        description: Skip build
         default: 'false'
 
 name: Build and Deploy to Mainnet-Beta
@@ -22,139 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Solana CLI (v3.1.12 — same as working devnet deploy.yml / Rust 1.89)
+      - name: Install Solana CLI
         run: |
-          set -e
-          # Use GitHub URL to avoid SSL errors with release.solana.com
-          curl -L --proto '=https' --tlsv1.2 -f "https://github.com/anza-xyz/agave/releases/download/v3.1.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2" -o /tmp/solana.tar.bz2
-          tar jxf /tmp/solana.tar.bz2
-          rm -f /tmp/solana.tar.bz2
-          rm -rf /tmp/solana-release
+          curl -sSfL https://github.com/anza-xyz/agave/releases/download/v3.1.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2 | tar jx
           mv solana-release /tmp/solana-release
           echo "/tmp/solana-release/bin" >> $GITHUB_PATH
           /tmp/solana-release/bin/solana --version
-          echo "=== cargo-build-sbf version ==="
-          /tmp/solana-release/bin/cargo-build-sbf --version
-
-      - name: Install Rust toolchains
-        run: |
-          mkdir -p /opt/cargo /opt/rustup
-          # Install Rust 1.85 (needed for cargo build-sbf to run cargo as a subprocess)
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-            CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
-            sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
-          echo "=== Rust toolchains ==="
-          rustup toolchain list
-
-      - name: Install clang
-        run: |
-          sudo apt-get update && sudo apt-get install -y clang-format clang
-          clang --version
-
-      - name: Decode wallet
-        run: |
-          echo $ANCHOR_WALLET_JSON | base64 -d > /tmp/wallet.json
-          solana-keygen verify /tmp/wallet.json || echo "Wallet decode done"
-
-      - name: Prime platform-tools download (triggers rust toolchain install)
-        run: |
-          # --install-only --force-tools-install is a no-op on first run.
-          # Instead: create a minimal edition-2021 project and run cargo-build-sbf.
-          # cargo-build-sbf downloads platform-tools on first real compile attempt.
-          # edition 2021 is used so Rust 1.85 can parse metadata and proceed to
-          # the compile step where the tools are downloaded.
-          mkdir -p /tmp/prime-solana-sbf/src
-          python3 -c "
-import os
-os.makedirs('/tmp/prime-solana-sbf/src', exist_ok=True)
-with open('/tmp/prime-solana-sbf/Cargo.toml', 'w') as f:
-    f.write('[package]\nname = "prime"\nversion = "0.1.0"\nedition = "2021"\n[lib]\npath = "src/lib.rs"\n')
-with open('/tmp/prime-solana-sbf/src/lib.rs', 'w') as f:
-    f.write('pub fn prime() {}\n')
-"
-          echo "=== Priming platform-tools (expect failure at compile) ==="
-          /tmp/solana-release/bin/cargo-build-sbf \
-            --manifest-path /tmp/prime-solana-sbf/Cargo.toml 2>&1 | tail -5 || echo "Priming done"
-
-          echo "=== Inspecting cache ==="
-          find "$HOME/.cache/solana" -maxdepth 8 -name "rustc" -type f 2>/dev/null | head -5
-          ls -la "$HOME/.cache/solana/" 2>/dev/null || echo "No cache dir"
-
-          RUSTC_PATH=$(find "$HOME/.cache/solana" -maxdepth 8 -name "rustc" -type f 2>/dev/null | head -1)
-          if [ -n "$RUSTC_PATH" ] && [ -f "$RUSTC_PATH" ]; then
-            echo "Found rustc: $RUSTC_PATH"
-            PLATFORM_TOOLS_ROOT=$(dirname "$RUSTC_PATH")
-            PLATFORM_TOOLS_ROOT=$(dirname "$PLATFORM_TOOLS_ROOT")
-            echo "Platform-tools root: $PLATFORM_TOOLS_ROOT"
-            echo "Rustc: $($PLATFORM_TOOLS_ROOT/bin/rustc --version 2>/dev/null || echo 'not at root')"
-          else
-            echo "ERROR: rustc not found in cache after priming"
-            exit 1
-          fi
-
-          rustup toolchain link solana "$PLATFORM_TOOLS_ROOT" 2>&1 || echo "link may exist"
-          echo "=== Toolchains ==="
-          rustup toolchain list
-          cargo +solana --version 2>&1 || echo "cargo +solana test done"
-
-      - name: Generate Cargo.lock (edition 2024 deps need Rust 1.89)
-        run: |
-          # edition 2024 requires Rust 1.89+ to parse. Use cargo +solana.
-          export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
-          echo "=== cargo +solana version ==="
-          cargo +solana --version
-          echo "=== Generating Cargo.lock ==="
-          cargo +solana generate-lockfile 2>&1 | tail -5
-          ls -la Cargo.lock 2>/dev/null && echo "Cargo.lock created" || echo "No Cargo.lock"
-
-      - name: Build program
-        if: inputs.skip_build != 'true'
-        run: |
-          export PATH="$CARGO_HOME/bin:/tmp/solana-release/bin:$HOME/.cargo/bin:$PATH"
-          export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
-          echo "=== Program ID ==="
-          grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
-          echo "=== Building with cargo build-sbf ==="
-          # cargo-build-sbf internally calls cargo +solana which uses platform-tools Rust 1.89
-          /tmp/solana-release/bin/cargo-build-sbf --manifest-path programs/hub-evidence-anchor/Cargo.toml 2>&1
-
-      - name: Check artifact
-        run: |
-          SO=$(find programs/hub-evidence-anchor/target -name "hub_evidence_anchor.so" 2>/dev/null | head -1)
-          if [ -n "$SO" ] && [ -f "$SO" ]; then
-            echo "Artifact found!"
-            ls -lh "$SO"
-          else
-            echo "ERROR: No .so found"
-            find . -name "hub_evidence_anchor.so" 2>/dev/null | head -5
-            exit 1
-          fi
-
-      - name: Deploy pre-built .so
-        if: inputs.skip_build == 'true'
-        run: |
-          echo "Deploying committed .so"
-          SO="programs/hub-evidence-anchor/target/deploy/hub_evidence_anchor.so"
-          ls -lh "$SO" || SO="programs/hub-evidence-anchor/hub_evidence_anchor.so"
-          ls -lh "$SO"
-          solana program deploy "$SO" \
-            --keypair /tmp/wallet.json \
-            --url mainnet-beta \
-            --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf \
-            --skip-upgrade-authority-validation 2>&1
-
-      - name: Deploy to mainnet-beta
-        run: |
-          SO=$(find programs/hub-evidence-anchor/target -name "hub_evidence_anchor.so" 2>/dev/null | head -1)
-          echo "Deploying: $SO"
-          ls -lh "$SO"
-          solana program deploy "$SO" \
-            --keypair /tmp/wallet.json \
-            --url mainnet-beta \
-            --program-id spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf \
-            --skip-upgrade-authority-validation 2>&1
-
-      - name: Verify deployment
-        run: |
-          solana program show spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf --url mainnet-beta 2>&1 || echo "Check done"
