@@ -5,6 +5,9 @@
 
 **Hub Evidence Anchor** — On-chain Behavioral Trust for Autonomous Agent Commerce
 
+**spJAH8 DEPLOYED on devnet** (305KB bytecode, slot 454011953)
+**Mainnet deployment: IN PROGRESS** (CI build working, initial deploy pending)
+
 Live program: spJAH8mpJmzp6xf5fpfueaBsjRUbPjcmJJMTrfvW8cf (Solana devnet)
 Hub trust profile: https://admin.slate.ceo/oc/brain/trust/quadricep
 
