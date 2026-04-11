@@ -23,6 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install system deps (bzip2 for tar + clang for BPF)
+        run: sudo apt-get update && sudo apt-get install -y bzip2 clang
+
       - name: Install Solana CLI
         run: |
           set -e
@@ -37,11 +40,6 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
             CARGO_HOME="$CARGO_HOME" RUSTUP_HOME="$RUSTUP_HOME" \
             sh -s -- -y --default-toolchain 1.85.0 --no-modify-path
-
-      - name: Install system deps (bzip2 + clang)
-        run: |
-          sudo apt-get update && sudo apt-get install -y bzip2 clang
-          clang --version
 
       - name: Decode wallet (Python base58 → JSON array)
         env:
@@ -79,24 +77,26 @@ jobs:
           /tmp/solana-release/bin/solana program close --buffers --keypair /tmp/wallet.json --url mainnet-beta 2>&1 || echo "No buffers to close"
           /tmp/solana-release/bin/solana balance --keypair /tmp/wallet.json --url mainnet-beta 2>&1 || echo "Balance check done"
 
-      - name: Generate Cargo.lock with Rust 1.85
+      - name: Install solana-cargo-build-sbf from crates.io (v4.0.0, built with Rust 1.85)
         run: |
-          echo "=== cargo version ==="
-          cargo --version
-          echo "=== Generating Cargo.lock with cargo +1.85 ==="
-          cargo +1.85 generate-lockfile 2>&1 || cargo generate-lockfile 2>&1 || true
-          echo "=== Verifying ==="
-          head -1 Cargo.lock 2>/dev/null || echo "No Cargo.lock"
+          # Install v4.0.0 from crates.io using Rust 1.85
+          # v4.0.0 uses Rust 1.85+ internally → can parse edition2024 crates
+          # The Solana CLI bundled cargo-build-sbf (v1.72) can't parse v4 lockfiles
+          cargo +1.85 install solana-cargo-build-sbf --version 4.0.0 2>&1 || \
+            cargo +1.85 install solana-cargo-build-sbf 2>&1 || true
+          echo "=== Installed cargo-build-sbf ==="
+          ~/.cargo/bin/cargo-build-sbf --version 2>&1 || echo "Install may have failed"
 
       - name: Build program
         run: |
           export LD_LIBRARY_PATH="$CARGO_HOME/lib:$LD_LIBRARY_PATH"
+          # Use the crates.io version (v4.0.0) which has Rust 1.85 internally
           echo "=== cargo-build-sbf version ==="
-          /tmp/solana-release/bin/cargo-build-sbf --version
+          ~/.cargo/bin/cargo-build-sbf --version 2>&1 || echo "Using fallback"
           echo "=== Program ID ==="
           grep declare_id programs/hub-evidence-anchor/src/lib.rs || true
-          echo "=== Building with cargo build-sbf (RUSTUP_TOOLCHAIN=1.77) ==="
-          /tmp/solana-release/bin/cargo-build-sbf 2>&1
+          echo "=== Building with solana-cargo-build-sbf v4 (Rust 1.85) ==="
+          ~/.cargo/bin/cargo-build-sbf 2>&1
           echo "=== Artifact ==="
           SBF_OUT="target/sbpf-solana-solana/release/hub_evidence_anchor.so"
           if [ -f "$SBF_OUT" ]; then
