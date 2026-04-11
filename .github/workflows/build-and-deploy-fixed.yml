@@ -110,11 +110,35 @@ jobs:
         run: /tmp/solana-release/bin/solana balance --keypair /tmp/wallet.json --url devnet
 
       - name: Generate Cargo.lock
-        run: cargo +1.85 generate-lockfile 2>&1 || true
-
-      - name: Install cargo-build-sbf
         run: |
-          /opt/cargo/bin/cargo +1.89 install solana-cargo-build-sbf --version 4.0.0 2>&1 || true
+          echo "=== Generate Cargo.lock ==="
+          bash -lc 'cat > /tmp/gen_lock.py' << '''PYEOF'''
+import subprocess, json, sys
+try:
+    result = subprocess.run(["cargo", "+1.89", "generate-lockfile", "--manifest-path", "programs/hub-evidence-anchor/Cargo.toml"],
+                          capture_output=True, text=True, timeout=120)
+    print("STDOUT:", result.stdout[:200])
+    print("STDERR:", result.stderr[:200])
+    if result.returncode == 0:
+        print("SUCCESS: Cargo.lock generated")
+        with open("programs/hub-evidence-anchor/Cargo.lock") as f:
+            first = f.readline()
+            print("Lockfile format:", first.strip())
+    else:
+        print("FAILED: cargo generate-lockfile returned", result.returncode)
+        # Try workspace-level lockfile
+        r2 = subprocess.run(["cargo", "+1.89", "generate-lockfile"],
+                           capture_output=True, text=True, timeout=120)
+        if r2.returncode == 0:
+            print("SUCCESS: workspace Cargo.lock generated")
+        else:
+            print("STDERR:", r2.stderr[:300])
+            sys.exit(1)
+except Exception as e:
+    print(f"ERROR: {e}")
+    sys.exit(1)
+PYEOF'
+          python3 /tmp/gen_lock.py
 
       - name: Build program
         run: |
